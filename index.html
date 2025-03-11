@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Timey</title>
+
+  <!-- This script runs before any rendering to prevent flash -->
+  <script>
+    // Check system preference synchronously before page loads
+    const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    // Apply theme class immediately to prevent flash
+    document.documentElement.classList.add(prefersDarkMode ? 'dark-mode' : 'light-mode');
+  </script>
+</head>
+
+<body>
+  <div class="app-container">
+    <!-- This div will act as your draggable title bar -->
+    <div class="top-bar">
+      <div class="app-title">
+        <h1 class="title">⌚ Timey</h1>
+      </div>
+      <div class="window-controls">
+        <button id="toggle-dark-mode"></button>
+      </div>
+    </div>
+
+    <!-- App content -->
+    <div class="app-content">
+      <!-- Current state indicator -->
+      <div class="state-indicator">
+        <div id="current-state" class="state-badge">Ready to Play</div>
+      </div>
+
+      <!-- Timer section -->
+      <div class="timer-section">
+        <div id="timer-display">01:00:00</div>
+        <div class="timer-controls">
+          <button id="start-timer" class="primary-button">Start Play Time</button>
+          <button id="pause-timer" class="secondary-button" disabled>Pause</button>
+        </div>
+      </div>
+
+      <!-- Chores section (hidden by default, shown during cooldown) -->
+      <div id="chores-section" class="chores-section hidden">
+        <h2>Complete these chores before playing again:</h2>
+        <div class="chores-list" id="chores-list">
+          <!-- Chores will be dynamically added here -->
+        </div>
+        <div class="completion-message hidden" id="completion-message">
+          <p>Great job completing your chores!</p>
+          <button id="reset-after-chores" class="primary-button">Start Play Time Again</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    /* Default styles - Dark mode first */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      transition: background-color 0.3s, color 0.3s;
+      background: #333;
+      color: white;
+    }
+
+    .app-container {
+      width: 100%;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .top-bar {
+      height: 50px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 15px;
+      -webkit-app-region: drag;
+      cursor: move;
+      transition: background-color 0.3s;
+      background-color: #222;
+    }
+
+    .title {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    #toggle-dark-mode {
+      -webkit-app-region: no-drag;
+      background-color: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 20px;
+      padding: 5px;
+      margin: 0;
+      content: '💡';
+    }
+
+    .app-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .state-indicator {
+      margin-bottom: 20px;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    .state-badge {
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: bold;
+      background-color: #4CAF50;
+      display: inline-block;
+    }
+
+    .state-badge.playing {
+      background-color: #2196F3;
+    }
+
+    .state-badge.cooldown {
+      background-color: #FF9800;
+    }
+
+    .state-badge.ready {
+      background-color: #4CAF50;
+    }
+
+    .timer-section {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    #timer-display {
+      font-size: 64px;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+    .timer-controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .primary-button, .secondary-button {
+      -webkit-app-region: no-drag;
+      padding: 10px 20px;
+      border-radius: 5px;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    .primary-button {
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    .primary-button:hover {
+      background-color: #3e8e41;
+    }
+
+    .primary-button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+
+    .secondary-button {
+      background-color: #f44336;
+      color: white;
+    }
+
+    .secondary-button:hover {
+      background-color: #d32f2f;
+    }
+
+    .secondary-button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+
+    .chores-section {
+      width: 100%;
+      max-width: 500px;
+      transition: opacity 0.3s;
+    }
+
+    .chores-list {
+      margin-top: 20px;
+      margin-bottom: 20px;
+      width: 100%;
+    }
+
+    .chore-item {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      margin-bottom: 10px;
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 5px;
+    }
+
+    .chore-item input[type="checkbox"] {
+      margin-right: 10px;
+      width: 20px;
+      height: 20px;
+    }
+
+    .chore-item.completed {
+      text-decoration: line-through;
+      opacity: 0.7;
+    }
+
+    .completion-message {
+      text-align: center;
+      padding: 15px;
+      background-color: rgba(76, 175, 80, 0.2);
+      border-radius: 5px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    /* Light mode styles */
+    html.light-mode body {
+      background: #f0f0f0;
+      color: black;
+    }
+
+    html.light-mode .top-bar {
+      background-color: #e0e0e0;
+    }
+
+    html.light-mode .chore-item {
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    html.light-mode .completion-message {
+      background-color: rgba(76, 175, 80, 0.1);
+    }
+  </style>
+
+  <script type="module" src="/src/renderer.ts"></script>
+</body>
+
+</html>
