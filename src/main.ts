@@ -65,7 +65,7 @@ const createWindow = () => {
   }
 
   // Open the DevTools.
-  // mainWindow.webContents.openDevTools();
+  //  mainWindow.webContents.openDevTools();
 
   ipcMain.on('window:move', (_, { mouseX, mouseY }) => {
     const [x, y] = mainWindow.getPosition();

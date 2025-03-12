@@ -2,33 +2,28 @@
  * This file will automatically be loaded by vite and run in the "renderer" context.
  */
 
+import { CHORES } from './chores';
 import './index.css';
 
 // Define app states
 enum AppState {
-  READY = 'ready',
-  PLAYING = 'playing',
-  COOLDOWN = 'cooldown'
+    READY = 'ready',
+    PLAYING = 'playing',
+    COOLDOWN = 'cooldown'
 }
 
 // Define chore list
 interface Chore {
-  id: number;
-  text: string;
-  completed: boolean;
+    id: number;
+    text: string;
+    completed: boolean;
 }
 
 // App configuration
 const CONFIG = {
-  PLAY_TIME_MINUTES: .1, // 1 hour of play time
-  NOTIFICATION_SOUND: 'notification.mp3', // Sound file to play when timer ends
-  DEFAULT_CHORES: [
-    { id: 1, text: 'Clean your room', completed: false },
-    { id: 2, text: 'Put away your toys', completed: false },
-    { id: 3, text: 'Help set the table', completed: false },
-    { id: 4, text: 'Take out the trash', completed: false },
-    { id: 5, text: 'Make your bed', completed: false }
-  ]
+    PLAY_TIME_MINUTES: 0.1, // 1 hour of play time
+    NOTIFICATION_SOUND: 'notification.mp3', // Sound file to play when timer ends
+    DEFAULT_CHORES: CHORES
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -124,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Timer Application Code
     // ----------------------
-    
+
     // Get UI elements
     const timerDisplay = document.getElementById('timer-display') as HTMLElement;
     const startTimerBtn = document.getElementById('start-timer') as HTMLButtonElement;
@@ -139,6 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let timerInterval: number | null = null;
     let timeLeft = CONFIG.PLAY_TIME_MINUTES * 60; // in seconds
     let chores: Chore[] = JSON.parse(JSON.stringify(CONFIG.DEFAULT_CHORES)); // Deep copy
+    console.log(chores);
     let currentState: AppState = AppState.READY;
     let isPaused: boolean = false;
 
@@ -159,13 +155,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 updatePauseButtonText();
                 updateTimerDisplay();
                 break;
-            
+
             case AppState.PLAYING:
                 startTimerBtn.disabled = true;
                 pauseTimerBtn.disabled = false;
                 choresSection.classList.add('hidden');
                 break;
-            
+
             case AppState.COOLDOWN:
                 startTimerBtn.disabled = true;
                 pauseTimerBtn.disabled = true;
@@ -187,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function getStateDisplayName(state: AppState): string {
         switch (state) {
             case AppState.READY: return 'Ready to Play';
-            case AppState.PLAYING: 
+            case AppState.PLAYING:
                 return isPaused ? 'Paused' : 'Playing Time';
             case AppState.COOLDOWN: return 'Chore Time';
             default: return 'Unknown State';
@@ -199,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const hours = Math.floor(seconds / 3600);
         const minutes = Math.floor((seconds % 3600) / 60);
         const secs = seconds % 60;
-        
+
         return [
             hours.toString().padStart(2, '0'),
             minutes.toString().padStart(2, '0'),
@@ -215,16 +211,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Start the timer
     function startTimer(): void {
         updateAppState(AppState.PLAYING);
-        
+
         if (timerInterval) {
             clearInterval(timerInterval);
         }
-        
+
         timerInterval = window.setInterval(() => {
             if (!isPaused) {
                 timeLeft--;
                 updateTimerDisplay();
-                
+
                 if (timeLeft <= 0) {
                     stopTimer();
                     playNotificationSound();
@@ -260,23 +256,23 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderChores(): void {
         // Clear existing chores
         choresList.innerHTML = '';
-        
+
         // Add each chore
         chores.forEach(chore => {
             const choreItem = document.createElement('div');
             choreItem.className = `chore-item ${chore.completed ? 'completed' : ''}`;
             choreItem.dataset.id = chore.id.toString();
-            
+
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.checked = chore.completed;
             choreItem.addEventListener('click', () => {
                 toggleChore(chore.id);
             });
-            
+
             const label = document.createElement('span');
             label.textContent = chore.text;
-            
+
             choreItem.appendChild(checkbox);
             choreItem.appendChild(label);
             choresList.appendChild(choreItem);
@@ -298,7 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Check if all chores are completed
     function checkAllChoresCompleted(): void {
         const allCompleted = chores.every(chore => chore.completed);
-        
+
         if (allCompleted) {
             completionMessage.classList.remove('hidden');
         } else {
