@@ -10,9 +10,26 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
+    appBundleId: 'com.trustieee.timey',
+    appCategoryType: 'public.app-category.productivity',
+    osxSign: {},
+    protocols: [
+      {
+        name: 'timey',
+        schemes: ['timey']
+      }
+    ]
   },
   rebuildConfig: {},
-  makers: [new MakerSquirrel({}), new MakerZIP({}, ['darwin']), new MakerRpm({}), new MakerDeb({})],
+  makers: [
+    new MakerSquirrel({
+      setupIcon: './assets/icon.ico',
+      iconUrl: 'https://raw.githubusercontent.com/trustieee/timey/main/assets/icon.ico'
+    }), 
+    new MakerZIP({}, ['darwin']), 
+    new MakerRpm({}), 
+    new MakerDeb({})
+  ],
   plugins: [
     new VitePlugin({
       // `build` can specify multiple entry builds, which can be Main process, Preload scripts, Worker process, etc.
@@ -57,7 +74,8 @@ const config: ForgeConfig = {
           owner: 'trustieee',
           name: 'timey'
         },
-        prerelease: true
+        prerelease: false,
+        draft: false
       }
     }
   ]

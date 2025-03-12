@@ -1,11 +1,60 @@
-import { app, BrowserWindow, ipcMain, nativeTheme, Menu } from 'electron';
+import { app, BrowserWindow, ipcMain, nativeTheme, Menu, dialog } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
+import { autoUpdater, UpdateInfo, ProgressInfo } from 'electron-updater';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
   app.quit();
 }
+
+// Configure auto-updater
+autoUpdater.autoDownload = true;
+autoUpdater.autoInstallOnAppQuit = true;
+
+// Auto updater events
+autoUpdater.on('checking-for-update', () => {
+  console.log('Checking for update...');
+});
+
+autoUpdater.on('update-available', (info: UpdateInfo) => {
+  console.log('Update available:', info);
+  dialog.showMessageBox({
+    type: 'info',
+    title: 'Update Available',
+    message: `A new version (${info.version}) is available and will be installed on quit.`,
+    buttons: ['OK']
+  });
+});
+
+autoUpdater.on('update-not-available', () => {
+  console.log('Update not available');
+});
+
+autoUpdater.on('error', (err: Error) => {
+  console.error('Error in auto-updater:', err);
+});
+
+autoUpdater.on('download-progress', (progressObj: ProgressInfo) => {
+  let logMessage = `Download speed: ${progressObj.bytesPerSecond}`;
+  logMessage = `${logMessage} - Downloaded ${progressObj.percent}%`;
+  logMessage = `${logMessage} (${progressObj.transferred}/${progressObj.total})`;
+  console.log(logMessage);
+});
+
+autoUpdater.on('update-downloaded', () => {
+  console.log('Update downloaded');
+  dialog.showMessageBox({
+    type: 'info',
+    title: 'Update Ready',
+    message: 'A new version has been downloaded. Restart the application to apply the updates.',
+    buttons: ['Restart', 'Later']
+  }).then(result => {
+    if (result.response === 0) {
+      autoUpdater.quitAndInstall();
+    }
+  });
+});
 
 const createWindow = () => {
   // Force dark mode at startup
@@ -90,7 +139,16 @@ const createWindow = () => {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', createWindow);
+app.on('ready', () => {
+  createWindow();
+  
+  // Check for updates after a small delay to ensure the app is fully loaded
+  setTimeout(() => {
+    autoUpdater.checkForUpdatesAndNotify().catch((err: Error) => {
+      console.error('Error checking for updates:', err);
+    });
+  }, 3000);
+});
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
