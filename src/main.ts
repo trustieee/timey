@@ -2,6 +2,16 @@ import { app, BrowserWindow, ipcMain, nativeTheme, Menu, dialog } from 'electron
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import { autoUpdater, UpdateInfo, ProgressInfo } from 'electron-updater';
+// Import player profile functions
+import { 
+  loadPlayerProfile, 
+  savePlayerProfile, 
+  addXp,
+  removeXp,
+  addCompletedChore,
+  removeCompletedChore,
+  PlayerProfile
+} from './playerProfile';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -56,6 +66,9 @@ autoUpdater.on('update-downloaded', () => {
   });
 });
 
+// Player profile for the app session
+let playerProfile: PlayerProfile = loadPlayerProfile();
+
 const createWindow = () => {
   // Force dark mode at startup
   nativeTheme.themeSource = 'dark';
@@ -63,7 +76,7 @@ const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 600,
-    height: 850,
+    height: 950,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -134,6 +147,45 @@ const createWindow = () => {
     }
     return nativeTheme.shouldUseDarkColors;
   });
+
+  // Player profile IPC handlers
+  ipcMain.handle('player:load-profile', () => {
+    return playerProfile;
+  });
+
+  ipcMain.handle('player:save-profile', (_, profileData: PlayerProfile) => {
+    playerProfile = profileData;
+    savePlayerProfile(playerProfile);
+    return true;
+  });
+
+  ipcMain.handle('player:add-xp', (_, amount: number) => {
+    playerProfile = addXp(playerProfile, amount);
+    savePlayerProfile(playerProfile);
+    return playerProfile;
+  });
+
+  ipcMain.handle('player:remove-xp', (_, amount: number) => {
+    playerProfile = removeXp(playerProfile, amount);
+    savePlayerProfile(playerProfile);
+    return playerProfile;
+  });
+
+  ipcMain.handle('player:add-completed-chore', (_, { choreId, choreText }: { choreId: number; choreText: string }) => {
+    playerProfile = addCompletedChore(playerProfile, choreId, choreText);
+    // Add XP for completing chores - default to 10 XP per chore
+    playerProfile = addXp(playerProfile, 10);
+    savePlayerProfile(playerProfile);
+    return playerProfile;
+  });
+
+  ipcMain.handle('player:remove-completed-chore', (_, { choreId }: { choreId: number }) => {
+    playerProfile = removeCompletedChore(playerProfile, choreId);
+    // Remove the XP that was awarded for this chore
+    playerProfile = removeXp(playerProfile, 10);
+    savePlayerProfile(playerProfile);
+    return playerProfile;
+  });
 };
 
 // This method will be called when Electron has finished
@@ -165,6 +217,11 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
+});
+
+// Save player profile when app is about to quit
+app.on('before-quit', () => {
+  savePlayerProfile(playerProfile);
 });
 
 // In this file you can include the rest of your app's specific main process

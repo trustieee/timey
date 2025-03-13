@@ -19,16 +19,117 @@ interface Chore {
     completed: boolean;
 }
 
+// Define player profile interface
+interface PlayerProfile {
+    level: number;
+    xp: number;
+    xpToNextLevel: number;
+    completedChores: CompletedChore[];
+}
+
+// Interface for completed chores tracking
+interface CompletedChore {
+    id: number;
+    text: string;
+    completedAt: string; // ISO date string
+}
+
 // App configuration
 const CONFIG = {
     PLAY_TIME_MINUTES: 0.1, // 1 hour of play time
     NOTIFICATION_SOUND: 'notification.mp3', // Sound file to play when timer ends
-    DEFAULT_CHORES: CHORES
+    DEFAULT_CHORES: CHORES,
+    XP_FOR_CHORE_COMPLETION: 10, // XP gained for completing a chore
+    XP_FOR_PLAYTIME_COMPLETION: 5 // XP gained for completing play time
 };
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // Get the top bar for dragging - now the entire top section is draggable
     const topBar = document.querySelector('.top-bar');
+
+    // Get player profile UI elements
+    const xpBarElement = document.getElementById('xp-bar') as HTMLElement;
+    const xpTextElement = document.querySelector('.xp-text') as HTMLElement;
+    const levelIndicatorElement = document.querySelector('.level-indicator') as HTMLElement;
+
+    // Player profile data
+    let playerProfile: PlayerProfile;
+
+    // Load player profile
+    async function loadPlayerProfile() {
+        try {
+            playerProfile = await window.electronAPI.loadPlayerProfile();
+            updateXpDisplay();
+        } catch (error) {
+            console.error('Error loading player profile:', error);
+            // Set default values if profile can't be loaded
+            playerProfile = {
+                level: 1,
+                xp: 0,
+                xpToNextLevel: 100,
+                completedChores: []
+            };
+        }
+    }
+
+    // Update XP display
+    function updateXpDisplay() {
+        if (!playerProfile) return;
+
+        const xpPercentage = Math.min(100, Math.floor((playerProfile.xp / playerProfile.xpToNextLevel) * 100));
+        
+        // Update XP bar width
+        xpBarElement.style.width = `${xpPercentage}%`;
+        
+        // Update XP text
+        xpTextElement.textContent = `${playerProfile.xp}/${playerProfile.xpToNextLevel} XP`;
+        
+        // Update level indicator
+        levelIndicatorElement.textContent = `Level ${playerProfile.level}`;
+    }
+
+    // Add XP to player
+    async function addXp(amount: number) {
+        try {
+            playerProfile = await window.electronAPI.addXp(amount);
+            updateXpDisplay();
+        } catch (error) {
+            console.error('Error adding XP:', error);
+        }
+    }
+
+    // Remove XP from player
+    async function removeXp(amount: number) {
+        try {
+            playerProfile = await window.electronAPI.removeXp(amount);
+            updateXpDisplay();
+        } catch (error) {
+            console.error('Error removing XP:', error);
+        }
+    }
+
+    // Add completed chore
+    async function addCompletedChore(choreId: number, choreText: string) {
+        try {
+            playerProfile = await window.electronAPI.addCompletedChore(choreId, choreText);
+            updateXpDisplay();
+        } catch (error) {
+            console.error('Error adding completed chore:', error);
+        }
+    }
+
+    // Remove completed chore
+    async function removeCompletedChore(choreId: number) {
+        try {
+            playerProfile = await window.electronAPI.removeCompletedChore(choreId);
+            updateXpDisplay();
+        } catch (error) {
+            console.error('Error removing completed chore:', error);
+        }
+    }
+
+    // Load player profile at startup
+    await loadPlayerProfile();
 
     if (topBar) {
         let isDragging = false;
@@ -170,6 +271,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 updatePauseButtonText();
                 resetChores();
                 renderChores();
+                
+                // Award XP for completing play time
+                addXp(CONFIG.XP_FOR_PLAYTIME_COMPLETION);
                 break;
         }
     }
@@ -266,7 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.checked = chore.completed;
-            choreItem.addEventListener('click', () => {
+            checkbox.addEventListener('change', () => {
                 toggleChore(chore.id);
             });
 
@@ -287,6 +391,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const chore = chores.find(c => c.id === id);
         if (chore) {
             chore.completed = !chore.completed;
+            
+            if (chore.completed) {
+                // Add to completed chores record for XP if checked
+                addCompletedChore(chore.id, chore.text);
+            } else {
+                // Remove from completed chores and remove XP if unchecked
+                removeCompletedChore(chore.id);
+            }
+            
             renderChores();
         }
     }
