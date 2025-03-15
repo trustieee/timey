@@ -12,11 +12,14 @@ enum AppState {
     COOLDOWN = 'cooldown'
 }
 
+// Define chore status type
+type ChoreStatus = 'completed' | 'incomplete' | 'na';
+
 // Define chore list
 interface Chore {
     id: number;
     text: string;
-    completed: boolean;
+    status: ChoreStatus;
 }
 
 // Define player profile interface
@@ -25,6 +28,7 @@ interface PlayerProfile {
     xp: number;
     xpToNextLevel: number;
     completedChores: CompletedChore[];
+    history: { [date: string]: { chores: Chore[] } };
 }
 
 // Interface for completed chores tracking
@@ -68,7 +72,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 level: 1,
                 xp: 0,
                 xpToNextLevel: 100,
-                completedChores: []
+                completedChores: [],
+                history: {}
             };
         }
     }
@@ -191,16 +196,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     syncThemeWithElectron();
 
     function updateClock(): void {
-        const clockElement = document.getElementById('clock');
-        if (!clockElement) return;
+        const topDateTimeElement = document.getElementById('top-date-time');
+        if (!topDateTimeElement) return;
 
-        // in 12 hour format
         const now = new Date();
+        
+        // Format date as MM/DD/YYYY
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const year = now.getFullYear();
+        const dateStr = `${month}/${day}/${year}`;
+        
+        // Format time in 12-hour format
         const hours = now.getHours() % 12 || 12; // Convert 0 to 12 for 12 AM
-        const minutes = now.getMinutes().toString().padStart(2, '0');
-        const seconds = now.getSeconds().toString().padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
         const ampm = now.getHours() >= 12 ? 'PM' : 'AM';
-        clockElement.textContent = `${hours}:${minutes}:${seconds} ${ampm}`;
+        const timeStr = `${hours}:${minutes} ${ampm}`;
+        
+        // Combine date and time
+        topDateTimeElement.textContent = `${dateStr} ${timeStr}`;
     }
 
     // Update the clock immediately
@@ -230,6 +244,63 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentState: AppState = AppState.READY;
     let isPaused: boolean = false;
 
+    // Reset chores to uncompleted state - only used for new days
+    function resetChores(): void {
+        chores = CHORES.map(chore => ({
+            id: chore.id,
+            text: chore.text,
+            status: 'incomplete' as ChoreStatus
+        }));
+    }
+
+    // Helper function to get today's date in local time YYYY-MM-DD format
+    function getLocalDateString(): string {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    // Load or initialize today's chores
+    async function loadTodayChores(): Promise<void> {
+        try {
+            const today = getLocalDateString();
+            const todayProgress = playerProfile.history[today];
+
+            if (todayProgress && todayProgress.chores) {
+                // Use today's existing progress
+                chores = todayProgress.chores.map(chore => ({
+                    id: chore.id,
+                    text: chore.text,
+                    status: chore.status as ChoreStatus
+                }));
+            } else {
+                // Initialize new day with default incomplete status
+                resetChores();
+                
+                // Create a proper day progress object in the history
+                if (!playerProfile.history[today]) {
+                    // First ensure the history object is initialized
+                    playerProfile.history[today] = { chores: [] };
+                    
+                    // Then update it with the current chores
+                    playerProfile.history[today].chores = chores.map(chore => ({
+                        id: chore.id,
+                        text: chore.text,
+                        status: chore.status
+                    }));
+                    
+                    // Save the updated profile
+                    await window.electronAPI.savePlayerProfile(playerProfile);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading today\'s chores:', error);
+            resetChores();
+        }
+    }
+
     // Function to update app state
     function updateAppState(newState: AppState): void {
         currentState = newState;
@@ -257,13 +328,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             case AppState.COOLDOWN:
                 startTimerBtn.disabled = true;
                 pauseTimerBtn.disabled = true;
-                resetAfterChoresBtn.disabled = true; // Initially disabled during cooldown
+                resetAfterChoresBtn.disabled = true;
                 choresSection.classList.remove('hidden');
                 timeLeft = CONFIG.COOLDOWN_TIME_MINUTES * 60;
                 isPaused = false;
                 updatePauseButtonText();
-                resetChores();
-                renderChores();
+                loadTodayChores().then(() => {
+                    renderChores();
+                });
 
                 // Award XP for completing play time
                 addXp(CONFIG.XP_FOR_PLAYTIME_COMPLETION);
@@ -366,12 +438,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentStateElement.textContent = getStateDisplayName(currentState);
     }
 
-    // Reset chores to uncompleted state
-    function resetChores(): void {
-        chores = JSON.parse(JSON.stringify(CONFIG.DEFAULT_CHORES)); // Deep copy
-        completionMessage.classList.add('hidden');
-    }
-
     // Render chores list
     function renderChores(): void {
         // Clear existing chores
@@ -380,93 +446,219 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Add each chore
         chores.forEach(chore => {
             const choreItem = document.createElement('div');
-            choreItem.className = `chore-item ${chore.completed ? 'completed' : ''}`;
+            choreItem.className = `chore-item ${chore.status}`;
             choreItem.dataset.id = chore.id.toString();
 
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.checked = chore.completed;
-            checkbox.addEventListener('change', () => {
-                toggleChore(chore.id);
+            // Create status toggle button
+            const statusBtn = document.createElement('button');
+            statusBtn.className = 'chore-status-btn';
+            statusBtn.innerHTML = getStatusIcon(chore.status);
+            statusBtn.addEventListener('click', () => {
+                cycleChoreStatus(chore.id);
             });
 
             const label = document.createElement('span');
             label.textContent = chore.text;
 
-            choreItem.appendChild(checkbox);
+            choreItem.appendChild(statusBtn);
             choreItem.appendChild(label);
             choresList.appendChild(choreItem);
         });
 
-        // Check if all chores are completed
+        // Check if all chores are completed or N/A
         checkAllChoresCompleted();
     }
 
-    // Toggle chore completion status
-    function toggleChore(id: number): void {
+    // Get icon for chore status
+    function getStatusIcon(status: ChoreStatus): string {
+        switch (status) {
+            case 'completed': return '✓';
+            case 'na': return 'N/A';
+            case 'incomplete': return '✗';
+            default: return '✗'; // Default to incomplete
+        }
+    }
+
+    // Cycle through chore statuses
+    function cycleChoreStatus(id: number): void {
         const chore = chores.find(c => c.id === id);
-        if (chore) {
-            chore.completed = !chore.completed;
+        if (!chore) return;
 
-            if (chore.completed) {
-                // Add to completed chores record for XP if checked
-                addCompletedChore(chore.id, chore.text);
-            } else {
-                // Remove from completed chores and remove XP if unchecked
-                removeCompletedChore(chore.id);
-            }
+        // Cycle through states: incomplete -> completed -> na -> incomplete
+        const nextStatus: { [key in ChoreStatus]: ChoreStatus } = {
+            'incomplete': 'completed',
+            'completed': 'na',
+            'na': 'incomplete'
+        };
 
-            renderChores();
+        const oldStatus = chore.status;
+        const newStatus = nextStatus[oldStatus];
+
+        // Update chore status
+        chore.status = newStatus;
+
+        // Update the profile with the new chore status
+        const today = getLocalDateString();
+        if (!playerProfile.history[today]) {
+            playerProfile.history[today] = { chores: [] };
         }
-    }
-
-    // Check if all conditions are met to enable the reset button
-    function updateResetButtonState(): void {
-        const allChoresCompleted = chores.every(chore => chore.completed);
-        const cooldownComplete = timeLeft <= 0;
         
-        resetAfterChoresBtn.disabled = !(allChoresCompleted && cooldownComplete);
-        
-        // Update the completion message text based on state
-        if (allChoresCompleted && !cooldownComplete) {
-            completionMessage.querySelector('p')!.textContent = 
-                `Great job completing your chores! Please wait ${formatTime(timeLeft)} before starting play time.`;
-            completionMessage.classList.remove('hidden');
-        } else if (!allChoresCompleted && cooldownComplete) {
-            completionMessage.classList.add('hidden');
-        } else if (allChoresCompleted && cooldownComplete) {
-            completionMessage.querySelector('p')!.textContent = 
-                'Great job completing your chores! You can start play time now.';
-            completionMessage.classList.remove('hidden');
+        // Update the chore in the player profile
+        const profileChore = playerProfile.history[today].chores.find(c => c.id === id);
+        if (profileChore) {
+            profileChore.status = newStatus;
         } else {
-            completionMessage.classList.add('hidden');
+            // If the chore doesn't exist in the profile, add it
+            playerProfile.history[today].chores.push({
+                id: chore.id,
+                text: chore.text,
+                status: newStatus
+            });
         }
+        
+        // Save to profile and handle XP changes
+        window.electronAPI.savePlayerProfile(playerProfile);
+        window.electronAPI.updateChoreStatus(id, newStatus);
+
+        renderChores();
     }
 
-    // Check if all chores are completed
+    // Check if all chores are completed or N/A
     function checkAllChoresCompleted(): void {
+        const allDone = chores.every(chore =>
+            chore.status === 'completed' || chore.status === 'na'
+        );
+
+        // Always show completion message, but with different text based on completion
+        completionMessage.classList.remove('hidden');
         updateResetButtonState();
+    }
+
+    // Update the reset button state and completion message
+    function updateResetButtonState(): void {
+        const allChoresCompleted = chores.every(chore =>
+            chore.status === 'completed' || chore.status === 'na'
+        );
+
+        // Only enable the reset button if cooldown timer is done
+        resetAfterChoresBtn.disabled = timeLeft > 0;
+
+        // Update the completion message text based on state
+        if (timeLeft > 0) {
+            completionMessage.querySelector('p')!.textContent =
+                `Cooldown time remaining. Complete your chores while you wait!`;
+        } else if (allChoresCompleted) {
+            completionMessage.querySelector('p')!.textContent =
+                'Great job completing your chores! You can start play time now.';
+        } else {
+            const incompleteCount = chores.filter(chore =>
+                chore.status === 'incomplete'
+            ).length;
+
+            completionMessage.querySelector('p')!.textContent =
+                `You have ${incompleteCount} incomplete ${incompleteCount === 1 ? 'chore' : 'chores'}. Remember: -10 XP per incomplete chore at the end of the day!`;
+        }
+        completionMessage.classList.remove('hidden');
     }
 
     // Event Listeners
     startTimerBtn.addEventListener('click', startTimer);
     pauseTimerBtn.addEventListener('click', pauseResumeTimer);
     resetAfterChoresBtn.addEventListener('click', () => {
-        const allChoresCompleted = chores.every(chore => chore.completed);
-        const cooldownComplete = timeLeft <= 0;
-
-        if (!cooldownComplete) {
-            showNotification('Not Yet!', `Please wait ${formatTime(timeLeft)} before starting play time.`);
-        } else if (!allChoresCompleted) {
-            showNotification('Not Yet!', 'Please complete all your chores before starting play time.');
-        } else {
+        // Only allow starting play time if cooldown is done
+        if (timeLeft <= 0) {
             updateAppState(AppState.READY);
         }
     });
 
+    // Initialize chores list
+    async function initializeChores(): Promise<void> {
+        await loadTodayChores();
+        renderChores();
+    }
+
     // Initialize the app
+    initializeChores();
     updateAppState(AppState.READY);
     updateTimerDisplay();
+
+    // History panel functionality
+    const historyBtn = document.getElementById('show-history') as HTMLButtonElement;
+    const historyPanel = document.getElementById('history-panel') as HTMLElement;
+    const historyContent = historyPanel.querySelector('.history-content') as HTMLElement;
+
+    function toggleHistoryPanel(e: MouseEvent): void {
+        e.stopPropagation(); // Prevent event from bubbling up
+        historyPanel.classList.toggle('visible');
+        if (historyPanel.classList.contains('visible')) {
+            // Refresh player profile before rendering history
+            loadPlayerProfile().then(() => {
+                renderHistory();
+            });
+        }
+    }
+
+    function renderHistory(): void {
+        historyContent.innerHTML = '';
+        
+        // Get dates in reverse chronological order
+        const dates = Object.keys(playerProfile.history).sort().reverse();
+        
+        dates.forEach(date => {
+            const dayHistory = playerProfile.history[date];
+            if (!dayHistory || !dayHistory.chores || dayHistory.chores.length === 0) return;
+
+            const dateSection = document.createElement('div');
+            dateSection.className = 'history-date';
+
+            // Format date to be more readable (e.g., "January 1, 2024")
+            const formattedDate = new Date(date).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
+            dateSection.innerHTML = `<h3>${formattedDate}</h3>`;
+
+            // Add chores for this date
+            dayHistory.chores.forEach(chore => {
+                const choreElement = document.createElement('div');
+                choreElement.className = 'history-chore';
+
+                const statusIcon = getStatusIcon(chore.status as ChoreStatus);
+                choreElement.innerHTML = `
+                    <div class="status ${chore.status}">${statusIcon}</div>
+                    <span>${chore.text}</span>
+                `;
+
+                dateSection.appendChild(choreElement);
+            });
+
+            historyContent.appendChild(dateSection);
+        });
+
+        if (dates.length === 0) {
+            historyContent.innerHTML = '<p style="text-align: center; padding: 20px;">No history available yet.</p>';
+        }
+    }
+
+    // Add event listener for history button
+    historyBtn.addEventListener('click', toggleHistoryPanel);
+
+    // Close history panel when clicking outside
+    document.addEventListener('click', (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        if (!historyPanel.contains(target) && 
+            !historyBtn.contains(target) && 
+            historyPanel.classList.contains('visible')) {
+            historyPanel.classList.remove('visible');
+        }
+    });
+
+    // Prevent clicks inside the history panel from closing it
+    historyPanel.addEventListener('click', (e: MouseEvent) => {
+        e.stopPropagation();
+    });
 
     // Play notification sound when timer ends
     function playNotificationSound(): void {
@@ -499,4 +691,192 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
     }
+
+    // Add this CSS to your index.html or a separate CSS file
+    const style = document.createElement('style');
+    style.textContent = `
+        .app-content {
+            position: relative;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 20px 100px;
+            box-sizing: border-box;
+            align-items: center;
+        }
+
+        .chores-section {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            margin-bottom: 80px;
+            border-radius: 10px;
+            background-color: rgba(255, 255, 255, 0.05);
+            width: 100%;
+            max-width: 800px; /* Increased from 600px */
+            align-self: center;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chores-section h2 {
+            text-align: center;
+            padding: 20px;
+            margin: 0;
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.9);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .chores-list {
+            padding: 20px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Custom scrollbar styling */
+        .chores-section::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .chores-section::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+
+        .chores-section::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+        }
+
+        .chores-section::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .xp-section {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 40px);
+            max-width: 800px; /* Match chores section width */
+            background-color: rgba(51, 51, 51, 0.95);
+            padding: 10px;
+            border-radius: 10px;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .chore-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 15px;
+            margin-bottom: 10px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            width: 100%;
+            box-sizing: border-box;
+            min-width: 0; /* Prevent flex items from overflowing */
+        }
+
+        .chore-status-btn {
+            width: 40px;
+            height: 40px;
+            min-width: 40px;
+            margin-right: 15px;
+            border-radius: 50%;
+            border: 2px solid currentColor;
+            background: transparent;
+            color: inherit;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            flex-shrink: 0;
+        }
+
+        .chore-item.completed {
+            background-color: rgba(76, 175, 80, 0.1);
+        }
+
+        .chore-item.completed .chore-status-btn {
+            background-color: #4CAF50;
+            border-color: #4CAF50;
+            color: white;
+        }
+
+        .chore-item.na {
+            background-color: rgba(158, 158, 158, 0.1);
+        }
+
+        .chore-item.na .chore-status-btn {
+            background-color: #9E9E9E;
+            border-color: #9E9E9E;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .chore-item.incomplete {
+            background-color: rgba(255, 82, 82, 0.1);
+        }
+
+        .chore-item.incomplete .chore-status-btn {
+            background-color: transparent;
+            border-color: #FF5252;
+            color: #FF5252;
+        }
+
+        .chore-item.completed span {
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+
+        .chore-item.na span {
+            opacity: 0.5;
+            font-style: italic;
+        }
+
+        .chore-item span {
+            flex: 1;
+            font-size: 14px;
+            line-height: 1.4;
+            padding: 2px 0;
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            word-break: break-word;
+            hyphens: auto;
+            min-width: 0; /* Allow text to shrink below its minimum content size */
+        }
+
+        /* Ensure completion message stays fixed at the bottom while scrolling */
+        .completion-message {
+            position: sticky;
+            bottom: 0;
+            right: 0;
+            background-color: rgba(51, 51, 51, 0.95);
+            z-index: 99;
+            text-align: center;
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+            margin: 0 -20px -20px -20px; /* Compensate for parent padding */
+            box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .completion-message p {
+            margin: 0 0 10px 0;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .completion-message button {
+            margin: 0;
+        }
+    `;
+    document.head.appendChild(style);
 });

@@ -14,6 +14,7 @@ declare global {
             removeXp: (amount: number) => Promise<any>;
             addCompletedChore: (choreId: number, choreText: string) => Promise<any>;
             removeCompletedChore: (choreId: number) => Promise<any>;
+            updateChoreStatus: (choreId: number, status: string) => Promise<any>;
         }
     }
 }
@@ -32,21 +33,20 @@ interface PlayerProfile {
 
 contextBridge.exposeInMainWorld('electronAPI', {
     // Expose existing API for dark mode toggle
-    toggleDarkMode: () => ipcRenderer.invoke('dark-mode:toggle'),
+    toggleDarkMode: () => ipcRenderer.invoke('toggle-dark-mode'),
 
     // Add new API to get the current dark mode state
-    getDarkMode: () => ipcRenderer.invoke('dark-mode:get'),
+    getDarkMode: () => ipcRenderer.invoke('get-dark-mode'),
 
     // Add new API for window movement
-    windowMove: (mouseX: number, mouseY: number) => {
-        ipcRenderer.send('window:move', { mouseX, mouseY });
-    },
+    windowMove: (mouseX: number, mouseY: number) => ipcRenderer.send('window-move', mouseX, mouseY),
 
     // Player profile APIs
-    loadPlayerProfile: () => ipcRenderer.invoke('player:load-profile'),
-    savePlayerProfile: (profile: PlayerProfile) => ipcRenderer.invoke('player:save-profile', profile),
-    addXp: (amount: number) => ipcRenderer.invoke('player:add-xp', amount),
-    removeXp: (amount: number) => ipcRenderer.invoke('player:remove-xp', amount),
+    loadPlayerProfile: () => ipcRenderer.invoke('load-player-profile'),
+    savePlayerProfile: (profile: PlayerProfile) => ipcRenderer.invoke('save-player-profile', profile),
+    addXp: (amount: number) => ipcRenderer.invoke('add-xp', amount),
+    removeXp: (amount: number) => ipcRenderer.invoke('remove-xp', amount),
     addCompletedChore: (choreId: number, choreText: string) => ipcRenderer.invoke('player:add-completed-chore', { choreId, choreText }),
-    removeCompletedChore: (choreId: number) => ipcRenderer.invoke('player:remove-completed-chore', { choreId })
+    removeCompletedChore: (choreId: number) => ipcRenderer.invoke('player:remove-completed-chore', { choreId }),
+    updateChoreStatus: (choreId: number, status: string) => ipcRenderer.invoke('update-chore-status', choreId, status)
 });

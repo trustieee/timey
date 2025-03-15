@@ -1,17 +1,9 @@
 import { app, BrowserWindow, ipcMain, nativeTheme, Menu, dialog } from 'electron';
-import path from 'node:path';
+import * as path from 'path';
 import started from 'electron-squirrel-startup';
 import { autoUpdater, UpdateInfo, ProgressInfo } from 'electron-updater';
 // Import player profile functions
-import {
-  loadPlayerProfile,
-  savePlayerProfile,
-  addXp,
-  removeXp,
-  addCompletedChore,
-  removeCompletedChore,
-  PlayerProfile
-} from './playerProfile';
+import * as playerProfile from './playerProfile';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -67,7 +59,12 @@ autoUpdater.on('update-downloaded', () => {
 });
 
 // Player profile for the app session
-let playerProfile: PlayerProfile = loadPlayerProfile();
+let playerProfileData = playerProfile.loadPlayerProfile();
+
+// Function to refresh player profile data
+function refreshPlayerProfileData() {
+  playerProfileData = playerProfile.loadPlayerProfile();
+}
 
 const createWindow = () => {
   // Force dark mode at startup
@@ -75,7 +72,7 @@ const createWindow = () => {
 
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 600,
+    width: 650,
     height: 950,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -135,11 +132,11 @@ const createWindow = () => {
   });
 
   // Also need to expose a way to get initial theme state
-  ipcMain.handle('dark-mode:get', () => {
+  ipcMain.handle('get-dark-mode', () => {
     return nativeTheme.shouldUseDarkColors;
   });
 
-  ipcMain.handle('dark-mode:toggle', () => {
+  ipcMain.handle('toggle-dark-mode', () => {
     if (nativeTheme.shouldUseDarkColors) {
       nativeTheme.themeSource = 'light';
     } else {
@@ -149,42 +146,37 @@ const createWindow = () => {
   });
 
   // Player profile IPC handlers
-  ipcMain.handle('player:load-profile', () => {
-    return playerProfile;
+  ipcMain.handle('load-player-profile', () => {
+    // Refresh the profile data to ensure we have the latest
+    refreshPlayerProfileData();
+    return playerProfileData;
   });
 
-  ipcMain.handle('player:save-profile', (_, profileData: PlayerProfile) => {
-    playerProfile = profileData;
-    savePlayerProfile(playerProfile);
-    return true;
+  ipcMain.handle('save-player-profile', (event, profile) => {
+    playerProfile.savePlayerProfile(profile);
+    // Update our cached profile data
+    playerProfileData = profile;
   });
 
-  ipcMain.handle('player:add-xp', (_, amount: number) => {
-    playerProfile = addXp(playerProfile, amount);
-    savePlayerProfile(playerProfile);
-    return playerProfile;
+  ipcMain.handle('add-xp', (event, amount) => {
+    const updatedProfile = playerProfile.addXp(playerProfileData, amount);
+    playerProfile.savePlayerProfile(updatedProfile);
+    playerProfileData = updatedProfile;
+    return updatedProfile;
   });
 
-  ipcMain.handle('player:remove-xp', (_, amount: number) => {
-    playerProfile = removeXp(playerProfile, amount);
-    savePlayerProfile(playerProfile);
-    return playerProfile;
+  ipcMain.handle('remove-xp', (event, amount) => {
+    const updatedProfile = playerProfile.removeXp(playerProfileData, amount);
+    playerProfile.savePlayerProfile(updatedProfile);
+    playerProfileData = updatedProfile;
+    return updatedProfile;
   });
 
-  ipcMain.handle('player:add-completed-chore', (_, { choreId, choreText }: { choreId: number; choreText: string }) => {
-    playerProfile = addCompletedChore(playerProfile, choreId, choreText);
-    // Add XP for completing chores - default to 10 XP per chore
-    playerProfile = addXp(playerProfile, 10);
-    savePlayerProfile(playerProfile);
-    return playerProfile;
-  });
-
-  ipcMain.handle('player:remove-completed-chore', (_, { choreId }: { choreId: number }) => {
-    playerProfile = removeCompletedChore(playerProfile, choreId);
-    // Remove the XP that was awarded for this chore
-    playerProfile = removeXp(playerProfile, 10);
-    savePlayerProfile(playerProfile);
-    return playerProfile;
+  ipcMain.handle('update-chore-status', (event, choreId, status) => {
+    const updatedProfile = playerProfile.updateChoreStatus(playerProfileData, choreId, status);
+    playerProfile.savePlayerProfile(updatedProfile);
+    playerProfileData = updatedProfile;
+    return updatedProfile;
   });
 };
 
@@ -221,7 +213,11 @@ app.on('activate', () => {
 
 // Save player profile when app is about to quit
 app.on('before-quit', () => {
-  savePlayerProfile(playerProfile);
+  // Make sure we have the latest profile data
+  refreshPlayerProfileData();
+  
+  // Save the profile
+  playerProfile.savePlayerProfile(playerProfileData);
 });
 
 // In this file you can include the rest of your app's specific main process
