@@ -34,6 +34,7 @@ export function getXpRequiredForLevel(level: number): number {
 // Get the profile file path
 function getProfilePath(): string {
     const userDataPath = app.getPath('userData');
+    console.log(userDataPath);
     return path.join(userDataPath, 'playerProfile.json');
 }
 

@@ -37,6 +37,7 @@ interface CompletedChore {
 // App configuration
 const CONFIG = {
     PLAY_TIME_MINUTES: 0.1, // 1 hour of play time
+    COOLDOWN_TIME_MINUTES: 0.2, // 1 hour of cooldown time
     NOTIFICATION_SOUND: 'notification.mp3', // Sound file to play when timer ends
     DEFAULT_CHORES: CHORES,
     XP_FOR_CHORE_COMPLETION: 10, // XP gained for completing a chore
@@ -77,13 +78,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!playerProfile) return;
 
         const xpPercentage = Math.min(100, Math.floor((playerProfile.xp / playerProfile.xpToNextLevel) * 100));
-        
+
         // Update XP bar width
         xpBarElement.style.width = `${xpPercentage}%`;
-        
+
         // Update XP text
         xpTextElement.textContent = `${playerProfile.xp}/${playerProfile.xpToNextLevel} XP`;
-        
+
         // Update level indicator
         levelIndicatorElement.textContent = `Level ${playerProfile.level}`;
     }
@@ -95,16 +96,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             updateXpDisplay();
         } catch (error) {
             console.error('Error adding XP:', error);
-        }
-    }
-
-    // Remove XP from player
-    async function removeXp(amount: number) {
-        try {
-            playerProfile = await window.electronAPI.removeXp(amount);
-            updateXpDisplay();
-        } catch (error) {
-            console.error('Error removing XP:', error);
         }
     }
 
@@ -266,12 +257,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             case AppState.COOLDOWN:
                 startTimerBtn.disabled = true;
                 pauseTimerBtn.disabled = true;
+                resetAfterChoresBtn.disabled = true; // Initially disabled during cooldown
                 choresSection.classList.remove('hidden');
+                timeLeft = CONFIG.COOLDOWN_TIME_MINUTES * 60;
                 isPaused = false;
                 updatePauseButtonText();
                 resetChores();
                 renderChores();
-                
+
                 // Award XP for completing play time
                 addXp(CONFIG.XP_FOR_PLAYTIME_COMPLETION);
                 break;
@@ -330,6 +323,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                     playNotificationSound();
                     showNotification();
                     updateAppState(AppState.COOLDOWN);
+                    startCooldownTimer(); // Start cooldown timer when play time ends
+                }
+            }
+        }, 1000);
+    }
+
+    // Start the cooldown timer
+    function startCooldownTimer(): void {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+        }
+
+        timerInterval = window.setInterval(() => {
+            if (!isPaused) {
+                timeLeft--;
+                updateTimerDisplay();
+                updateResetButtonState(); // Update button state every tick
+
+                if (timeLeft <= 0) {
+                    stopTimer();
+                    playNotificationSound();
+                    showNotification('Cooldown Complete', 'Your cooldown period is over! Complete your chores to start playing again.');
+                    updateResetButtonState(); // Update one final time when timer hits 0
                 }
             }
         }, 1000);
@@ -391,7 +407,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const chore = chores.find(c => c.id === id);
         if (chore) {
             chore.completed = !chore.completed;
-            
+
             if (chore.completed) {
                 // Add to completed chores record for XP if checked
                 addCompletedChore(chore.id, chore.text);
@@ -399,27 +415,53 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Remove from completed chores and remove XP if unchecked
                 removeCompletedChore(chore.id);
             }
-            
+
             renderChores();
         }
     }
 
-    // Check if all chores are completed
-    function checkAllChoresCompleted(): void {
-        const allCompleted = chores.every(chore => chore.completed);
-
-        if (allCompleted) {
+    // Check if all conditions are met to enable the reset button
+    function updateResetButtonState(): void {
+        const allChoresCompleted = chores.every(chore => chore.completed);
+        const cooldownComplete = timeLeft <= 0;
+        
+        resetAfterChoresBtn.disabled = !(allChoresCompleted && cooldownComplete);
+        
+        // Update the completion message text based on state
+        if (allChoresCompleted && !cooldownComplete) {
+            completionMessage.querySelector('p')!.textContent = 
+                `Great job completing your chores! Please wait ${formatTime(timeLeft)} before starting play time.`;
+            completionMessage.classList.remove('hidden');
+        } else if (!allChoresCompleted && cooldownComplete) {
+            completionMessage.classList.add('hidden');
+        } else if (allChoresCompleted && cooldownComplete) {
+            completionMessage.querySelector('p')!.textContent = 
+                'Great job completing your chores! You can start play time now.';
             completionMessage.classList.remove('hidden');
         } else {
             completionMessage.classList.add('hidden');
         }
     }
 
+    // Check if all chores are completed
+    function checkAllChoresCompleted(): void {
+        updateResetButtonState();
+    }
+
     // Event Listeners
     startTimerBtn.addEventListener('click', startTimer);
     pauseTimerBtn.addEventListener('click', pauseResumeTimer);
     resetAfterChoresBtn.addEventListener('click', () => {
-        updateAppState(AppState.READY);
+        const allChoresCompleted = chores.every(chore => chore.completed);
+        const cooldownComplete = timeLeft <= 0;
+
+        if (!cooldownComplete) {
+            showNotification('Not Yet!', `Please wait ${formatTime(timeLeft)} before starting play time.`);
+        } else if (!allChoresCompleted) {
+            showNotification('Not Yet!', 'Please complete all your chores before starting play time.');
+        } else {
+            updateAppState(AppState.READY);
+        }
     });
 
     // Initialize the app
@@ -437,19 +479,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Show notification when timer ends
-    function showNotification(): void {
+    function showNotification(title: string = 'Time\'s Up!', message: string = 'Your play time is over. Time to do some chores!'): void {
         // Check if browser notifications are supported
         if ('Notification' in window) {
             if (Notification.permission === 'granted') {
-                new Notification('Time\'s Up!', {
-                    body: 'Your play time is over. Time to do some chores!',
+                new Notification(title, {
+                    body: message,
                     icon: '/path/to/icon.png' // Replace with actual icon path
                 });
             } else if (Notification.permission !== 'denied') {
                 Notification.requestPermission().then(permission => {
                     if (permission === 'granted') {
-                        new Notification('Time\'s Up!', {
-                            body: 'Your play time is over. Time to do some chores!',
+                        new Notification(title, {
+                            body: message,
                             icon: '/path/to/icon.png' // Replace with actual icon path
                         });
                     }

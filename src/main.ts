@@ -3,9 +3,9 @@ import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import { autoUpdater, UpdateInfo, ProgressInfo } from 'electron-updater';
 // Import player profile functions
-import { 
-  loadPlayerProfile, 
-  savePlayerProfile, 
+import {
+  loadPlayerProfile,
+  savePlayerProfile,
   addXp,
   removeXp,
   addCompletedChore,
@@ -127,7 +127,7 @@ const createWindow = () => {
   }
 
   // Open the DevTools.
-  //  mainWindow.webContents.openDevTools();
+  // mainWindow.webContents.openDevTools();
 
   ipcMain.on('window:move', (_, { mouseX, mouseY }) => {
     const [x, y] = mainWindow.getPosition();
@@ -193,7 +193,7 @@ const createWindow = () => {
 // Some APIs can only be used after this event occurs.
 app.on('ready', () => {
   createWindow();
-  
+
   // Check for updates after a small delay to ensure the app is fully loaded
   setTimeout(() => {
     autoUpdater.checkForUpdatesAndNotify().catch((err: Error) => {
