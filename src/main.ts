@@ -13,6 +13,10 @@ if (started) {
 // Configure auto-updater
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
+autoUpdater.logger = console;
+autoUpdater.allowDowngrade = false;
+// Check for updates every hour when app is running
+const CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour in milliseconds
 
 // Auto updater events
 autoUpdater.on('checking-for-update', () => {
@@ -49,11 +53,14 @@ autoUpdater.on('update-downloaded', () => {
   dialog.showMessageBox({
     type: 'info',
     title: 'Update Ready',
-    message: 'A new version has been downloaded. Restart the application to apply the updates.',
-    buttons: ['Restart', 'Later']
+    message: 'A new version has been downloaded. Would you like to install it now?',
+    detail: 'The application will restart to apply the updates.',
+    buttons: ['Install Now', 'Install Later'],
+    defaultId: 0,
+    cancelId: 1
   }).then(result => {
     if (result.response === 0) {
-      autoUpdater.quitAndInstall();
+      autoUpdater.quitAndInstall(true, true);
     }
   });
 });
@@ -91,7 +98,31 @@ const createWindow = () => {
     show: false, // Don't show the window until it's ready
   });
 
-  Menu.setApplicationMenu(null);
+  // Create application menu with update option
+  const appMenu = Menu.buildFromTemplate([
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Check for Updates',
+          click: () => {
+            autoUpdater.checkForUpdatesAndNotify().catch((err: Error) => {
+              console.error('Error checking for updates:', err);
+              dialog.showMessageBox({
+                type: 'error',
+                title: 'Update Error',
+                message: `Failed to check for updates: ${err.message}`,
+                buttons: ['OK']
+              });
+            });
+          }
+        },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
+    }
+  ]);
+  Menu.setApplicationMenu(appMenu);
 
   // Wait until the window is ready before showing it to prevent flashing
   mainWindow.once('ready-to-show', () => {
@@ -191,6 +222,13 @@ app.on('ready', () => {
     autoUpdater.checkForUpdatesAndNotify().catch((err: Error) => {
       console.error('Error checking for updates:', err);
     });
+    
+    // Set up recurring update checks
+    setInterval(() => {
+      autoUpdater.checkForUpdatesAndNotify().catch((err: Error) => {
+        console.error('Error in periodic update check:', err);
+      });
+    }, CHECK_INTERVAL);
   }, 3000);
 });
 

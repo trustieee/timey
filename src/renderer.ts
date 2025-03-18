@@ -491,33 +491,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         const oldStatus = chore.status;
         const newStatus = nextStatus[oldStatus];
 
-        // Update chore status
+        // Update chore status locally
         chore.status = newStatus;
 
-        // Update the profile with the new chore status
-        const today = getLocalDateString();
-        if (!playerProfile.history[today]) {
-            playerProfile.history[today] = { chores: [] };
-        }
-
-        // Update the chore in the player profile
-        const profileChore = playerProfile.history[today].chores.find(c => c.id === id);
-        if (profileChore) {
-            profileChore.status = newStatus;
-        } else {
-            // If the chore doesn't exist in the profile, add it
-            playerProfile.history[today].chores.push({
-                id: chore.id,
-                text: chore.text,
-                status: newStatus
+        // First update chore status on the server to handle XP changes
+        window.electronAPI.updateChoreStatus(id, newStatus)
+            .then(() => {
+                // Reload the entire profile to ensure consistency
+                reloadProfile();
+            })
+            .catch(err => {
+                console.error('Error updating chore status:', err);
+                // Revert the local status change in case of error
+                chore.status = oldStatus;
+                renderChores();
             });
-        }
-
-        // Save to profile and handle XP changes
-        window.electronAPI.savePlayerProfile(playerProfile);
-        window.electronAPI.updateChoreStatus(id, newStatus);
-
-        renderChores();
     }
 
     // Check if all chores are completed or N/A
@@ -568,16 +556,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // Initialize chores list
-    async function initializeChores(): Promise<void> {
-        await loadTodayChores();
-        renderChores();
-    }
-
     // Initialize the app
-    initializeChores();
-    updateAppState(AppState.READY);
-    updateTimerDisplay();
+    async function initializeApp(): Promise<void> {
+        await reloadProfile();
+        updateAppState(AppState.READY);
+        updateTimerDisplay();
+        
+        // Set up a regular profile refresh to handle day changes (every 5 minutes)
+        setInterval(() => {
+            reloadProfile();
+        }, 5 * 60 * 1000);
+    }
+    
+    // Start app initialization
+    initializeApp();
 
     // History panel functionality
     const historyBtn = document.getElementById('show-history') as HTMLButtonElement;
@@ -876,4 +868,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     `;
     document.head.appendChild(style);
+
+    // Add a function to reload the profile and update UI
+    async function reloadProfile(): Promise<void> {
+        try {
+            playerProfile = await window.electronAPI.loadPlayerProfile();
+            updateXpDisplay();
+            loadTodayChores().then(() => {
+                renderChores();
+            });
+        } catch (error) {
+            console.error('Error reloading profile:', error);
+        }
+    }
 });

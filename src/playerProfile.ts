@@ -93,12 +93,13 @@ export function initializeDay(profile: PlayerProfile): PlayerProfile {
 
     // If we don't have today's progress, create it
     if (!profile.history[today]) {
+        console.log(`Initializing new day: ${today}`);
+        
         // First, check if we need to finalize yesterday's progress
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
         const yesterdayString = getPreviousDateString(today);
 
         if (profile.history[yesterdayString] && !profile.history[yesterdayString].completed) {
+            console.log(`Found incomplete previous day: ${yesterdayString}`);
             // Apply penalties for incomplete chores from yesterday
             profile = finalizeDayProgress(profile, yesterdayString);
             // Save the profile after applying penalties
@@ -109,6 +110,27 @@ export function initializeDay(profile: PlayerProfile): PlayerProfile {
         profile.history[today] = createDayProgress(today);
     }
 
+    return profile;
+}
+
+// Check for and finalize any incomplete previous days
+export function checkAndFinalizePreviousDays(profile: PlayerProfile): PlayerProfile {
+    const today = getTodayDateString();
+    
+    // Get all dates in the history
+    const dates = Object.keys(profile.history).sort();
+    
+    // Check each date that's not today or in the future
+    for (const date of dates) {
+        if (date >= today) continue;
+        
+        const dayProgress = profile.history[date];
+        if (dayProgress && !dayProgress.completed) {
+            console.log(`Finalizing incomplete day: ${date}`);
+            profile = finalizeDayProgress(profile, date);
+        }
+    }
+    
     return profile;
 }
 
@@ -131,6 +153,11 @@ export function finalizeDayProgress(profile: PlayerProfile, date: string): Playe
 
     // Apply penalties to player's total XP
     profile.xp = Math.max(0, profile.xp - penalties);
+
+    // Log the penalties being applied
+    if (penalties > 0) {
+        console.log(`Applied ${penalties} XP penalties for incomplete tasks on ${date}`);
+    }
 
     // Mark day as completed
     dayProgress.completed = true;
@@ -175,8 +202,11 @@ export function loadPlayerProfile(): PlayerProfile {
             const data = fs.readFileSync(profilePath, 'utf8');
             const profile = JSON.parse(data) as PlayerProfile;
 
-            // Initialize today's progress if needed
-            return initializeDay(profile);
+            // First check and finalize any previous incomplete days
+            const updatedProfile = checkAndFinalizePreviousDays(profile);
+            
+            // Then initialize today's progress if needed
+            return initializeDay(updatedProfile);
         }
     } catch (error) {
         console.error('Error loading player profile:', error);
