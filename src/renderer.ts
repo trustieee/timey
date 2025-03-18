@@ -45,7 +45,6 @@ const CONFIG = {
     NOTIFICATION_SOUND: 'notification.mp3', // Sound file to play when timer ends
     DEFAULT_CHORES: CHORES,
     XP_FOR_CHORE_COMPLETION: 10, // XP gained for completing a chore
-    XP_FOR_PLAYTIME_COMPLETION: 5 // XP gained for completing play time
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -200,19 +199,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!topDateTimeElement) return;
 
         const now = new Date();
-        
+
         // Format date as MM/DD/YYYY
         const month = String(now.getMonth() + 1).padStart(2, '0');
         const day = String(now.getDate()).padStart(2, '0');
         const year = now.getFullYear();
         const dateStr = `${month}/${day}/${year}`;
-        
+
         // Format time in 12-hour format
         const hours = now.getHours() % 12 || 12; // Convert 0 to 12 for 12 AM
         const minutes = String(now.getMinutes()).padStart(2, '0');
         const ampm = now.getHours() >= 12 ? 'PM' : 'AM';
         const timeStr = `${hours}:${minutes} ${ampm}`;
-        
+
         // Combine date and time
         topDateTimeElement.textContent = `${dateStr} ${timeStr}`;
     }
@@ -278,19 +277,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 // Initialize new day with default incomplete status
                 resetChores();
-                
+
                 // Create a proper day progress object in the history
                 if (!playerProfile.history[today]) {
                     // First ensure the history object is initialized
                     playerProfile.history[today] = { chores: [] };
-                    
+
                     // Then update it with the current chores
                     playerProfile.history[today].chores = chores.map(chore => ({
                         id: chore.id,
                         text: chore.text,
                         status: chore.status
                     }));
-                    
+
                     // Save the updated profile
                     await window.electronAPI.savePlayerProfile(playerProfile);
                 }
@@ -337,8 +336,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     renderChores();
                 });
 
-                // Award XP for completing play time
-                addXp(CONFIG.XP_FOR_PLAYTIME_COMPLETION);
                 break;
         }
     }
@@ -502,7 +499,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!playerProfile.history[today]) {
             playerProfile.history[today] = { chores: [] };
         }
-        
+
         // Update the chore in the player profile
         const profileChore = playerProfile.history[today].chores.find(c => c.id === id);
         if (profileChore) {
@@ -515,7 +512,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 status: newStatus
             });
         }
-        
+
         // Save to profile and handle XP changes
         window.electronAPI.savePlayerProfile(playerProfile);
         window.electronAPI.updateChoreStatus(id, newStatus);
@@ -600,10 +597,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function renderHistory(): void {
         historyContent.innerHTML = '';
-        
+
         // Get dates in reverse chronological order
         const dates = Object.keys(playerProfile.history).sort().reverse();
-        
+
         dates.forEach(date => {
             const dayHistory = playerProfile.history[date];
             if (!dayHistory || !dayHistory.chores || dayHistory.chores.length === 0) return;
@@ -648,8 +645,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Close history panel when clicking outside
     document.addEventListener('click', (e: MouseEvent) => {
         const target = e.target as HTMLElement;
-        if (!historyPanel.contains(target) && 
-            !historyBtn.contains(target) && 
+        if (!historyPanel.contains(target) &&
+            !historyBtn.contains(target) &&
             historyPanel.classList.contains('visible')) {
             historyPanel.classList.remove('visible');
         }

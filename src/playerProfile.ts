@@ -35,11 +35,6 @@ export interface PlayerProfile {
     level: number;
     xp: number;
     xpToNextLevel: number;
-    streak: {
-        current: number;
-        best: number;
-        lastCompletedDate: string;  // YYYY-MM-DD
-    };
     history: {
         [date: string]: DayProgress;  // Key is YYYY-MM-DD
     };
@@ -51,8 +46,6 @@ export const PROFILE_CONFIG = {
     XP_LEVEL_INCREMENT: 50,    // Additional XP needed per level
     XP_FOR_CHORE: 10,         // XP gained for completing a chore
     XP_PENALTY_FOR_CHORE: 10, // XP penalty for incomplete chore at day end
-    STREAK_BONUS_XP: 5,       // Additional XP per chore when on a streak
-    STREAK_BONUS_THRESHOLD: 3  // Days needed for streak bonus to activate
 };
 
 // Default player profile
@@ -60,11 +53,6 @@ const DEFAULT_PROFILE: PlayerProfile = {
     level: 1,
     xp: 0,
     xpToNextLevel: PROFILE_CONFIG.XP_PER_LEVEL,
-    streak: {
-        current: 0,
-        best: 0,
-        lastCompletedDate: ''
-    },
     history: {}
 };
 
@@ -143,24 +131,6 @@ export function finalizeDayProgress(profile: PlayerProfile, date: string): Playe
 
     // Apply penalties to player's total XP
     profile.xp = Math.max(0, profile.xp - penalties);
-
-    // Update streak
-    const allCompleted = dayProgress.chores.every(chore =>
-        chore.status === 'completed' || chore.status === 'na'
-    );
-
-    if (allCompleted) {
-        // Check if this continues the streak
-        if (profile.streak.lastCompletedDate === getPreviousDateString(date)) {
-            profile.streak.current++;
-            profile.streak.best = Math.max(profile.streak.best, profile.streak.current);
-        } else {
-            profile.streak.current = 1;
-        }
-        profile.streak.lastCompletedDate = date;
-    } else {
-        profile.streak.current = 0;
-    }
 
     // Mark day as completed
     dayProgress.completed = true;
@@ -308,10 +278,7 @@ export function updateChoreStatus(
         removeXp(profile, PROFILE_CONFIG.XP_FOR_CHORE);
     } else if (oldStatus !== 'completed' && status === 'completed') {
         // Add XP if completing a chore
-        const bonusXp = (profile.streak.current >= PROFILE_CONFIG.STREAK_BONUS_THRESHOLD)
-            ? PROFILE_CONFIG.STREAK_BONUS_XP
-            : 0;
-        addXp(profile, PROFILE_CONFIG.XP_FOR_CHORE + bonusXp);
+        addXp(profile, PROFILE_CONFIG.XP_FOR_CHORE);
     }
 
     return profile;
