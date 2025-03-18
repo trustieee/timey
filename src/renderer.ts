@@ -351,7 +351,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             case AppState.READY: return 'Ready to Play';
             case AppState.PLAYING:
                 return isPaused ? 'Paused' : 'Playing Time';
-            case AppState.COOLDOWN: return 'Chore Time';
+            case AppState.COOLDOWN: return 'Daily Objectives Time';
             default: return 'Unknown State';
         }
     }
@@ -413,7 +413,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (timeLeft <= 0) {
                     stopTimer();
                     playNotificationSound();
-                    showNotification('Cooldown Complete', 'Your cooldown period is over! Complete your chores to start playing again.');
+                    showNotification('Cooldown Complete', 'Your cooldown period is over! Complete your daily objectives to start playing again.');
                     updateResetButtonState(); // Update one final time when timer hits 0
                 }
             }
@@ -543,17 +543,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Update the completion message text based on state
         if (timeLeft > 0) {
             completionMessage.querySelector('p')!.textContent =
-                `Cooldown time remaining. Complete your chores while you wait!`;
+                `Cooldown time remaining. Complete your daily objectives while you wait!`;
         } else if (allChoresCompleted) {
             completionMessage.querySelector('p')!.textContent =
-                'Great job completing your chores! You can start play time now.';
+                'Great job completing your daily objectives! You can start play time now.';
         } else {
             const incompleteCount = chores.filter(chore =>
                 chore.status === 'incomplete'
             ).length;
 
             completionMessage.querySelector('p')!.textContent =
-                `You have ${incompleteCount} incomplete ${incompleteCount === 1 ? 'chore' : 'chores'}. Remember: -10 XP per incomplete chore at the end of the day!`;
+                `You have ${incompleteCount} incomplete ${incompleteCount === 1 ? 'daily objective' : 'daily objectives'}. Remember: -10 XP per incomplete daily objective at the end of the day!`;
         }
         completionMessage.classList.remove('hidden');
     }
@@ -668,7 +668,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Show notification when timer ends
-    function showNotification(title: string = 'Time\'s Up!', message: string = 'Your play time is over. Time to do some chores!'): void {
+    function showNotification(title: string = 'Time\'s Up!', message: string = 'Your play time is over. Time to complete your daily objectives!'): void {
         // Check if browser notifications are supported
         if ('Notification' in window) {
             if (Notification.permission === 'granted') {
