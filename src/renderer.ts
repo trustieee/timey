@@ -4,6 +4,7 @@
 
 import { CHORES } from './chores';
 import './index.css';
+import { ChoreStatus, DayProgress } from './playerProfile';
 
 // Define app states
 enum AppState {
@@ -11,9 +12,6 @@ enum AppState {
     PLAYING = 'playing',
     COOLDOWN = 'cooldown'
 }
-
-// Define chore status type
-type ChoreStatus = 'completed' | 'incomplete' | 'na';
 
 // Define chore list
 interface Chore {
@@ -28,7 +26,7 @@ interface PlayerProfile {
     xp: number;
     xpToNextLevel: number;
     completedChores: CompletedChore[];
-    history: { [date: string]: { chores: Chore[] } };
+    history: { [date: string]: DayProgress };
 }
 
 // Interface for completed chores tracking
@@ -194,11 +192,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Sync theme with Electron's native theme setting
     syncThemeWithElectron();
 
+    // Track the current day to detect date changes
+    let currentDay = new Date().getDate();
+
     function updateClock(): void {
         const topDateTimeElement = document.getElementById('top-date-time');
         if (!topDateTimeElement) return;
 
         const now = new Date();
+
+        // Check if the day has changed (midnight passed)
+        if (now.getDate() !== currentDay) {
+            console.log('Day changed! Refreshing profile...');
+            currentDay = now.getDate();
+            // Immediately reload the profile to handle the date change
+            reloadProfile();
+        }
 
         // Format date as MM/DD/YYYY
         const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -280,8 +289,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Create a proper day progress object in the history
                 if (!playerProfile.history[today]) {
-                    // First ensure the history object is initialized
-                    playerProfile.history[today] = { chores: [] };
+                    // Initialize with all required DayProgress properties
+                    playerProfile.history[today] = {
+                        date: today,
+                        chores: [],
+                        playTime: {
+                            totalMinutes: 0,
+                            sessions: []
+                        },
+                        xp: {
+                            gained: 0,
+                            penalties: 0,
+                            final: 0
+                        },
+                        completed: false
+                    };
 
                     // Then update it with the current chores
                     playerProfile.history[today].chores = chores.map(chore => ({
@@ -600,8 +622,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const dateSection = document.createElement('div');
             dateSection.className = 'history-date';
 
+            // Create Date object properly in local timezone to avoid UTC conversion issues
+            // The date string is in format YYYY-MM-DD, and we want to parse it in local timezone
+            const [year, month, day] = date.split('-').map(num => parseInt(num, 10));
+            // Month is 0-indexed in JS Date
+            const dateObj = new Date(year, month - 1, day);
+            
             // Format date to be more readable (e.g., "January 1, 2024")
-            const formattedDate = new Date(date).toLocaleDateString('en-US', {
+            const formattedDate = dateObj.toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'
@@ -872,8 +900,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Add a function to reload the profile and update UI
     async function reloadProfile(): Promise<void> {
         try {
+            // Store the previous profile to compare dates
+            const previousProfile = playerProfile ? {...playerProfile} : null;
+            const previousDate = previousProfile ? Object.keys(previousProfile.history).sort().pop() : null;
+            
+            // Reload the profile data
             playerProfile = await window.electronAPI.loadPlayerProfile();
             updateXpDisplay();
+            
+            // Get the current date
+            const currentDate = getLocalDateString();
+            
+            // If we had a previous profile and the date has changed, check for penalties
+            if (previousProfile && previousDate && previousDate !== currentDate) {
+                const previousDayData = previousProfile.history[previousDate] as DayProgress;
+                
+                // Check if previousDayData has penalties
+                if (previousDayData && 
+                    previousDayData.xp &&
+                    previousDayData.xp.penalties > 0) {
+                    // Show message about penalties from previous day
+                    showNotification(
+                        'Daily Objectives Summary', 
+                        `You received a ${previousDayData.xp.penalties} XP penalty for incomplete objectives yesterday.`
+                    );
+                }
+            }
+            
+            // Load today's chores with the refreshed profile
             loadTodayChores().then(() => {
                 renderChores();
             });

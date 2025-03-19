@@ -59,9 +59,12 @@ const DEFAULT_PROFILE: PlayerProfile = {
 // Get today's date in YYYY-MM-DD format
 export function getTodayDateString(): string {
     const now = new Date();
+    
+    // Get local date components to ensure we're using local time, not UTC
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
+    
     return `${year}-${month}-${day}`;
 }
 
@@ -174,11 +177,15 @@ export function finalizeDayProgress(profile: PlayerProfile, date: string): Playe
 
 // Get the previous date string
 function getPreviousDateString(date: string): string {
+    // Create date from the string, will be interpreted in local timezone
     const d = new Date(date);
     d.setDate(d.getDate() - 1);
+    
+    // Get local date components
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
+    
     return `${year}-${month}-${day}`;
 }
 
