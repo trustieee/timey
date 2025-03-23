@@ -60,6 +60,92 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Display app version
     const appVersionElement = document.getElementById('app-version') as HTMLElement;
+    const checkUpdatesBtn = document.getElementById('check-updates') as HTMLElement;
+
+    // Function to check for updates
+    async function checkForUpdates() {
+        console.log('Checking for updates...');
+        if (appVersionElement) {
+            appVersionElement.textContent = 'Checking...';
+        }
+        
+        try {
+            const result = await window.electronAPI.checkForUpdates();
+            console.log('Update check result:', result);
+            
+            if (result.success) {
+                if (result.updateAvailable) {
+                    if (appVersionElement) {
+                        const version = await window.electronAPI.getAppVersion();
+                        appVersionElement.textContent = `v${version} → v${result.latestVersion}`;
+                        setTimeout(() => {
+                            appVersionElement.textContent = `v${version}`;
+                        }, 5000);
+                    }
+                } else {
+                    if (appVersionElement) {
+                        const version = await window.electronAPI.getAppVersion();
+                        appVersionElement.textContent = `v${version} (latest)`;
+                        setTimeout(() => {
+                            appVersionElement.textContent = `v${version}`;
+                        }, 3000);
+                    }
+                }
+            } else {
+                // Show the actual error message in a dialog
+                if (appVersionElement) {
+                    const version = await window.electronAPI.getAppVersion();
+                    appVersionElement.textContent = `v${version} (error)`;
+                }
+                console.error('Update check failed:', result.error);
+                
+                // Create a dialog to show the error
+                const errorDialog = document.createElement('div');
+                errorDialog.className = 'error-dialog';
+                errorDialog.innerHTML = `
+                    <div class="error-dialog-content">
+                        <h3>Update Error</h3>
+                        <p>Failed to check for updates:</p>
+                        <pre>${result.error}</pre>
+                        <button class="close-btn">Close</button>
+                    </div>
+                `;
+                document.body.appendChild(errorDialog);
+                
+                // Add close functionality
+                const closeBtn = errorDialog.querySelector('.close-btn');
+                closeBtn.addEventListener('click', () => {
+                    document.body.removeChild(errorDialog);
+                });
+            }
+        } catch (error) {
+            console.error('Error checking for updates:', error);
+            if (appVersionElement) {
+                const version = await window.electronAPI.getAppVersion();
+                appVersionElement.textContent = `v${version} (error)`;
+            }
+            
+            // Create a dialog to show the error
+            const errorDialog = document.createElement('div');
+            errorDialog.className = 'error-dialog';
+            errorDialog.innerHTML = `
+                <div class="error-dialog-content">
+                    <h3>Update Error</h3>
+                    <p>Failed to check for updates:</p>
+                    <pre>${error.toString()}</pre>
+                    <button class="close-btn">Close</button>
+                </div>
+            `;
+            document.body.appendChild(errorDialog);
+            
+            // Add close functionality
+            const closeBtn = errorDialog.querySelector('.close-btn');
+            closeBtn.addEventListener('click', () => {
+                document.body.removeChild(errorDialog);
+            });
+        }
+    }
+
     if (appVersionElement) {
         try {
             const version = await window.electronAPI.getAppVersion();
@@ -72,85 +158,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             appVersionElement.style.setProperty('-webkit-app-region', 'no-drag');
             
             // Add click handler for update checks
-            appVersionElement.addEventListener('click', async () => {
-                console.log('Checking for updates...');
-                appVersionElement.textContent = 'Checking...';
-                
-                try {
-                    const result = await window.electronAPI.checkForUpdates();
-                    console.log('Update check result:', result);
-                    
-                    if (result.success) {
-                        if (result.updateAvailable) {
-                            appVersionElement.textContent = `v${version} → v${result.latestVersion}`;
-                            setTimeout(() => {
-                                appVersionElement.textContent = `v${version}`;
-                            }, 5000);
-                        } else {
-                            appVersionElement.textContent = `v${version} (latest)`;
-                            setTimeout(() => {
-                                appVersionElement.textContent = `v${version}`;
-                            }, 3000);
-                        }
-                    } else {
-                        // Show the actual error message in a dialog
-                        appVersionElement.textContent = `v${version} (error)`;
-                        console.error('Update check failed:', result.error);
-                        
-                        // Create a dialog to show the error
-                        const errorDialog = document.createElement('div');
-                        errorDialog.className = 'error-dialog';
-                        errorDialog.innerHTML = `
-                            <div class="error-dialog-content">
-                                <h3>Update Error</h3>
-                                <p>Failed to check for updates:</p>
-                                <pre>${result.error}</pre>
-                                <button class="close-btn">Close</button>
-                            </div>
-                        `;
-                        document.body.appendChild(errorDialog);
-                        
-                        // Add close functionality
-                        const closeBtn = errorDialog.querySelector('.close-btn');
-                        closeBtn.addEventListener('click', () => {
-                            document.body.removeChild(errorDialog);
-                        });
-                        
-                        setTimeout(() => {
-                            appVersionElement.textContent = `v${version}`;
-                        }, 3000);
-                    }
-                } catch (error) {
-                    console.error('Error checking for updates:', error);
-                    appVersionElement.textContent = `v${version} (error)`;
-                    
-                    // Create a dialog to show the error
-                    const errorDialog = document.createElement('div');
-                    errorDialog.className = 'error-dialog';
-                    errorDialog.innerHTML = `
-                        <div class="error-dialog-content">
-                            <h3>Update Error</h3>
-                            <p>Failed to check for updates:</p>
-                            <pre>${error.toString()}</pre>
-                            <button class="close-btn">Close</button>
-                        </div>
-                    `;
-                    document.body.appendChild(errorDialog);
-                    
-                    // Add close functionality
-                    const closeBtn = errorDialog.querySelector('.close-btn');
-                    closeBtn.addEventListener('click', () => {
-                        document.body.removeChild(errorDialog);
-                    });
-                    
-                    setTimeout(() => {
-                        appVersionElement.textContent = `v${version}`;
-                    }, 3000);
-                }
-            });
+            appVersionElement.addEventListener('click', checkForUpdates);
         } catch (error) {
             console.error('Error getting app version:', error);
         }
+    }
+
+    // Add click handler for update check button
+    if (checkUpdatesBtn) {
+        checkUpdatesBtn.addEventListener('click', checkForUpdates);
     }
 
     // Rewards panel elements

@@ -7,6 +7,19 @@ import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 
+// Load environment variables from .env file for build
+import * as dotenv from 'dotenv';
+dotenv.config();
+
+// Define environment variables to be passed to the app
+const env = {
+  GITHUB_TOKEN: process.env.GITHUB_TOKEN || '',
+  GH_TOKEN: process.env.GITHUB_TOKEN || process.env.GH_TOKEN || ''
+};
+
+// Log environment variables (without revealing the token)
+console.log('Building with GitHub token present:', !!env.GITHUB_TOKEN);
+
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
@@ -18,7 +31,10 @@ const config: ForgeConfig = {
         name: 'timey',
         schemes: ['timey']
       }
-    ]
+    ],
+    // We're going to include the .env file directly in the app resources
+    // This ensures the token is available in the packaged app
+    extraResource: ['.env']
   },
   rebuildConfig: {},
   makers: [
@@ -76,7 +92,9 @@ const config: ForgeConfig = {
           name: 'timey'
         },
         prerelease: false,
-        draft: false
+        draft: false,
+        // Make sure these files are included in the release
+        assets: ['out/make/**/*']
       }
     }
   ]

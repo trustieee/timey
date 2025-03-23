@@ -8,6 +8,8 @@ import { APP_CONFIG } from './config';
 import { RewardType } from './rewards';
 // Import dotenv for loading environment variables
 import * as dotenv from 'dotenv';
+// Import our environment helper
+import { setupGitHubToken } from './env';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -27,22 +29,14 @@ autoUpdater.channel = "latest";
 // Force update configuration even in development mode
 autoUpdater.forceDevUpdateConfig = true;
 
-// Set explicit GitHub options
-autoUpdater.setFeedURL({
-  provider: 'github',
-  owner: 'trustieee',
-  repo: 'timey',
-  private: true,
-  token: process.env.GITHUB_TOKEN || '',
-  releaseType: 'release'
-});
+// Fix for missing latest.yml file
+// Tell electron-updater to use GitHub's releases API more flexibly
+autoUpdater.fullChangelog = true;
+// Try to read releases directly rather than requiring specific files
+autoUpdater.allowDowngrade = true;
 
-// Log token status (without revealing the token)
-if (process.env.GITHUB_TOKEN) {
-  console.log('GitHub token found in environment variables');
-} else {
-  console.warn('No GitHub token found in environment variables');
-}
+// Setup GitHub token for auto-updater (works in both dev and production)
+setupGitHubToken();
 
 // Handle development mode updates differently
 const isDev = process.env.NODE_ENV === 'development';
@@ -50,7 +44,20 @@ if (isDev) {
   console.log('Running in development mode');
   // Use the dev-app-update.yml file
   process.env.APPIMAGE = path.join(__dirname, 'dev-app-update.yml');
+  
+  // Log updater details
+  console.log('Update config path:', autoUpdater.updateConfigPath);
+  console.log('GH_TOKEN exists:', !!process.env.GH_TOKEN);
 }
+
+// Set explicit GitHub options
+autoUpdater.setFeedURL({
+  provider: 'github',
+  owner: 'trustieee',
+  repo: 'timey',
+  private: true,
+  releaseType: 'release'
+});
 
 // Enable debug logs
 console.log('Auto-updater debugging enabled');
@@ -85,9 +92,25 @@ autoUpdater.on('update-not-available', (info: any) => {
   console.log(`Current version: ${app.getVersion()}`);
 });
 
-autoUpdater.on('error', (err) => {
-  console.error('Auto updater error:', err);
-  console.error('Error details:', err.toString());
+autoUpdater.on('error', (err: Error) => {
+  console.log('Auto updater error:', err);
+  console.log('Error details:', err.message);
+  
+  // Try to determine the specific error type
+  if (err.message.includes('Bad credentials') || err.message.includes('401')) {
+    console.error('GitHub authentication failed. Please check your token.');
+  } else if (err.message.includes('latest.yml')) {
+    console.error('Could not find release metadata. Make sure your releases include the necessary files.');
+  } else if (err.message.includes('ENOTFOUND') || err.message.includes('ETIMEDOUT')) {
+    console.error('Network error. Please check your internet connection.');
+  }
+  
+  // Log detailed error object
+  try {
+    console.log('Detailed error:', JSON.stringify(err, null, 2));
+  } catch (e) {
+    console.log('Could not stringify error:', e);
+  }
 });
 
 autoUpdater.on('download-progress', (progressObj: ProgressInfo) => {
@@ -239,42 +262,18 @@ const createWindow = () => {
   // Add IPC handler for checking updates
   ipcMain.handle('check-for-updates', async () => {
     try {
-      console.log('Update check requested via IPC');
-      console.log('Current version:', app.getVersion());
-      
-      // Log provider config
-      const providerConfig = autoUpdater.updateConfigPath || 'Not set';
-      console.log('Update config path:', providerConfig);
-      
-      const checkResult = await autoUpdater.checkForUpdates();
-      console.log('Update check result:', checkResult);
-      
-      if (checkResult?.updateInfo) {
-        console.log('Update info:', JSON.stringify(checkResult.updateInfo, null, 2));
-      }
-      
+      const updateInfo = await checkForUpdates();
       return {
         success: true,
-        updateAvailable: !!checkResult?.updateInfo,
-        currentVersion: app.getVersion(),
-        latestVersion: checkResult?.updateInfo?.version || null,
-        updateInfo: checkResult?.updateInfo || null
+        updateAvailable: updateInfo.updateAvailable,
+        currentVersion: updateInfo.currentVersion,
+        latestVersion: updateInfo.latestVersion || app.getVersion()
       };
     } catch (err) {
       console.error('Error checking for updates via IPC:', err);
-      // Extract more details from the error
-      const errorDetails = {
-        message: err.message || 'Unknown error',
-        code: err.code || 'NO_CODE',
-        stack: err.stack || 'No stack trace'
-      };
-      console.error('Detailed error:', JSON.stringify(errorDetails, null, 2));
-      
-      return { 
-        success: false, 
-        error: err.toString(),
-        errorDetails: errorDetails,
-        version: app.getVersion()
+      return {
+        success: false,
+        error: err.message
       };
     }
   });
@@ -369,13 +368,35 @@ app.on('ready', () => {
 
   // Check for updates after a small delay to ensure the app is fully loaded
   setTimeout(() => {
-    autoUpdater.checkForUpdatesAndNotify().catch((err: Error) => {
+    console.log('Running periodic update check...');
+    // Use a more robust update check method
+    checkForUpdates().then((result) => {
+      if (result) {
+        console.log('Update check result:', result);
+        if (result.updateInfo) {
+          console.log('Update info:', JSON.stringify(result.updateInfo, null, 2));
+        }
+      } else {
+        console.log('No updates available');
+      }
+    }).catch((err: Error) => {
       console.error('Error checking for updates:', err);
     });
     
     // Set up recurring update checks
     setInterval(() => {
-      autoUpdater.checkForUpdatesAndNotify().catch((err: Error) => {
+      console.log('Running periodic update check...');
+      // Use a more robust update check method
+      checkForUpdates().then((result) => {
+        if (result) {
+          console.log('Update check result:', result);
+          if (result.updateInfo) {
+            console.log('Update info:', JSON.stringify(result.updateInfo, null, 2));
+          }
+        } else {
+          console.log('No updates available');
+        }
+      }).catch((err: Error) => {
         console.error('Error in periodic update check:', err);
       });
     }, CHECK_INTERVAL);
@@ -412,6 +433,119 @@ app.on('before-quit', () => {
   // Save the profile
   playerProfile.savePlayerProfile(playerProfileData);
 });
+
+/**
+ * Improved check for updates that handles errors better
+ */
+async function checkForUpdates() {
+  try {
+    console.log('Checking for updates...');
+    console.log('Current version:', app.getVersion());
+    
+    const https = require('https');
+    const url = 'https://api.github.com/repos/trustieee/timey/releases';
+    const currentVersion = app.getVersion();
+    
+    // Create a promise-based version of the request
+    const checkGitHubReleases = () => {
+      return new Promise<any>((resolve, reject) => {
+        const options = {
+          headers: {
+            'User-Agent': `timey/${currentVersion}`,
+            'Authorization': process.env.GH_TOKEN ? `token ${process.env.GH_TOKEN}` : undefined
+          }
+        };
+        
+        const req = https.get(url, options, (res: any) => {
+          let data = '';
+          res.on('data', (chunk: any) => data += chunk);
+          res.on('end', () => {
+            if (res.statusCode === 200) {
+              try {
+                const releases = JSON.parse(data);
+                console.log(`Found ${releases.length} releases on GitHub`);
+                
+                // Filter to only include non-draft, non-prerelease versions
+                const productionReleases = releases.filter((release: any) => 
+                  !release.draft && !release.prerelease
+                );
+                
+                if (productionReleases.length > 0) {
+                  // Sort by created date (newest first)
+                  productionReleases.sort((a: any, b: any) => 
+                    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                  );
+                  
+                  const latestRelease = productionReleases[0];
+                  const latestVersion = latestRelease.tag_name.replace(/^v/, '');
+                  
+                  console.log(`Latest version: ${latestVersion}, Current version: ${currentVersion}`);
+                  
+                  // Compare versions (simple string comparison, could be improved)
+                  const updateAvailable = latestVersion !== currentVersion;
+                  
+                  // Find Windows asset in the latest release
+                  const windowsAsset = latestRelease.assets.find((asset: any) => 
+                    asset.name.endsWith('.exe') || asset.name.includes('win')
+                  );
+                  
+                  resolve({
+                    updateAvailable,
+                    currentVersion,
+                    latestVersion,
+                    releaseNotes: latestRelease.body,
+                    downloadUrl: windowsAsset ? windowsAsset.browser_download_url : null,
+                    publishDate: latestRelease.published_at
+                  });
+                } else {
+                  console.log('No production releases found');
+                  resolve({ updateAvailable: false });
+                }
+              } catch (e) {
+                reject(new Error(`Failed to parse GitHub response: ${e.message}`));
+              }
+            } else {
+              reject(new Error(`GitHub API returned status ${res.statusCode}: ${data}`));
+            }
+          });
+        });
+        
+        req.on('error', (err: Error) => {
+          reject(new Error(`GitHub API request failed: ${err.message}`));
+        });
+        
+        req.end();
+      });
+    };
+    
+    // Check GitHub releases directly
+    const releaseInfo = await checkGitHubReleases();
+    
+    // If there's an update available, show a notification
+    if (releaseInfo.updateAvailable) {
+      dialog.showMessageBox({
+        type: 'info',
+        title: 'Update Available',
+        message: `A new version (${releaseInfo.latestVersion}) is available.`,
+        detail: `Current version: ${releaseInfo.currentVersion}\n\n${releaseInfo.releaseNotes || ''}`,
+        buttons: releaseInfo.downloadUrl ? ['Download', 'Later'] : ['OK'],
+        cancelId: releaseInfo.downloadUrl ? 1 : 0
+      }).then(result => {
+        // If user clicked Download
+        if (releaseInfo.downloadUrl && result.response === 0) {
+          require('electron').shell.openExternal(releaseInfo.downloadUrl);
+        }
+      });
+    } else {
+      console.log('No updates available');
+    }
+    
+    return releaseInfo;
+  } catch (err) {
+    console.error('Error checking for updates:', err);
+    return { updateAvailable: false, error: err.message };
+  }
+}
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.

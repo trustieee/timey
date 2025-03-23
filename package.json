@@ -1,7 +1,7 @@
 {
   "name": "timey",
   "productName": "timey",
-  "version": "1.5.8",
+  "version": "1.5.9",
   "description": "My Electron application description",
   "main": ".vite/build/main.js",
   "scripts": {
@@ -9,6 +9,7 @@
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
+    "release": "electron-forge make && electron-forge publish",
     "lint": "eslint --ext .ts,.tsx .",
     "test": "jest"
   },

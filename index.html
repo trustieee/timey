@@ -20,7 +20,7 @@
     <!-- This div will act as your draggable title bar -->
     <div class="top-bar">
       <div class="app-title">
-        <h1 class="title">Timey <span id="app-version"></span></h1>
+        <h1 class="title">Timey <span id="app-version"></span> <button id="check-updates" title="Check for Updates">🔄</button></h1>
       </div>
       <div id="top-date-time">3/15/2025 12:21 PM</div>
       <div class="window-controls">
@@ -815,6 +815,22 @@
 
     html.light-mode .error-dialog .close-btn:hover {
       background-color: #e57373;
+    }
+
+    #check-updates {
+      background: none;
+      border: none;
+      font-size: 14px;
+      cursor: pointer;
+      padding: 3px 5px;
+      margin-left: 5px;
+      border-radius: 4px;
+      -webkit-app-region: no-drag !important;
+      transition: background-color 0.3s;
+    }
+
+    #check-updates:hover {
+      background-color: rgba(255, 255, 255, 0.1);
     }
   </style>
 
