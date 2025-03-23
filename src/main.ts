@@ -4,6 +4,7 @@ import started from 'electron-squirrel-startup';
 import { autoUpdater, UpdateInfo, ProgressInfo } from 'electron-updater';
 // Import player profile functions
 import * as playerProfile from './playerProfile';
+import { APP_CONFIG } from './config';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -16,7 +17,7 @@ autoUpdater.autoInstallOnAppQuit = true;
 autoUpdater.logger = console;
 autoUpdater.allowDowngrade = false;
 // Check for updates every hour when app is running
-const CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour in milliseconds
+const CHECK_INTERVAL = APP_CONFIG.UPDATE_CHECK_INTERVAL;
 
 // Auto updater events
 autoUpdater.on('checking-for-update', () => {
@@ -209,6 +210,23 @@ const createWindow = () => {
     playerProfileData = updatedProfile;
     return updatedProfile;
   });
+
+  // Add handlers for completed chores
+  ipcMain.handle('player:add-completed-chore', (event, { choreId, choreText }) => {
+    // Use the proper updateChoreStatus function instead of the XP workaround
+    const updatedProfile = playerProfile.updateChoreStatus(playerProfileData, choreId, 'completed');
+    playerProfile.savePlayerProfile(updatedProfile);
+    playerProfileData = updatedProfile;
+    return updatedProfile;
+  });
+
+  ipcMain.handle('player:remove-completed-chore', (event, { choreId }) => {
+    // Use the proper updateChoreStatus function instead of the XP workaround
+    const updatedProfile = playerProfile.updateChoreStatus(playerProfileData, choreId, 'incomplete');
+    playerProfile.savePlayerProfile(updatedProfile);
+    playerProfileData = updatedProfile;
+    return updatedProfile;
+  });
 };
 
 // This method will be called when Electron has finished
@@ -229,7 +247,7 @@ app.on('ready', () => {
         console.error('Error in periodic update check:', err);
       });
     }, CHECK_INTERVAL);
-  }, 3000);
+  }, 5000);
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common
@@ -247,6 +265,11 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
+
+  // Check for updates when app is activated/reopened
+  autoUpdater.checkForUpdatesAndNotify().catch((err: Error) => {
+    console.error('Error checking for updates on app activation:', err);
+  });
 });
 
 // Save player profile when app is about to quit

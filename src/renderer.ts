@@ -2,9 +2,16 @@
  * This file will automatically be loaded by vite and run in the "renderer" context.
  */
 
-import { CHORES } from './chores';
 import './index.css';
 import { ChoreStatus, DayProgress } from './playerProfile';
+import { APP_CONFIG } from './config';
+import { 
+    getLocalDateString, 
+    formatDisplayDate, 
+    parseLocalDate,
+    formatClockDate,
+    formatClockTime
+} from './utils';
 
 // Define app states
 enum AppState {
@@ -25,7 +32,6 @@ interface PlayerProfile {
     level: number;
     xp: number;
     xpToNextLevel: number;
-    completedChores: CompletedChore[];
     history: { [date: string]: DayProgress };
 }
 
@@ -33,17 +39,8 @@ interface PlayerProfile {
 interface CompletedChore {
     id: number;
     text: string;
-    completedAt: string; // ISO date string
+    completedAt: string; // ISO datetime string in local time
 }
-
-// App configuration
-const CONFIG = {
-    PLAY_TIME_MINUTES: 0.1, // 1 hour of play time
-    COOLDOWN_TIME_MINUTES: 0.2, // 1 hour of cooldown time
-    NOTIFICATION_SOUND: 'notification.mp3', // Sound file to play when timer ends
-    DEFAULT_CHORES: CHORES,
-    XP_FOR_CHORE_COMPLETION: 10, // XP gained for completing a chore
-};
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Get the top bar for dragging - now the entire top section is draggable
@@ -68,8 +65,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             playerProfile = {
                 level: 1,
                 xp: 0,
-                xpToNextLevel: 100,
-                completedChores: [],
+                xpToNextLevel: APP_CONFIG.PROFILE.XP_PER_LEVEL[0],
                 history: {}
             };
         }
@@ -209,17 +205,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             reloadProfile();
         }
 
-        // Format date as MM/DD/YYYY
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const year = now.getFullYear();
-        const dateStr = `${month}/${day}/${year}`;
-
-        // Format time in 12-hour format
-        const hours = now.getHours() % 12 || 12; // Convert 0 to 12 for 12 AM
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        const ampm = now.getHours() >= 12 ? 'PM' : 'AM';
-        const timeStr = `${hours}:${minutes} ${ampm}`;
+        // Format using utility functions to ensure consistency
+        const dateStr = formatClockDate(now);
+        const timeStr = formatClockTime(now);
 
         // Combine date and time
         topDateTimeElement.textContent = `${dateStr} ${timeStr}`;
@@ -244,30 +232,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     const choresList = document.getElementById('chores-list') as HTMLElement;
     const completionMessage = document.getElementById('completion-message') as HTMLElement;
 
-    // Timer variables
+    // Timer variables - use config values
     let timerInterval: number | null = null;
-    let timeLeft = CONFIG.PLAY_TIME_MINUTES * 60; // in seconds
-    let chores: Chore[] = JSON.parse(JSON.stringify(CONFIG.DEFAULT_CHORES)); // Deep copy
+    let timeLeft = APP_CONFIG.TIMER.PLAY_TIME_MINUTES * 60; // in seconds
+    let chores: Chore[] = JSON.parse(JSON.stringify(APP_CONFIG.CHORES)); // Deep copy
     console.log(chores);
     let currentState: AppState = AppState.READY;
     let isPaused: boolean = false;
 
     // Reset chores to uncompleted state - only used for new days
     function resetChores(): void {
-        chores = CHORES.map(chore => ({
+        chores = APP_CONFIG.CHORES.map(chore => ({
             id: chore.id,
             text: chore.text,
             status: 'incomplete' as ChoreStatus
         }));
-    }
-
-    // Helper function to get today's date in local time YYYY-MM-DD format
-    function getLocalDateString(): string {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
     }
 
     // Load or initialize today's chores
@@ -334,7 +313,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 startTimerBtn.disabled = false;
                 pauseTimerBtn.disabled = true;
                 choresSection.classList.add('hidden');
-                timeLeft = CONFIG.PLAY_TIME_MINUTES * 60;
+                timeLeft = APP_CONFIG.TIMER.PLAY_TIME_MINUTES * 60;
                 isPaused = false;
                 updatePauseButtonText();
                 updateTimerDisplay();
@@ -351,7 +330,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 pauseTimerBtn.disabled = true;
                 resetAfterChoresBtn.disabled = true;
                 choresSection.classList.remove('hidden');
-                timeLeft = CONFIG.COOLDOWN_TIME_MINUTES * 60;
+                timeLeft = APP_CONFIG.TIMER.COOLDOWN_TIME_MINUTES * 60;
                 isPaused = false;
                 updatePauseButtonText();
                 loadTodayChores().then(() => {
@@ -397,27 +376,37 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Start the timer
-    function startTimer(): void {
-        updateAppState(AppState.PLAYING);
-
-        if (timerInterval) {
-            clearInterval(timerInterval);
-        }
-
-        timerInterval = window.setInterval(() => {
-            if (!isPaused) {
-                timeLeft--;
-                updateTimerDisplay();
-
-                if (timeLeft <= 0) {
-                    stopTimer();
-                    playNotificationSound();
-                    showNotification();
-                    updateAppState(AppState.COOLDOWN);
-                    startCooldownTimer(); // Start cooldown timer when play time ends
+    async function startTimer(): Promise<void> {
+        try {
+            if (currentState === AppState.READY) {
+                currentState = AppState.PLAYING;
+                updateAppState(AppState.PLAYING);
+                // Start play time
+                if (timerInterval) {
+                    clearInterval(timerInterval);
                 }
+
+                timerInterval = window.setInterval(() => {
+                    if (!isPaused) {
+                        timeLeft--;
+                        updateTimerDisplay();
+
+                        if (timeLeft <= 0) {
+                            stopTimer();
+                            playNotificationSound();
+                            showNotification();
+                            updateAppState(AppState.COOLDOWN);
+                            startCooldownTimer(); // Start cooldown timer when play time ends
+                        }
+                    }
+                }, 1000);
+            } else {
+                console.warn(`Cannot start timer from state: ${currentState}`);
             }
-        }, 1000);
+        } catch (error) {
+            console.error('Error starting timer:', error);
+            resetAppState();
+        }
     }
 
     // Start the cooldown timer
@@ -584,10 +573,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateAppState(AppState.READY);
         updateTimerDisplay();
         
-        // Set up a regular profile refresh to handle day changes (every 5 minutes)
+        // Set up a regular profile refresh to handle day changes
         setInterval(() => {
             reloadProfile();
-        }, 5 * 60 * 1000);
+        }, APP_CONFIG.PROFILE_REFRESH_INTERVAL);
     }
     
     // Start app initialization
@@ -622,18 +611,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const dateSection = document.createElement('div');
             dateSection.className = 'history-date';
 
-            // Create Date object properly in local timezone to avoid UTC conversion issues
-            // The date string is in format YYYY-MM-DD, and we want to parse it in local timezone
-            const [year, month, day] = date.split('-').map(num => parseInt(num, 10));
-            // Month is 0-indexed in JS Date
-            const dateObj = new Date(year, month - 1, day);
-            
-            // Format date to be more readable (e.g., "January 1, 2024")
-            const formattedDate = dateObj.toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
+            // Use the utility function to format the date consistently
+            const formattedDate = formatDisplayDate(date);
 
             dateSection.innerHTML = `<h3>${formattedDate}</h3>`;
 
@@ -933,6 +912,42 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         } catch (error) {
             console.error('Error reloading profile:', error);
+        }
+    }
+
+    // Function to safely reset app state in case of errors
+    function resetAppState() {
+        try {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            currentState = AppState.READY;
+            timeLeft = APP_CONFIG.TIMER.PLAY_TIME_MINUTES * 60;
+            updateTimerDisplay();
+            updateAppState(AppState.READY);
+            
+            // Enable start button, disable pause
+            const startButton = document.getElementById('start-timer') as HTMLButtonElement;
+            const pauseButton = document.getElementById('pause-timer') as HTMLButtonElement;
+            if (startButton) startButton.disabled = false;
+            if (pauseButton) pauseButton.disabled = true;
+        } catch (error) {
+            console.error('Error resetting app state:', error);
+        }
+    }
+
+    // Pause the timer
+    function pauseTimer() {
+        try {
+            if (currentState === AppState.PLAYING && timerInterval) {
+                isPaused = true;
+                updatePauseButtonText();
+                currentStateElement.textContent = getStateDisplayName(currentState);
+            } else {
+                console.warn(`Cannot pause timer from state: ${currentState}`);
+            }
+        } catch (error) {
+            console.error('Error pausing timer:', error);
+            resetAppState();
         }
     }
 });

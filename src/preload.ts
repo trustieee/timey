@@ -39,7 +39,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getDarkMode: () => ipcRenderer.invoke('get-dark-mode'),
 
     // Add new API for window movement
-    windowMove: (mouseX: number, mouseY: number) => ipcRenderer.send('window-move', mouseX, mouseY),
+    windowMove: (mouseX: number, mouseY: number) => ipcRenderer.send('window:move', { mouseX, mouseY }),
 
     // Player profile APIs
     loadPlayerProfile: () => ipcRenderer.invoke('load-player-profile'),

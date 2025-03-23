@@ -1,7 +1,8 @@
 import { app } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
-import { CHORES } from './chores';
+import { APP_CONFIG, DEFAULT_PROFILE } from './config';
+import { getLocalDateString, getLocalISOString, getPreviousDateString, parseLocalDate } from './utils';
 
 // Chore status type
 export type ChoreStatus = 'completed' | 'incomplete' | 'na';
@@ -13,7 +14,7 @@ export interface DayProgress {
         id: number;
         text: string;
         status: ChoreStatus;
-        completedAt?: string;  // ISO datetime if completed
+        completedAt?: string;  // ISO datetime in local time (no Z suffix)
     }[];
     playTime: {
         totalMinutes: number;
@@ -32,47 +33,47 @@ export interface DayProgress {
 
 // Define the shape of the player profile
 export interface PlayerProfile {
-    level: number;
-    xp: number;
-    xpToNextLevel: number;
     history: {
         [date: string]: DayProgress;  // Key is YYYY-MM-DD
     };
+    // Level and XP will be calculated from history
 }
 
-// App configuration
-export const PROFILE_CONFIG = {
-    XP_PER_LEVEL: 100,        // Base XP needed for first level
-    XP_LEVEL_INCREMENT: 50,    // Additional XP needed per level
-    XP_FOR_CHORE: 10,         // XP gained for completing a chore
-    XP_PENALTY_FOR_CHORE: 10, // XP penalty for incomplete chore at day end
-};
+// Calculate player's XP and level from history
+export function calculatePlayerStats(profile: PlayerProfile): { 
+    level: number; 
+    xp: number; 
+    xpToNextLevel: number;
+} {
+    // Start at level 1 with 0 XP
+    let level = 1;
+    let xp = 0;
 
-// Default player profile
-const DEFAULT_PROFILE: PlayerProfile = {
-    level: 1,
-    xp: 0,
-    xpToNextLevel: PROFILE_CONFIG.XP_PER_LEVEL,
-    history: {}
-};
+    // Sum up the final XP from all days in history
+    Object.values(profile.history).forEach(day => {
+        if (day.xp && day.xp.final > 0) {
+            xp += day.xp.final;
+        }
+    });
 
-// Get today's date in YYYY-MM-DD format
-export function getTodayDateString(): string {
-    const now = new Date();
-    
-    // Get local date components to ensure we're using local time, not UTC
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    
-    return `${year}-${month}-${day}`;
+    // Calculate level based on XP
+    while (xp >= getXpRequiredForLevel(level)) {
+        xp -= getXpRequiredForLevel(level);
+        level += 1;
+    }
+
+    return {
+        level,
+        xp,
+        xpToNextLevel: getXpRequiredForLevel(level)
+    };
 }
 
 // Create a new day progress object
 export function createDayProgress(date: string): DayProgress {
     return {
         date,
-        chores: CHORES.map(chore => ({
+        chores: APP_CONFIG.CHORES.map(chore => ({
             id: chore.id,
             text: chore.text,
             status: 'incomplete' as ChoreStatus
@@ -92,7 +93,7 @@ export function createDayProgress(date: string): DayProgress {
 
 // Initialize or get current day's progress
 export function initializeDay(profile: PlayerProfile): PlayerProfile {
-    const today = getTodayDateString();
+    const today = getLocalDateString();
 
     // If we don't have today's progress, create it
     if (!profile.history[today]) {
@@ -118,14 +119,19 @@ export function initializeDay(profile: PlayerProfile): PlayerProfile {
 
 // Check for and finalize any incomplete previous days
 export function checkAndFinalizePreviousDays(profile: PlayerProfile): PlayerProfile {
-    const today = getTodayDateString();
+    const today = getLocalDateString();
     
     // Get all dates in the history
     const dates = Object.keys(profile.history).sort();
     
     // Check each date that's not today or in the future
     for (const date of dates) {
-        if (date >= today) continue;
+        // To ensure we handle year differences properly, 
+        // parse the dates into comparable objects
+        const dateObj = parseLocalDate(date);
+        const todayObj = parseLocalDate(today);
+        
+        if (dateObj >= todayObj) continue;
         
         const dayProgress = profile.history[date];
         if (dayProgress && !dayProgress.completed) {
@@ -146,21 +152,13 @@ export function finalizeDayProgress(profile: PlayerProfile, date: string): Playe
     let penalties = 0;
     dayProgress.chores.forEach(chore => {
         if (chore.status === 'incomplete') {
-            penalties += PROFILE_CONFIG.XP_PENALTY_FOR_CHORE;
+            penalties += APP_CONFIG.PROFILE.XP_PENALTY_FOR_CHORE;
         }
     });
 
     // Update day's XP totals
     dayProgress.xp.penalties = penalties;
     dayProgress.xp.final = dayProgress.xp.gained - penalties;
-
-    // Apply penalties to player's total XP
-    profile.xp = Math.max(0, profile.xp - penalties);
-
-    // Log the penalties being applied
-    if (penalties > 0) {
-        console.log(`Applied ${penalties} XP penalties for incomplete tasks on ${date}`);
-    }
 
     // Mark day as completed
     dayProgress.completed = true;
@@ -175,23 +173,12 @@ export function finalizeDayProgress(profile: PlayerProfile, date: string): Playe
     return profile;
 }
 
-// Get the previous date string
-function getPreviousDateString(date: string): string {
-    // Create date from the string, will be interpreted in local timezone
-    const d = new Date(date);
-    d.setDate(d.getDate() - 1);
-    
-    // Get local date components
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    
-    return `${year}-${month}-${day}`;
-}
-
 // XP requirements for each level
 export function getXpRequiredForLevel(level: number): number {
-    return PROFILE_CONFIG.XP_PER_LEVEL + (level - 1) * PROFILE_CONFIG.XP_LEVEL_INCREMENT;
+    if (level <= APP_CONFIG.PROFILE.XP_PER_LEVEL.length) {
+        return APP_CONFIG.PROFILE.XP_PER_LEVEL[level - 1];
+    }
+    return APP_CONFIG.PROFILE.DEFAULT_XP_PER_LEVEL;
 }
 
 // Get the profile file path
@@ -201,97 +188,124 @@ function getProfilePath(): string {
 }
 
 // Load the player profile
-export function loadPlayerProfile(): PlayerProfile {
+export function loadPlayerProfile(): PlayerProfile & {level: number, xp: number, xpToNextLevel: number} {
     const profilePath = getProfilePath();
 
     try {
         if (fs.existsSync(profilePath)) {
             const data = fs.readFileSync(profilePath, 'utf8');
-            const profile = JSON.parse(data) as PlayerProfile;
+            let profile = JSON.parse(data) as PlayerProfile;
+            
+            // Make sure history is defined
+            if (!profile.history) {
+                profile.history = {};
+            }
 
             // First check and finalize any previous incomplete days
             const updatedProfile = checkAndFinalizePreviousDays(profile);
             
             // Then initialize today's progress if needed
-            return initializeDay(updatedProfile);
+            const finalProfile = initializeDay(updatedProfile);
+            
+            // Calculate player stats from history
+            const stats = calculatePlayerStats(finalProfile);
+            
+            // Return combined profile and stats
+            return { 
+                ...finalProfile, 
+                level: stats.level, 
+                xp: stats.xp, 
+                xpToNextLevel: stats.xpToNextLevel 
+            };
         }
     } catch (error) {
         console.error('Error loading player profile:', error);
     }
 
     // Return default profile if loading fails or file doesn't exist
-    const defaultProfile = { ...DEFAULT_PROFILE };
-    return initializeDay(defaultProfile);
+    const defaultProfile = { history: {} };
+    const initializedProfile = initializeDay(defaultProfile);
+    const stats = calculatePlayerStats(initializedProfile);
+    
+    // Return combined profile and stats
+    return { 
+        ...initializedProfile, 
+        level: stats.level, 
+        xp: stats.xp, 
+        xpToNextLevel: stats.xpToNextLevel 
+    };
 }
 
 // Save the player profile
 export function savePlayerProfile(profile: PlayerProfile): void {
     const profilePath = getProfilePath();
 
+    // We only need to save the history, not the calculated stats
+    const storageProfile = {
+        history: profile.history
+    };
+
     try {
-        const data = JSON.stringify(profile, null, 2);
+        const data = JSON.stringify(storageProfile, null, 2);
         fs.writeFileSync(profilePath, data, 'utf8');
     } catch (error) {
         console.error('Error saving player profile:', error);
     }
 }
 
-// Add XP to player profile and handle level ups
-export function addXp(profile: PlayerProfile, xpAmount: number): PlayerProfile {
-    const today = getTodayDateString();
+// Add XP to player profile for today's progress
+export function addXp(profile: PlayerProfile & {level: number, xp: number, xpToNextLevel: number}, xpAmount: number): PlayerProfile & {level: number, xp: number, xpToNextLevel: number} {
+    const today = getLocalDateString();
     const dayProgress = profile.history[today];
 
-    // Add XP to both player total and day's gained XP
-    profile.xp += xpAmount;
+    // Add XP to day's gained XP
     if (dayProgress) {
         dayProgress.xp.gained += xpAmount;
         dayProgress.xp.final = dayProgress.xp.gained - dayProgress.xp.penalties;
     }
 
-    // Check for level ups
-    while (profile.xp >= profile.xpToNextLevel) {
-        profile.xp -= profile.xpToNextLevel;
-        profile.level += 1;
-        profile.xpToNextLevel = getXpRequiredForLevel(profile.level);
-    }
-
-    return profile;
+    // Recalculate player stats
+    const stats = calculatePlayerStats(profile);
+    
+    // Return updated profile with stats
+    return { 
+        ...profile, 
+        level: stats.level, 
+        xp: stats.xp, 
+        xpToNextLevel: stats.xpToNextLevel 
+    };
 }
 
-// Remove XP from player profile and handle level downs if necessary
-export function removeXp(profile: PlayerProfile, xpAmount: number): PlayerProfile {
-    const today = getTodayDateString();
+// Remove XP from player profile
+export function removeXp(profile: PlayerProfile & {level: number, xp: number, xpToNextLevel: number}, xpAmount: number): PlayerProfile & {level: number, xp: number, xpToNextLevel: number} {
+    const today = getLocalDateString();
     const dayProgress = profile.history[today];
 
-    // Remove XP from both player total and day's gained XP
-    profile.xp -= xpAmount;
+    // Remove XP from day's gained XP
     if (dayProgress) {
         dayProgress.xp.gained = Math.max(0, dayProgress.xp.gained - xpAmount);
         dayProgress.xp.final = dayProgress.xp.gained - dayProgress.xp.penalties;
     }
 
-    // Handle negative XP by going down levels if necessary
-    while (profile.xp < 0 && profile.level > 1) {
-        profile.level -= 1;
-        profile.xpToNextLevel = getXpRequiredForLevel(profile.level);
-        profile.xp += profile.xpToNextLevel;
-    }
-
-    // Ensure XP never goes below zero at level 1
-    if (profile.xp < 0 && profile.level === 1) {
-        profile.xp = 0;
-    }
-
-    return profile;
+    // Recalculate player stats
+    const stats = calculatePlayerStats(profile);
+    
+    // Return updated profile with stats
+    return { 
+        ...profile, 
+        level: stats.level, 
+        xp: stats.xp, 
+        xpToNextLevel: stats.xpToNextLevel 
+    };
 }
 
 // Update chore status in the current day's progress
 export function updateChoreStatus(
-    profile: PlayerProfile,
+    profile: PlayerProfile & {level: number, xp: number, xpToNextLevel: number},
     choreId: number,
     status: ChoreStatus
-): PlayerProfile {
-    const today = getTodayDateString();
+): PlayerProfile & {level: number, xp: number, xpToNextLevel: number} {
+    const today = getLocalDateString();
     const dayProgress = profile.history[today];
 
     if (!dayProgress) return profile;
@@ -302,9 +316,9 @@ export function updateChoreStatus(
     const oldStatus = chore.status;
     chore.status = status;
 
-    // Update completedAt timestamp if completed
+    // Update completedAt timestamp if completed - use local time format
     if (status === 'completed') {
-        chore.completedAt = new Date().toISOString();
+        chore.completedAt = getLocalISOString();
     } else {
         delete chore.completedAt;
     }
@@ -312,10 +326,10 @@ export function updateChoreStatus(
     // Handle XP changes
     if (oldStatus === 'completed' && status !== 'completed') {
         // Remove XP if un-completing a chore
-        removeXp(profile, PROFILE_CONFIG.XP_FOR_CHORE);
+        return removeXp(profile, APP_CONFIG.PROFILE.XP_FOR_CHORE);
     } else if (oldStatus !== 'completed' && status === 'completed') {
         // Add XP if completing a chore
-        addXp(profile, PROFILE_CONFIG.XP_FOR_CHORE);
+        return addXp(profile, APP_CONFIG.PROFILE.XP_FOR_CHORE);
     }
 
     return profile;
