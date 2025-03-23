@@ -323,6 +323,7 @@
       padding: 15px;
       background-color: rgba(76, 175, 80, 0.2);
       border-radius: 5px;
+      color: white;
     }
 
     .hidden {
@@ -331,20 +332,63 @@
 
     /* Light mode styles */
     html.light-mode body {
-      background: #f0f0f0;
-      color: black;
+      background: #f8f9fa;
+      color: #333333;
     }
 
     html.light-mode .top-bar {
-      background-color: #e0e0e0;
+      background-color: #ffffff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     html.light-mode .chore-item {
-      background-color: rgba(0, 0, 0, 0.05);
+      background-color: rgba(0, 0, 0, 0.03);
+      border: 1px solid rgba(0, 0, 0, 0.08);
     }
 
     html.light-mode .completion-message {
-      background-color: rgba(76, 175, 80, 0.1);
+      background-color: rgba(76, 175, 80, 0.2);
+      border: 1px solid rgba(76, 175, 80, 0.3);
+      color: #333333;
+    }
+
+    html.light-mode .completion-message p {
+      color: #333333;
+      font-weight: bold;
+      text-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+    }
+
+    html.light-mode .xp-bar-container {
+      background-color: rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(0, 0, 0, 0.15);
+    }
+
+    html.light-mode .primary-button {
+      background-color: #4285F4;
+    }
+
+    html.light-mode .primary-button:hover {
+      background-color: #3367d6;
+    }
+
+    html.light-mode .secondary-button {
+      background-color: #ea4335;
+    }
+
+    html.light-mode .secondary-button:hover {
+      background-color: #d33828;
+    }
+
+    html.light-mode .primary-button:disabled {
+      background-color: #cccccc;
+      color: #777777;
+      cursor: not-allowed;
+    }
+
+    html.light-mode .secondary-button:disabled {
+      background-color: #cccccc;
+      color: #777777;
+      cursor: not-allowed;
     }
 
     /* History panel styles */
@@ -440,12 +484,27 @@
 
     /* Light mode adjustments for history panel */
     html.light-mode .history-panel {
-      background-color: #f5f5f5;
-      box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+      background-color: #ffffff;
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+      border-left: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    html.light-mode .history-panel h2 {
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+      color: #333333;
     }
 
     html.light-mode .history-date {
-      background-color: rgba(0, 0, 0, 0.05);
+      background-color: rgba(0, 0, 0, 0.03);
+      border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    html.light-mode .history-date h3 {
+      color: #333333;
+    }
+
+    html.light-mode .history-chore {
+      color: #555555;
     }
 
     /* Rewards panel styles */
@@ -556,24 +615,109 @@
 
     /* Light mode adjustments for rewards panel */
     html.light-mode .rewards-panel {
-      background-color: #f5f5f5;
-      box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+      background-color: #ffffff;
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+      border-left: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    html.light-mode .rewards-panel h2 {
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+      color: #333333;
+    }
+
+    html.light-mode .rewards-available {
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+      color: #333333;
     }
 
     html.light-mode .reward-item {
-      background-color: rgba(0, 0, 0, 0.05);
+      background-color: rgba(0, 0, 0, 0.03);
+      border: 1px solid rgba(0, 0, 0, 0.05);
     }
 
     html.light-mode .reward-item:hover {
-      background-color: rgba(0, 0, 0, 0.1);
+      background-color: rgba(0, 0, 0, 0.07);
+    }
+
+    html.light-mode .reward-item h3 {
+      color: #333333;
+    }
+
+    html.light-mode .reward-item p {
+      color: #555555;
+    }
+
+    html.light-mode .reward-history {
+      border-top: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    html.light-mode .reward-history h3 {
+      color: #333333;
     }
 
     html.light-mode .reward-history-item {
-      background-color: rgba(0, 0, 0, 0.03);
+      background-color: rgba(0, 0, 0, 0.02);
+      border: 1px solid rgba(0, 0, 0, 0.04);
     }
 
     html.light-mode .reward-history-item .date {
-      color: rgba(0, 0, 0, 0.5);
+      color: #777777;
+    }
+
+    html.light-mode .state-badge {
+      color: white;
+    }
+
+    html.light-mode .xp-section {
+      background-color: rgba(0, 0, 0, 0.08);
+      border-radius: 10px;
+      padding: 15px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    html.light-mode .xp-bar-container {
+      background-color: rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(0, 0, 0, 0.15);
+    }
+
+    html.light-mode .xp-bar {
+      background-color: #4285F4;
+    }
+
+    html.light-mode .xp-text {
+      color: #333333;
+      font-weight: bold;
+    }
+
+    html.light-mode .level-indicator {
+      color: #333333;
+    }
+
+    /* Improve cooldown message/completion message readability */
+    .completion-message {
+      text-align: center;
+      padding: 15px;
+      background-color: rgba(76, 175, 80, 0.2);
+      border-radius: 5px;
+      color: white;
+    }
+
+    html.light-mode .completion-message {
+      background-color: rgba(76, 175, 80, 0.2);
+      border: 1px solid rgba(76, 175, 80, 0.3);
+      color: #333333;
+    }
+
+    /* Target specifically the objectives info message */
+    .completion-message p {
+      font-weight: bold;
+    }
+
+    /* Additional styles for the chores section in light mode */
+    html.light-mode #chores-section .completion-message {
+      background-color: rgba(76, 175, 80, 0.3);
+      border: 1px solid rgba(76, 175, 80, 0.4);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     }
   </style>
 

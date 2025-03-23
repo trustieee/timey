@@ -12,8 +12,8 @@ export const APP_CONFIG = {
 
   // Timer settings
   TIMER: {
-    PLAY_TIME_MINUTES: 6,       // Play time (60 minutes)
-    COOLDOWN_TIME_MINUTES: 6,   // Cooldown time (60 minutes)
+    PLAY_TIME_MINUTES: .1,       // Play time (60 minutes)
+    COOLDOWN_TIME_MINUTES: .1,   // Cooldown time (60 minutes)
   },
 
   // Notifications

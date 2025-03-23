@@ -88,7 +88,7 @@ const createWindow = () => {
       contextIsolation: true,
       nodeIntegration: false,
     },
-    backgroundColor: '#333333', // Set dark background color to prevent flashing
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#333333' : '#f8f9fa', // Match theme background color
     alwaysOnTop: false,
     roundedCorners: true,
     frame: false,
