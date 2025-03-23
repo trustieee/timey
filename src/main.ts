@@ -35,6 +35,23 @@ autoUpdater.fullChangelog = true;
 // Try to read releases directly rather than requiring specific files
 autoUpdater.allowDowngrade = true;
 
+// Handle GitHub token for auto-updater
+if (process.env.GH_TOKEN) {
+  console.log('GitHub token already set in environment variables');
+} else if (process.env.GITHUB_TOKEN) {
+  // If we have GITHUB_TOKEN but not GH_TOKEN, set it (electron-updater looks for GH_TOKEN)
+  process.env.GH_TOKEN = process.env.GITHUB_TOKEN;
+  console.log('Set GH_TOKEN from GITHUB_TOKEN');
+} else {
+  // In production builds where these might not be set, we can check if this 
+  // is a GitHub Actions environment
+  if (process.env.GITHUB_ACTIONS) {
+    console.log('Running in GitHub Actions environment');
+  } else {
+    console.warn('No GitHub token found! Auto-updates may not work for private repositories.');
+  }
+}
+
 // Setup GitHub token for auto-updater (works in both dev and production)
 setupGitHubToken();
 

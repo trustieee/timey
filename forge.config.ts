@@ -31,10 +31,7 @@ const config: ForgeConfig = {
         name: 'timey',
         schemes: ['timey']
       }
-    ],
-    // We're going to include the .env file directly in the app resources
-    // This ensures the token is available in the packaged app
-    extraResource: ['.env']
+    ]
   },
   rebuildConfig: {},
   makers: [
