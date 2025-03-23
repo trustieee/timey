@@ -8,6 +8,8 @@ declare global {
             toggleDarkMode: () => Promise<boolean>;
             getDarkMode: () => Promise<boolean>;
             windowMove: (mouseX: number, mouseY: number) => void;
+            // App version
+            getAppVersion: () => Promise<string>;
             // New player profile methods
             loadPlayerProfile: () => Promise<any>;
             savePlayerProfile: (profile: any) => Promise<void>;
@@ -44,6 +46,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // Add new API to get the current dark mode state
     getDarkMode: () => ipcRenderer.invoke('get-dark-mode'),
+
+    // Add API to get app version
+    getAppVersion: () => ipcRenderer.invoke('get-app-version'),
 
     // Add new API for window movement
     windowMove: (mouseX: number, mouseY: number) => ipcRenderer.send('window:move', { mouseX, mouseY }),

@@ -58,6 +58,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const xpTextElement = document.querySelector('.xp-text') as HTMLElement;
     const levelIndicatorElement = document.querySelector('.level-indicator') as HTMLElement;
 
+    // Display app version
+    const appVersionElement = document.getElementById('app-version') as HTMLElement;
+    if (appVersionElement) {
+        try {
+            const version = await window.electronAPI.getAppVersion();
+            appVersionElement.textContent = `v${version}`;
+        } catch (error) {
+            console.error('Error getting app version:', error);
+        }
+    }
+
     // Rewards panel elements
     const rewardsBtn = document.getElementById('show-rewards') as HTMLButtonElement;
     const rewardsPanel = document.getElementById('rewards-panel') as HTMLElement;

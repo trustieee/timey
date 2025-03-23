@@ -17,6 +17,10 @@ autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 autoUpdater.logger = console;
 autoUpdater.allowDowngrade = false;
+
+// Get app version from package.json
+const appVersion = app.getVersion();
+
 // Check for updates every hour when app is running
 const CHECK_INTERVAL = APP_CONFIG.UPDATE_CHECK_INTERVAL;
 
@@ -162,6 +166,11 @@ const createWindow = () => {
   ipcMain.on('window:move', (_, { mouseX, mouseY }) => {
     const [x, y] = mainWindow.getPosition();
     mainWindow.setPosition(x + mouseX, y + mouseY);
+  });
+
+  // Add IPC handler to get the app version
+  ipcMain.handle('get-app-version', () => {
+    return appVersion;
   });
 
   // Also need to expose a way to get initial theme state
