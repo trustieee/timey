@@ -24,7 +24,8 @@ const config: ForgeConfig = {
   makers: [
     new MakerSquirrel({
       setupIcon: './assets/icon.ico',
-      iconUrl: 'https://raw.githubusercontent.com/trustieee/timey/main/assets/icon.ico'
+      iconUrl: 'https://raw.githubusercontent.com/trustieee/timey/main/assets/icon.ico',
+      remoteReleases: 'https://github.com/trustieee/timey'
     }), 
     new MakerZIP({}, ['darwin']), 
     new MakerRpm({}), 

@@ -17,6 +17,8 @@ autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 autoUpdater.logger = console;
 autoUpdater.allowDowngrade = false;
+autoUpdater.allowPrerelease = true;
+autoUpdater.channel = "latest";
 
 // Get app version from package.json
 const appVersion = app.getVersion();
@@ -43,8 +45,8 @@ autoUpdater.on('update-not-available', () => {
   console.log('Update not available');
 });
 
-autoUpdater.on('error', (err: Error) => {
-  console.error('Error in auto-updater:', err);
+autoUpdater.on('error', (err) => {
+  console.error('Auto updater error:', err);
 });
 
 autoUpdater.on('download-progress', (progressObj: ProgressInfo) => {

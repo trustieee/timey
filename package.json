@@ -1,7 +1,7 @@
 {
   "name": "timey",
   "productName": "timey",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "My Electron application description",
   "main": ".vite/build/main.js",
   "scripts": {
@@ -46,5 +46,8 @@
   "dependencies": {
     "electron-squirrel-startup": "^1.0.1",
     "electron-updater": "^6.2.2"
+  },
+  "build": {
+    "generateUpdatesFilesForAllChannels": true
   }
 }
