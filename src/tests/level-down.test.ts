@@ -71,7 +71,8 @@ describe('Level Down Simulation Tests', () => {
           }
         },
         rewards: {
-          available: 0
+          available: 0,
+          permanent: {}
         }
       };
       

@@ -34,7 +34,8 @@ describe('Timer Functionality and Day Transitions', () => {
     return {
       history: {},
       rewards: {
-        available: 0
+        available: 0,
+        permanent: {}
       },
       level: 1,
       xp: 0,

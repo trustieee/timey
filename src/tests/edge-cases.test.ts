@@ -36,7 +36,8 @@ describe('Edge Cases Tests', () => {
     return {
       history: {},
       rewards: {
-        available: 0
+        available: 0,
+        permanent: {}
       },
       level: 1,
       xp: 0,
@@ -104,7 +105,7 @@ describe('Edge Cases Tests', () => {
     test('Should handle empty history', () => {
       const profile = {
         history: {},
-        rewards: { available: 0 }
+        rewards: { available: 0, permanent: {} }
       };
       
       // Calculate stats with empty history

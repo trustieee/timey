@@ -118,7 +118,8 @@ describe('30-Day XP Simulation', () => {
       const profile: PlayerProfile = {
         history: {},
         rewards: {
-          available: 0
+          available: 0,
+          permanent: {}
         }
       };
       

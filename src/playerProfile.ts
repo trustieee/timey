@@ -44,6 +44,9 @@ export interface PlayerProfile {
     };
     rewards: {
         available: number;  // Number of rewards available to claim
+        permanent: {
+            [rewardType in RewardType]?: number; // Permanent bonus value for each reward type
+        };
     };
     // Level and XP will be calculated from history
 }
@@ -213,7 +216,12 @@ export function loadPlayerProfile(): PlayerProfile & {level: number, xp: number,
             
             // Make sure rewards is defined
             if (!profile.rewards) {
-                profile.rewards = { available: 0 };
+                profile.rewards = { available: 0, permanent: {} };
+            }
+            
+            // Make sure permanent rewards is defined
+            if (!profile.rewards.permanent) {
+                profile.rewards.permanent = {};
             }
 
             // First check and finalize any previous incomplete days
@@ -238,7 +246,7 @@ export function loadPlayerProfile(): PlayerProfile & {level: number, xp: number,
     }
 
     // Return default profile if loading fails or file doesn't exist
-    const defaultProfile = { history: {}, rewards: { available: 0 } };
+    const defaultProfile = { history: {}, rewards: { available: 0, permanent: {} } };
     const initializedProfile = initializeDay(defaultProfile);
     const stats = calculatePlayerStats(initializedProfile);
     
@@ -293,7 +301,9 @@ export function addXp(profile: PlayerProfile & {level: number, xp: number, xpToN
     // Check if level increased and award a reward
     if (stats.level > previousLevel) {
         if (!updatedProfile.rewards) {
-            updatedProfile.rewards = { available: 0 };
+            updatedProfile.rewards = { available: 0, permanent: {} };
+        } else if (!updatedProfile.rewards.permanent) {
+            updatedProfile.rewards.permanent = {};
         }
         updatedProfile.rewards.available += (stats.level - previousLevel);
         console.log(`Level up! Added ${stats.level - previousLevel} rewards. Now have ${updatedProfile.rewards.available} available.`);
@@ -382,10 +392,28 @@ export function useReward(
         return updatedProfile;
     }
 
+    // Validate reward type
+    if (!Object.values(RewardType).includes(rewardType)) {
+        console.error(`Invalid reward type: ${rewardType}`);
+        return updatedProfile;
+    }
+
+    // Ensure value is not negative (for better user experience)
+    const rewardValue = Math.max(0, value);
+
     // Deduct from available rewards
     updatedProfile.rewards.available--;
 
-    // Add to today's rewardsUsed
+    // Add to permanent rewards
+    if (!updatedProfile.rewards.permanent) {
+        updatedProfile.rewards.permanent = {};
+    }
+    
+    // Initialize or add to the permanent bonus for this reward type
+    updatedProfile.rewards.permanent[rewardType] = 
+        (updatedProfile.rewards.permanent[rewardType] || 0) + rewardValue;
+
+    // Add to today's rewardsUsed (for record keeping)
     const today = getLocalDateString();
     const dayProgress = updatedProfile.history[today];
 
@@ -397,9 +425,27 @@ export function useReward(
         dayProgress.rewardsUsed.push({
             type: rewardType,
             usedAt: getLocalISOString(),
-            value: value
+            value: rewardValue
         });
     }
 
     return updatedProfile;
+}
+
+// Get permanent play time bonus in minutes
+export function getPermanentPlayTimeBonus(profile: PlayerProfile): number {
+    if (!profile || !profile.rewards?.permanent || !profile.rewards.permanent[RewardType.EXTEND_PLAY_TIME]) {
+        return 0;
+    }
+    // Ensure the returned value is at least 0 to prevent negative bonuses
+    return Math.max(0, profile.rewards.permanent[RewardType.EXTEND_PLAY_TIME]);
+}
+
+// Get permanent cooldown reduction in minutes
+export function getPermanentCooldownReduction(profile: PlayerProfile): number {
+    if (!profile || !profile.rewards?.permanent || !profile.rewards.permanent[RewardType.REDUCE_COOLDOWN]) {
+        return 0;
+    }
+    // Ensure the returned value is at least 0 to prevent negative reductions
+    return Math.max(0, profile.rewards.permanent[RewardType.REDUCE_COOLDOWN]);
 } 

@@ -61,7 +61,8 @@ describe('Comprehensive XP & Leveling Tests', () => {
           }
         },
         rewards: {
-          available: 0
+          available: 0,
+          permanent: {}
         }
       };
     }
@@ -98,8 +99,14 @@ describe('Comprehensive XP & Leveling Tests', () => {
         history: {
           '2025-01-01': {
             date: '2025-01-01',
-            chores: [],
-            playTime: { totalMinutes: 0, sessions: [] },
+            chores: [
+              { id: 0, text: 'Task 1', status: 'completed' as ChoreStatus, completedAt: '2025-01-01T08:00:00' },
+              { id: 1, text: 'Task 2', status: 'completed' as ChoreStatus, completedAt: '2025-01-01T09:00:00' }
+            ],
+            playTime: {
+              totalMinutes: 60,
+              sessions: [{ start: '2025-01-01T08:00:00', end: '2025-01-01T09:00:00' }]
+            },
             xp: {
               gained: 120,
               penalties: 0,
@@ -131,7 +138,8 @@ describe('Comprehensive XP & Leveling Tests', () => {
           }
         },
         rewards: {
-          available: 0
+          available: 0,
+          permanent: {}
         }
       };
 
@@ -152,7 +160,8 @@ describe('Comprehensive XP & Leveling Tests', () => {
       let simulationProfile: PlayerProfile & {level: number, xp: number, xpToNextLevel: number} = {
         history: {},
         rewards: {
-          available: 0
+          available: 0,
+          permanent: {}
         },
         level: 1,
         xp: 0,
@@ -268,7 +277,8 @@ describe('Comprehensive XP & Leveling Tests', () => {
       let penaltyProfile: PlayerProfile = {
         history: {},
         rewards: {
-          available: 0
+          available: 0,
+          permanent: {}
         }
       };
 
@@ -299,7 +309,8 @@ describe('Comprehensive XP & Leveling Tests', () => {
       let penaltyProfile: PlayerProfile = {
         history: {},
         rewards: {
-          available: 0
+          available: 0,
+          permanent: {}
         }
       };
 
@@ -332,7 +343,8 @@ describe('Comprehensive XP & Leveling Tests', () => {
       let penaltyProfile: PlayerProfile = {
         history: {},
         rewards: {
-          available: 0
+          available: 0,
+          permanent: {}
         }
       };
 
@@ -365,7 +377,8 @@ describe('Comprehensive XP & Leveling Tests', () => {
       let penaltyProfile: PlayerProfile = {
         history: {},
         rewards: {
-          available: 0
+          available: 0,
+          permanent: {}
         }
       };
 
@@ -398,7 +411,8 @@ describe('Comprehensive XP & Leveling Tests', () => {
       let penaltyProfile: PlayerProfile = {
         history: {},
         rewards: {
-          available: 0
+          available: 0,
+          permanent: {}
         }
       };
       
@@ -488,7 +502,8 @@ describe('Comprehensive XP & Leveling Tests', () => {
           }
         },
         rewards: {
-          available: 0
+          available: 0,
+          permanent: {}
         }
       };
 
@@ -543,7 +558,8 @@ describe('Comprehensive XP & Leveling Tests', () => {
           }
         },
         rewards: {
-          available: 0
+          available: 0,
+          permanent: {}
         }
       };
       
@@ -585,7 +601,8 @@ describe('Comprehensive XP & Leveling Tests', () => {
           }
         },
         rewards: {
-          available: 0
+          available: 0,
+          permanent: {}
         }
       };
 
@@ -651,7 +668,8 @@ describe('Comprehensive XP & Leveling Tests', () => {
           }
         },
         rewards: {
-          available: 0
+          available: 0,
+          permanent: {}
         }
       };
 

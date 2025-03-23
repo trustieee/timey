@@ -36,6 +36,9 @@ interface PlayerProfile {
     history: { [date: string]: DayProgress };
     rewards?: {
         available: number;
+        permanent: {
+            [rewardType in RewardType]?: number;
+        };
     };
 }
 
@@ -244,7 +247,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Timer variables - use config values
     let timerInterval: number | null = null;
-    let timeLeft = APP_CONFIG.TIMER.PLAY_TIME_MINUTES * 60; // in seconds
+    let timeLeft = APP_CONFIG.TIMER.PLAY_TIME_MINUTES * 60; // in seconds (will be updated with permanent bonus after profile loads)
     let chores: Chore[] = JSON.parse(JSON.stringify(APP_CONFIG.CHORES)); // Deep copy
     console.log(chores);
     let currentState: AppState = AppState.READY;
@@ -323,7 +326,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 startTimerBtn.disabled = false;
                 pauseTimerBtn.disabled = true;
                 choresSection.classList.add('hidden');
-                timeLeft = APP_CONFIG.TIMER.PLAY_TIME_MINUTES * 60;
+                
+                // Apply permanent play time bonus
+                const basePlayTime = APP_CONFIG.TIMER.PLAY_TIME_MINUTES;
+                const permanentPlayBonus = getPermanentPlayTimeBonus();
+                timeLeft = (basePlayTime + permanentPlayBonus) * 60;
+                
                 isPaused = false;
                 updatePauseButtonText();
                 updateTimerDisplay();
@@ -340,12 +348,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                 pauseTimerBtn.disabled = true;
                 resetAfterChoresBtn.disabled = true;
                 choresSection.classList.remove('hidden');
-                timeLeft = APP_CONFIG.TIMER.COOLDOWN_TIME_MINUTES * 60;
+                
+                // Apply permanent cooldown reduction
+                const baseCooldown = APP_CONFIG.TIMER.COOLDOWN_TIME_MINUTES;
+                const permanentCooldownReduction = getPermanentCooldownReduction();
+                const effectiveCooldown = Math.max(0, baseCooldown - permanentCooldownReduction);
+                timeLeft = effectiveCooldown * 60;
+                
+                console.log(`Applied cooldown reduction: Base ${baseCooldown} - Permanent ${permanentCooldownReduction} = ${effectiveCooldown} minutes`);
+                
                 isPaused = false;
                 updatePauseButtonText();
                 loadTodayChores().then(() => {
                     renderChores();
                 });
+
+                // If the cooldown time is already 0 after reduction, skip cooldown period
+                if (timeLeft <= 0) {
+                    stopTimer();
+                    showNotification('Cooldown Skipped', 'Thanks to your rewards, you can start playing immediately!');
+                    updateAppState(AppState.READY);
+                }
 
                 break;
         }
@@ -580,6 +603,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialize the app
     async function initializeApp(): Promise<void> {
         await reloadProfile();
+        
+        // Apply permanent play time bonus to the timer
+        applyPermanentBonuses();
+        
         updateAppState(AppState.READY);
         updateTimerDisplay();
         
@@ -587,6 +614,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         setInterval(() => {
             reloadProfile();
         }, APP_CONFIG.PROFILE_REFRESH_INTERVAL);
+    }
+    
+    // Function to apply permanent bonuses from rewards
+    function applyPermanentBonuses(): void {
+        // Calculate effective play time with permanent bonus
+        const basePlayTime = APP_CONFIG.TIMER.PLAY_TIME_MINUTES;
+        const permanentBonus = getPermanentPlayTimeBonus();
+        
+        // Only update timer if in READY state
+        if (currentState === AppState.READY) {
+            timeLeft = (basePlayTime + permanentBonus) * 60;
+            updateTimerDisplay();
+        }
+        
+        console.log(`Applied permanent play time bonus: ${permanentBonus} minutes`);
+    }
+    
+    // Get permanent play time bonus from profile
+    function getPermanentPlayTimeBonus(): number {
+        if (!playerProfile?.rewards?.permanent || !playerProfile.rewards.permanent[RewardType.EXTEND_PLAY_TIME]) {
+            return 0;
+        }
+        return playerProfile.rewards.permanent[RewardType.EXTEND_PLAY_TIME];
+    }
+    
+    // Get permanent cooldown reduction from profile
+    function getPermanentCooldownReduction(): number {
+        if (!playerProfile?.rewards?.permanent || !playerProfile.rewards.permanent[RewardType.REDUCE_COOLDOWN]) {
+            return 0;
+        }
+        return playerProfile.rewards.permanent[RewardType.REDUCE_COOLDOWN];
     }
     
     // Start app initialization
@@ -786,23 +844,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             // Apply reward effect
             if (reward.id === RewardType.EXTEND_PLAY_TIME) {
+                // Get updated permanent bonus
+                const permanentBonus = getPermanentPlayTimeBonus();
+                
                 // If we're already playing, add time to the current timer
                 if (currentState === AppState.PLAYING) {
                     timeLeft += reward.value * 60; // Convert to seconds
                     updateTimerDisplay();
                 } else {
-                    // Otherwise, just increase the base play time for next play session
-                    APP_CONFIG.TIMER.PLAY_TIME_MINUTES += reward.value;
-                    // Need to update timeLeft too if we're in READY state
+                    // If in READY state, update the timer with base + permanent bonus
                     if (currentState === AppState.READY) {
-                        timeLeft = APP_CONFIG.TIMER.PLAY_TIME_MINUTES * 60;
+                        const basePlayTime = APP_CONFIG.TIMER.PLAY_TIME_MINUTES;
+                        timeLeft = (basePlayTime + permanentBonus) * 60;
                         updateTimerDisplay();
                     }
                 }
-                showNotification('Reward Used', `Added ${reward.value} minutes to play time!`);
+                showNotification('Reward Used', `Added ${reward.value} minutes to play time permanently!`);
             } else if (reward.id === RewardType.REDUCE_COOLDOWN) {
+                // Get updated permanent cooldown reduction
+                const permanentReduction = getPermanentCooldownReduction();
+                
                 // If in cooldown, reduce time
                 if (currentState === AppState.COOLDOWN) {
+                    // Apply the immediate reduction from the reward
                     timeLeft = Math.max(0, timeLeft - reward.value * 60); // Convert to seconds
                     updateTimerDisplay();
                     
@@ -812,11 +876,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         showNotification('Cooldown Complete', 'Your cooldown time is over! You may start playing again.');
                         updateResetButtonState();
                     }
-                } else {
-                    // Otherwise, just decrease the base cooldown time for next cooldown
-                    APP_CONFIG.TIMER.COOLDOWN_TIME_MINUTES = Math.max(0, APP_CONFIG.TIMER.COOLDOWN_TIME_MINUTES - reward.value);
                 }
-                showNotification('Reward Used', `Reduced cooldown time by ${reward.value} minutes!`);
+                showNotification('Reward Used', `Reduced cooldown time by ${reward.value} minutes permanently!`);
             }
             
             // Refresh UI
@@ -1067,6 +1128,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             playerProfile = await window.electronAPI.loadPlayerProfile();
             updateXpDisplay();
             
+            // Apply permanent bonuses after profile reload
+            applyPermanentBonuses();
+            
             // Get the current date
             const currentDate = getLocalDateString();
             
@@ -1101,7 +1165,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             clearInterval(timerInterval);
             timerInterval = null;
             currentState = AppState.READY;
-            timeLeft = APP_CONFIG.TIMER.PLAY_TIME_MINUTES * 60;
+            
+            // Use base time + permanent bonus
+            const basePlayTime = APP_CONFIG.TIMER.PLAY_TIME_MINUTES;
+            const permanentBonus = getPermanentPlayTimeBonus();
+            timeLeft = (basePlayTime + permanentBonus) * 60;
+            
             updateTimerDisplay();
             updateAppState(AppState.READY);
             
