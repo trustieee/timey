@@ -375,6 +375,34 @@ const createWindow = () => {
     playerProfileData = updatedProfile;
     return updatedProfile;
   });
+
+  // Add a new IPC handler for forcing an update check
+  ipcMain.handle('force-update-check', async () => {
+    console.log('Forcing update check...');
+    
+    try {
+      // Clear any cached information
+      console.log('Clearing cached update information');
+      
+      const result = await checkForUpdates(true); // Pass true to force refresh
+      
+      return {
+        success: true,
+        updateAvailable: result.updateAvailable,
+        currentVersion: result.currentVersion,
+        latestVersion: result.latestVersion || app.getVersion(),
+        forceCheck: true,
+        releaseNotes: result.releaseNotes
+      };
+    } catch (err) {
+      console.error('Error in forced update check:', err);
+      return {
+        success: false,
+        error: err.message,
+        forceCheck: true
+      };
+    }
+  });
 };
 
 // This method will be called when Electron has finished
@@ -454,15 +482,32 @@ app.on('before-quit', () => {
 /**
  * Improved check for updates that handles errors better
  */
-async function checkForUpdates() {
+async function checkForUpdates(forceCheck = false) {
   try {
     console.log('Checking for updates...');
     console.log('Current version:', app.getVersion());
     
     const https = require('https');
-    const url = 'https://api.github.com/repos/trustieee/timey/releases';
+    // Make url a variable instead of a constant to allow modification
+    let url = 'https://api.github.com/repos/trustieee/timey/releases';
     const currentVersion = app.getVersion();
     
+    // Compare versions using semantic versioning instead of simple string comparison
+    const isNewer = (latest: string, current: string): boolean => {
+      const parseVersion = (v: string): number => {
+        const parts = v.split('.').map(Number);
+        return parts[0] * 10000 + parts[1] * 100 + parts[2];
+      };
+      return parseVersion(latest) > parseVersion(current);
+    };
+
+    // Add cache busting if forceCheck is true
+    if (forceCheck) {
+      console.log('Performing forced update check (bypass cache)');
+      // Add a cache-busting query parameter to the GitHub API request
+      url = `${url}?cachebust=${Date.now()}`;
+    }
+
     // Create a promise-based version of the request
     const checkGitHubReleases = () => {
       return new Promise<any>((resolve, reject) => {
@@ -498,8 +543,16 @@ async function checkForUpdates() {
                   
                   console.log(`Latest version: ${latestVersion}, Current version: ${currentVersion}`);
                   
-                  // Compare versions (simple string comparison, could be improved)
-                  const updateAvailable = latestVersion !== currentVersion;
+                  // Compare versions using semantic versioning instead of simple string comparison
+                  const updateAvailable = isNewer(latestVersion, currentVersion);
+                  
+                  console.log(`Update available? ${updateAvailable ? 'YES' : 'NO'}`);
+
+                  if (updateAvailable) {
+                    console.log('New version detected! Will show update notification.');
+                  } else {
+                    console.log('App is already at the latest version.');
+                  }
                   
                   // Find Windows asset in the latest release
                   const windowsAsset = latestRelease.assets.find((asset: any) => 

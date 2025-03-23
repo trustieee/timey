@@ -18,6 +18,16 @@ declare global {
                 latestVersion?: string | null;
                 error?: string;
             }>;
+            // Force update check (bypassing cache)
+            forceUpdateCheck: () => Promise<{
+                success: boolean;
+                updateAvailable?: boolean;
+                currentVersion?: string;
+                latestVersion?: string | null;
+                forceCheck?: boolean;
+                releaseNotes?: string;
+                error?: string;
+            }>;
             // New player profile methods
             loadPlayerProfile: () => Promise<any>;
             savePlayerProfile: (profile: any) => Promise<void>;
@@ -75,5 +85,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     useReward: (rewardType: RewardType, rewardValue: number) => ipcRenderer.invoke('use-reward', rewardType, rewardValue),
 
     // Updates
-    checkForUpdates: () => ipcRenderer.invoke('check-for-updates')
+    checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+    // Force update check
+    forceUpdateCheck: () => ipcRenderer.invoke('force-update-check')
 });

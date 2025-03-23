@@ -63,21 +63,64 @@ document.addEventListener('DOMContentLoaded', async () => {
     const checkUpdatesBtn = document.getElementById('check-updates') as HTMLElement;
 
     // Function to check for updates
-    async function checkForUpdates() {
-        console.log('Checking for updates...');
+    async function checkForUpdates(force = false) {
+        console.log(`${force ? 'Force checking' : 'Checking'} for updates...`);
         if (appVersionElement) {
             appVersionElement.textContent = 'Checking...';
         }
         
         try {
-            const result = await window.electronAPI.checkForUpdates();
+            // Use the appropriate function based on whether this is a forced check
+            const result = force 
+              ? await window.electronAPI.forceUpdateCheck()
+              : await window.electronAPI.checkForUpdates();
+              
             console.log('Update check result:', result);
+            
+            // Extract release notes (only available in force check results)
+            const releaseNotes = force && (result as any).releaseNotes;
             
             if (result.success) {
                 if (result.updateAvailable) {
                     if (appVersionElement) {
                         const version = await window.electronAPI.getAppVersion();
                         appVersionElement.textContent = `v${version} → v${result.latestVersion}`;
+                        
+                        // Show a more visible notification for force checks
+                        if (force) {
+                            const updateDialog = document.createElement('div');
+                            updateDialog.className = 'update-dialog';
+                            updateDialog.innerHTML = `
+                                <div class="update-dialog-content">
+                                    <h3>Update Available</h3>
+                                    <p>A new version (${result.latestVersion}) is available!</p>
+                                    <p>Current version: ${version}</p>
+                                    ${releaseNotes ? `<div class="release-notes"><h4>Release Notes:</h4><p>${releaseNotes}</p></div>` : ''}
+                                    <div class="dialog-buttons">
+                                        <button class="download-btn">Download Update</button>
+                                        <button class="close-btn">Later</button>
+                                    </div>
+                                </div>
+                            `;
+                            document.body.appendChild(updateDialog);
+                            
+                            // Add button functionality
+                            const closeBtn = updateDialog.querySelector('.close-btn');
+                            closeBtn.addEventListener('click', () => {
+                                document.body.removeChild(updateDialog);
+                            });
+                            
+                            // Handle download button (this will need to be implemented on the backend)
+                            const downloadBtn = updateDialog.querySelector('.download-btn');
+                            downloadBtn.addEventListener('click', () => {
+                                // You would need to implement this on the backend
+                                console.log('Download requested');
+                                document.body.removeChild(updateDialog);
+                                // Show downloading message
+                                appVersionElement.textContent = `v${version} (downloading update)`;
+                            });
+                        }
+                        
                         setTimeout(() => {
                             appVersionElement.textContent = `v${version}`;
                         }, 5000);
@@ -86,6 +129,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (appVersionElement) {
                         const version = await window.electronAPI.getAppVersion();
                         appVersionElement.textContent = `v${version} (latest)`;
+                        
+                        // For force checks, show a dialog even if no update is available
+                        if (force) {
+                            const updateDialog = document.createElement('div');
+                            updateDialog.className = 'update-dialog';
+                            updateDialog.innerHTML = `
+                                <div class="update-dialog-content">
+                                    <h3>No Updates Available</h3>
+                                    <p>You are already running the latest version (${version}).</p>
+                                    <div class="dialog-buttons">
+                                        <button class="close-btn">OK</button>
+                                    </div>
+                                </div>
+                            `;
+                            document.body.appendChild(updateDialog);
+                            
+                            // Add close functionality
+                            const closeBtn = updateDialog.querySelector('.close-btn');
+                            closeBtn.addEventListener('click', () => {
+                                document.body.removeChild(updateDialog);
+                            });
+                        }
+                        
                         setTimeout(() => {
                             appVersionElement.textContent = `v${version}`;
                         }, 3000);
@@ -151,22 +217,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             const version = await window.electronAPI.getAppVersion();
             appVersionElement.textContent = `v${version}`;
             
-            // Make the version clickable for update checks
+            // Add click functionality to force-check for updates
             appVersionElement.style.cursor = 'pointer';
-            appVersionElement.title = 'Click to check for updates';
-            // Make sure it's not part of the drag region
-            appVersionElement.style.setProperty('-webkit-app-region', 'no-drag');
-            
-            // Add click handler for update checks
-            appVersionElement.addEventListener('click', checkForUpdates);
+            appVersionElement.title = "Click to force-check for updates";
+            appVersionElement.addEventListener('click', () => {
+                checkForUpdates(true); // Force update check
+            });
         } catch (error) {
             console.error('Error getting app version:', error);
+            appVersionElement.textContent = 'v?.?.?';
         }
     }
 
     // Add click handler for update check button
     if (checkUpdatesBtn) {
-        checkUpdatesBtn.addEventListener('click', checkForUpdates);
+        checkUpdatesBtn.addEventListener('click', () => {
+            checkForUpdates();
+        });
     }
 
     // Rewards panel elements
