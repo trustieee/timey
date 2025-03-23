@@ -6,6 +6,11 @@ import { autoUpdater, UpdateInfo, ProgressInfo } from 'electron-updater';
 import * as playerProfile from './playerProfile';
 import { APP_CONFIG } from './config';
 import { RewardType } from './rewards';
+// Import dotenv for loading environment variables
+import * as dotenv from 'dotenv';
+
+// Load environment variables from .env file
+dotenv.config();
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -21,6 +26,23 @@ autoUpdater.allowPrerelease = true;
 autoUpdater.channel = "latest";
 // Force update configuration even in development mode
 autoUpdater.forceDevUpdateConfig = true;
+
+// Set explicit GitHub options
+autoUpdater.setFeedURL({
+  provider: 'github',
+  owner: 'trustieee',
+  repo: 'timey',
+  private: true,
+  token: process.env.GITHUB_TOKEN || '',
+  releaseType: 'release'
+});
+
+// Log token status (without revealing the token)
+if (process.env.GITHUB_TOKEN) {
+  console.log('GitHub token found in environment variables');
+} else {
+  console.warn('No GitHub token found in environment variables');
+}
 
 // Handle development mode updates differently
 const isDev = process.env.NODE_ENV === 'development';
@@ -218,19 +240,41 @@ const createWindow = () => {
   ipcMain.handle('check-for-updates', async () => {
     try {
       console.log('Update check requested via IPC');
+      console.log('Current version:', app.getVersion());
+      
+      // Log provider config
+      const providerConfig = autoUpdater.updateConfigPath || 'Not set';
+      console.log('Update config path:', providerConfig);
+      
       const checkResult = await autoUpdater.checkForUpdates();
       console.log('Update check result:', checkResult);
+      
+      if (checkResult?.updateInfo) {
+        console.log('Update info:', JSON.stringify(checkResult.updateInfo, null, 2));
+      }
+      
       return {
         success: true,
         updateAvailable: !!checkResult?.updateInfo,
         currentVersion: app.getVersion(),
-        latestVersion: checkResult?.updateInfo?.version || null
+        latestVersion: checkResult?.updateInfo?.version || null,
+        updateInfo: checkResult?.updateInfo || null
       };
     } catch (err) {
       console.error('Error checking for updates via IPC:', err);
+      // Extract more details from the error
+      const errorDetails = {
+        message: err.message || 'Unknown error',
+        code: err.code || 'NO_CODE',
+        stack: err.stack || 'No stack trace'
+      };
+      console.error('Detailed error:', JSON.stringify(errorDetails, null, 2));
+      
       return { 
         success: false, 
-        error: err.toString() 
+        error: err.toString(),
+        errorDetails: errorDetails,
+        version: app.getVersion()
       };
     }
   });

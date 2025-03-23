@@ -734,6 +734,88 @@
       border: 1px solid rgba(76, 175, 80, 0.4);
       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     }
+
+    /* Additional styles for the error dialog */
+    .error-dialog {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+    }
+
+    .error-dialog-content {
+      background-color: #333;
+      border-radius: 8px;
+      padding: 20px;
+      width: 80%;
+      max-width: 500px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .error-dialog h3 {
+      margin-top: 0;
+      color: #FF5252;
+    }
+
+    .error-dialog pre {
+      background-color: #222;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      font-family: monospace;
+      margin-bottom: 15px;
+      color: #f8f8f8;
+      border: 1px solid #444;
+    }
+
+    .error-dialog .close-btn {
+      background-color: #FF5252;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .error-dialog .close-btn:hover {
+      background-color: #ff7575;
+    }
+
+    /* Light mode styles for the error dialog */
+    html.light-mode .error-dialog-content {
+      background-color: #f8f9fa;
+      color: #333;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    }
+
+    html.light-mode .error-dialog h3 {
+      color: #d32f2f;
+    }
+
+    html.light-mode .error-dialog pre {
+      background-color: #f1f1f1;
+      color: #333;
+      border: 1px solid #ddd;
+    }
+
+    html.light-mode .error-dialog .close-btn {
+      background-color: #d32f2f;
+    }
+
+    html.light-mode .error-dialog .close-btn:hover {
+      background-color: #e57373;
+    }
   </style>
 
   <script type="module" src="/src/renderer.ts"></script>

@@ -93,8 +93,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                             }, 3000);
                         }
                     } else {
+                        // Show the actual error message in a dialog
                         appVersionElement.textContent = `v${version} (error)`;
                         console.error('Update check failed:', result.error);
+                        
+                        // Create a dialog to show the error
+                        const errorDialog = document.createElement('div');
+                        errorDialog.className = 'error-dialog';
+                        errorDialog.innerHTML = `
+                            <div class="error-dialog-content">
+                                <h3>Update Error</h3>
+                                <p>Failed to check for updates:</p>
+                                <pre>${result.error}</pre>
+                                <button class="close-btn">Close</button>
+                            </div>
+                        `;
+                        document.body.appendChild(errorDialog);
+                        
+                        // Add close functionality
+                        const closeBtn = errorDialog.querySelector('.close-btn');
+                        closeBtn.addEventListener('click', () => {
+                            document.body.removeChild(errorDialog);
+                        });
+                        
                         setTimeout(() => {
                             appVersionElement.textContent = `v${version}`;
                         }, 3000);
@@ -102,6 +123,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } catch (error) {
                     console.error('Error checking for updates:', error);
                     appVersionElement.textContent = `v${version} (error)`;
+                    
+                    // Create a dialog to show the error
+                    const errorDialog = document.createElement('div');
+                    errorDialog.className = 'error-dialog';
+                    errorDialog.innerHTML = `
+                        <div class="error-dialog-content">
+                            <h3>Update Error</h3>
+                            <p>Failed to check for updates:</p>
+                            <pre>${error.toString()}</pre>
+                            <button class="close-btn">Close</button>
+                        </div>
+                    `;
+                    document.body.appendChild(errorDialog);
+                    
+                    // Add close functionality
+                    const closeBtn = errorDialog.querySelector('.close-btn');
+                    closeBtn.addEventListener('click', () => {
+                        document.body.removeChild(errorDialog);
+                    });
+                    
                     setTimeout(() => {
                         appVersionElement.textContent = `v${version}`;
                     }, 3000);

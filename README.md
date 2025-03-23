@@ -41,6 +41,16 @@ The app will automatically check for updates when it starts up. When an update i
 
 ## Configuration
 
+### Environment Variables
+
+The app uses a `.env` file for environment variables like GitHub tokens. This file is gitignored for security.
+
+1. Create a `.env` file in the project root with:
+   ```
+   GITHUB_TOKEN=your_github_personal_access_token
+   ```
+2. Make sure the token has `repo` scope access to the repository
+
 ### Forge Configuration
 
 Auto-update settings are configured in `forge.config.ts`. The app uses GitHub's releases as its update server.

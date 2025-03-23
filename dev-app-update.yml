@@ -1,4 +1,5 @@
 provider: github
 owner: trustieee
 repo: timey
+private: true
 updaterCacheDirName: timey-updater 
