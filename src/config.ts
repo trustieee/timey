@@ -33,5 +33,8 @@ export const APP_CONFIG = {
 
 // Default player profile - now just contains empty history
 export const DEFAULT_PROFILE = {
-  history: {}
+  history: {},
+  rewards: {
+    available: 0
+  }
 }; 

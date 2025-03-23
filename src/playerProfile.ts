@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { APP_CONFIG, DEFAULT_PROFILE } from './config';
 import { getLocalDateString, getLocalISOString, getPreviousDateString, parseLocalDate } from './utils';
+import { RewardType } from './rewards';
 
 // Chore status type
 export type ChoreStatus = 'completed' | 'incomplete' | 'na';
@@ -28,6 +29,11 @@ export interface DayProgress {
         penalties: number;  // XP lost from incomplete chores
         final: number;     // Net XP after penalties
     };
+    rewardsUsed?: {
+        type: RewardType;
+        usedAt: string;     // ISO datetime in local time
+        value: number;      // Value of the reward (usually in minutes)
+    }[];
     completed: boolean;    // Whether this day has been finalized
 }
 
@@ -35,6 +41,9 @@ export interface DayProgress {
 export interface PlayerProfile {
     history: {
         [date: string]: DayProgress;  // Key is YYYY-MM-DD
+    };
+    rewards: {
+        available: number;  // Number of rewards available to claim
     };
     // Level and XP will be calculated from history
 }
@@ -87,6 +96,7 @@ export function createDayProgress(date: string): DayProgress {
             penalties: 0,
             final: 0
         },
+        rewardsUsed: [],
         completed: false
     };
 }
@@ -200,6 +210,11 @@ export function loadPlayerProfile(): PlayerProfile & {level: number, xp: number,
             if (!profile.history) {
                 profile.history = {};
             }
+            
+            // Make sure rewards is defined
+            if (!profile.rewards) {
+                profile.rewards = { available: 0 };
+            }
 
             // First check and finalize any previous incomplete days
             const updatedProfile = checkAndFinalizePreviousDays(profile);
@@ -223,7 +238,7 @@ export function loadPlayerProfile(): PlayerProfile & {level: number, xp: number,
     }
 
     // Return default profile if loading fails or file doesn't exist
-    const defaultProfile = { history: {} };
+    const defaultProfile = { history: {}, rewards: { available: 0 } };
     const initializedProfile = initializeDay(defaultProfile);
     const stats = calculatePlayerStats(initializedProfile);
     
@@ -242,7 +257,8 @@ export function savePlayerProfile(profile: PlayerProfile): void {
 
     // We only need to save the history, not the calculated stats
     const storageProfile = {
-        history: profile.history
+        history: profile.history,
+        rewards: profile.rewards
     };
 
     try {
@@ -255,8 +271,11 @@ export function savePlayerProfile(profile: PlayerProfile): void {
 
 // Add XP to player profile for today's progress
 export function addXp(profile: PlayerProfile & {level: number, xp: number, xpToNextLevel: number}, xpAmount: number): PlayerProfile & {level: number, xp: number, xpToNextLevel: number} {
+    // Create a deep copy of the profile to avoid mutation issues
+    const updatedProfile = JSON.parse(JSON.stringify(profile)) as typeof profile;
+    
     const today = getLocalDateString();
-    const dayProgress = profile.history[today];
+    const dayProgress = updatedProfile.history[today];
 
     // Add XP to day's gained XP
     if (dayProgress) {
@@ -264,12 +283,25 @@ export function addXp(profile: PlayerProfile & {level: number, xp: number, xpToN
         dayProgress.xp.final = dayProgress.xp.gained - dayProgress.xp.penalties;
     }
 
+    // Calculate previous level
+    const previousStats = calculatePlayerStats({...profile});
+    const previousLevel = previousStats.level;
+
     // Recalculate player stats
-    const stats = calculatePlayerStats(profile);
+    const stats = calculatePlayerStats(updatedProfile);
+    
+    // Check if level increased and award a reward
+    if (stats.level > previousLevel) {
+        if (!updatedProfile.rewards) {
+            updatedProfile.rewards = { available: 0 };
+        }
+        updatedProfile.rewards.available += (stats.level - previousLevel);
+        console.log(`Level up! Added ${stats.level - previousLevel} rewards. Now have ${updatedProfile.rewards.available} available.`);
+    }
     
     // Return updated profile with stats
     return { 
-        ...profile, 
+        ...updatedProfile, 
         level: stats.level, 
         xp: stats.xp, 
         xpToNextLevel: stats.xpToNextLevel 
@@ -333,4 +365,41 @@ export function updateChoreStatus(
     }
 
     return profile;
+}
+
+// Use a reward
+export function useReward(
+    profile: PlayerProfile & {level: number, xp: number, xpToNextLevel: number},
+    rewardType: RewardType,
+    value: number
+): PlayerProfile & {level: number, xp: number, xpToNextLevel: number} {
+    // Create a deep copy of the profile to avoid mutation issues
+    const updatedProfile = JSON.parse(JSON.stringify(profile)) as typeof profile;
+    
+    // Check if player has rewards available
+    if (!updatedProfile.rewards || updatedProfile.rewards.available <= 0) {
+        console.error('No rewards available to use');
+        return updatedProfile;
+    }
+
+    // Deduct from available rewards
+    updatedProfile.rewards.available--;
+
+    // Add to today's rewardsUsed
+    const today = getLocalDateString();
+    const dayProgress = updatedProfile.history[today];
+
+    if (dayProgress) {
+        if (!dayProgress.rewardsUsed) {
+            dayProgress.rewardsUsed = [];
+        }
+        
+        dayProgress.rewardsUsed.push({
+            type: rewardType,
+            usedAt: getLocalISOString(),
+            value: value
+        });
+    }
+
+    return updatedProfile;
 } 

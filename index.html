@@ -24,6 +24,7 @@
       </div>
       <div id="top-date-time">3/15/2025 12:21 PM</div>
       <div class="window-controls">
+        <button id="show-rewards">🎁</button>
         <button id="show-history">📋</button>
         <button id="toggle-dark-mode"></button>
       </div>
@@ -34,6 +35,18 @@
       <h2>Daily Objectives History</h2>
       <div class="history-content">
         <!-- History items will be dynamically added here -->
+      </div>
+    </div>
+
+    <!-- Rewards panel (hidden by default) -->
+    <div id="rewards-panel" class="rewards-panel">
+      <h2>Level Rewards</h2>
+      <div class="rewards-available">
+        <span>Available Rewards: </span>
+        <span id="available-rewards-count">0</span>
+      </div>
+      <div class="rewards-content">
+        <!-- Rewards will be dynamically added here -->
       </div>
     </div>
 
@@ -433,6 +446,134 @@
 
     html.light-mode .history-date {
       background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    /* Rewards panel styles */
+    .rewards-panel {
+      position: fixed;
+      top: 50px;
+      right: 0;
+      width: 300px;
+      height: calc(100vh - 50px);
+      background-color: #222;
+      box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+      transition: transform 0.3s ease;
+      transform: translateX(100%);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .rewards-panel.visible {
+      transform: translateX(0);
+    }
+
+    .rewards-panel h2 {
+      padding: 15px;
+      margin: 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .rewards-available {
+      padding: 15px;
+      font-size: 16px;
+      font-weight: bold;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .rewards-content {
+      padding: 15px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .reward-item {
+      margin: 10px 0;
+      padding: 15px;
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .reward-item:hover {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .reward-item.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .reward-item h3 {
+      margin: 0 0 10px 0;
+      font-size: 16px;
+    }
+
+    .reward-item p {
+      margin: 0;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .reward-history {
+      margin-top: 20px;
+      padding-top: 15px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .reward-history h3 {
+      margin: 0 0 10px 0;
+      font-size: 16px;
+    }
+
+    .reward-history-item {
+      margin: 5px 0;
+      padding: 10px;
+      background-color: rgba(255, 255, 255, 0.05);
+      border-radius: 5px;
+      font-size: 14px;
+    }
+
+    .reward-history-item .date {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.5);
+      margin-top: 5px;
+    }
+
+    #show-rewards {
+      -webkit-app-region: no-drag;
+      background-color: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 20px;
+      padding: 5px;
+      margin: 0 5px;
+    }
+
+    /* Light mode adjustments for rewards panel */
+    html.light-mode .rewards-panel {
+      background-color: #f5f5f5;
+      box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+    }
+
+    html.light-mode .reward-item {
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    html.light-mode .reward-item:hover {
+      background-color: rgba(0, 0, 0, 0.1);
+    }
+
+    html.light-mode .reward-history-item {
+      background-color: rgba(0, 0, 0, 0.03);
+    }
+
+    html.light-mode .reward-history-item .date {
+      color: rgba(0, 0, 0, 0.5);
     }
   </style>
 

@@ -5,6 +5,7 @@ import { autoUpdater, UpdateInfo, ProgressInfo } from 'electron-updater';
 // Import player profile functions
 import * as playerProfile from './playerProfile';
 import { APP_CONFIG } from './config';
+import { RewardType } from './rewards';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -223,6 +224,22 @@ const createWindow = () => {
   ipcMain.handle('player:remove-completed-chore', (event, { choreId }) => {
     // Use the proper updateChoreStatus function instead of the XP workaround
     const updatedProfile = playerProfile.updateChoreStatus(playerProfileData, choreId, 'incomplete');
+    playerProfile.savePlayerProfile(updatedProfile);
+    playerProfileData = updatedProfile;
+    return updatedProfile;
+  });
+
+  // Add handlers for rewards
+  ipcMain.handle('get-available-rewards', () => {
+    return playerProfileData.rewards ? playerProfileData.rewards.available : 0;
+  });
+
+  ipcMain.handle('use-reward', (event, rewardType, rewardValue) => {
+    const updatedProfile = playerProfile.useReward(
+      playerProfileData, 
+      rewardType as RewardType, 
+      rewardValue
+    );
     playerProfile.savePlayerProfile(updatedProfile);
     playerProfileData = updatedProfile;
     return updatedProfile;

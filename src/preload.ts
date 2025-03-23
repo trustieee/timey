@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import { RewardType } from './rewards';
 
 // Define global Window interface extension for TypeScript
 declare global {
@@ -15,6 +16,9 @@ declare global {
             addCompletedChore: (choreId: number, choreText: string) => Promise<any>;
             removeCompletedChore: (choreId: number) => Promise<any>;
             updateChoreStatus: (choreId: number, status: string) => Promise<any>;
+            // New rewards methods
+            getAvailableRewards: () => Promise<number>;
+            useReward: (rewardType: RewardType, rewardValue: number) => Promise<any>;
         }
     }
 }
@@ -29,6 +33,9 @@ interface PlayerProfile {
         text: string;
         completedAt: string;
     }>;
+    rewards?: {
+        available: number;
+    };
 }
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -48,5 +55,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     removeXp: (amount: number) => ipcRenderer.invoke('remove-xp', amount),
     addCompletedChore: (choreId: number, choreText: string) => ipcRenderer.invoke('player:add-completed-chore', { choreId, choreText }),
     removeCompletedChore: (choreId: number) => ipcRenderer.invoke('player:remove-completed-chore', { choreId }),
-    updateChoreStatus: (choreId: number, status: string) => ipcRenderer.invoke('update-chore-status', choreId, status)
+    updateChoreStatus: (choreId: number, status: string) => ipcRenderer.invoke('update-chore-status', choreId, status),
+    
+    // Rewards APIs
+    getAvailableRewards: () => ipcRenderer.invoke('get-available-rewards'),
+    useReward: (rewardType: RewardType, rewardValue: number) => ipcRenderer.invoke('use-reward', rewardType, rewardValue)
 });

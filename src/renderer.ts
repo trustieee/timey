@@ -12,6 +12,7 @@ import {
     formatClockDate,
     formatClockTime
 } from './utils';
+import { REWARDS, Reward, RewardType } from './rewards';
 
 // Define app states
 enum AppState {
@@ -33,6 +34,9 @@ interface PlayerProfile {
     xp: number;
     xpToNextLevel: number;
     history: { [date: string]: DayProgress };
+    rewards?: {
+        available: number;
+    };
 }
 
 // Interface for completed chores tracking
@@ -50,6 +54,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const xpBarElement = document.getElementById('xp-bar') as HTMLElement;
     const xpTextElement = document.querySelector('.xp-text') as HTMLElement;
     const levelIndicatorElement = document.querySelector('.level-indicator') as HTMLElement;
+
+    // Rewards panel elements
+    const rewardsBtn = document.getElementById('show-rewards') as HTMLButtonElement;
+    const rewardsPanel = document.getElementById('rewards-panel') as HTMLElement;
+    const rewardsContent = rewardsPanel.querySelector('.rewards-content') as HTMLElement;
+    const availableRewardsCount = document.getElementById('available-rewards-count') as HTMLElement;
 
     // Player profile data
     let playerProfile: PlayerProfile;
@@ -590,6 +600,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     function toggleHistoryPanel(e: MouseEvent): void {
         e.stopPropagation(); // Prevent event from bubbling up
         historyPanel.classList.toggle('visible');
+        
+        // Hide rewards panel if it's open
+        if (rewardsPanel.classList.contains('visible')) {
+            rewardsPanel.classList.remove('visible');
+        }
+        
         if (historyPanel.classList.contains('visible')) {
             // Refresh player profile before rendering history
             loadPlayerProfile().then(() => {
@@ -649,10 +665,174 @@ document.addEventListener('DOMContentLoaded', async () => {
             historyPanel.classList.contains('visible')) {
             historyPanel.classList.remove('visible');
         }
+
+        if (!rewardsPanel.contains(target) &&
+            !rewardsBtn.contains(target) &&
+            rewardsPanel.classList.contains('visible')) {
+            rewardsPanel.classList.remove('visible');
+        }
     });
 
     // Prevent clicks inside the history panel from closing it
     historyPanel.addEventListener('click', (e: MouseEvent) => {
+        e.stopPropagation();
+    });
+
+    // Rewards panel functionality
+    function toggleRewardsPanel(e: MouseEvent): void {
+        e.stopPropagation(); // Prevent event from bubbling up
+        rewardsPanel.classList.toggle('visible');
+        
+        // Hide history panel if it's open
+        if (historyPanel.classList.contains('visible')) {
+            historyPanel.classList.remove('visible');
+        }
+        
+        if (rewardsPanel.classList.contains('visible')) {
+            // Refresh player profile before rendering rewards
+            loadPlayerProfile().then(() => {
+                renderRewards();
+            });
+        }
+    }
+
+    async function renderRewards(): Promise<void> {
+        rewardsContent.innerHTML = '';
+        
+        // Get available rewards from player profile
+        const availableRewards = playerProfile.rewards ? playerProfile.rewards.available : 0;
+        availableRewardsCount.textContent = availableRewards.toString();
+        
+        // Create reward items
+        REWARDS.forEach(reward => {
+            const rewardElement = document.createElement('div');
+            rewardElement.className = `reward-item${availableRewards === 0 ? ' disabled' : ''}`;
+            
+            rewardElement.innerHTML = `
+                <h3>${reward.name}</h3>
+                <p>${reward.description}</p>
+            `;
+            
+            // Add click handler if rewards are available
+            if (availableRewards > 0) {
+                rewardElement.addEventListener('click', () => {
+                    useReward(reward);
+                });
+            }
+            
+            rewardsContent.appendChild(rewardElement);
+        });
+        
+        // Show history of used rewards
+        const rewardHistory = document.createElement('div');
+        rewardHistory.className = 'reward-history';
+        rewardHistory.innerHTML = '<h3>Reward History</h3>';
+        
+        let hasHistory = false;
+        
+        // Gather all reward usages from all days
+        const dates = Object.keys(playerProfile.history).sort().reverse();
+        
+        dates.forEach(date => {
+            const dayHistory = playerProfile.history[date];
+            if (!dayHistory || !dayHistory.rewardsUsed || dayHistory.rewardsUsed.length === 0) return;
+            
+            hasHistory = true;
+            
+            dayHistory.rewardsUsed.forEach(usedReward => {
+                const reward = REWARDS.find(r => r.id === usedReward.type);
+                if (!reward) return;
+                
+                const historyElement = document.createElement('div');
+                historyElement.className = 'reward-history-item';
+                
+                // Format date for display
+                const formattedDate = formatDisplayDate(date);
+                
+                historyElement.innerHTML = `
+                    <div>${reward.name}: ${reward.description}</div>
+                    <div class="date">${formattedDate}</div>
+                `;
+                
+                rewardHistory.appendChild(historyElement);
+            });
+        });
+        
+        if (hasHistory) {
+            rewardsContent.appendChild(rewardHistory);
+        } else {
+            const noHistoryElement = document.createElement('div');
+            noHistoryElement.className = 'reward-history';
+            noHistoryElement.innerHTML = '<h3>Reward History</h3><p>No rewards used yet.</p>';
+            rewardsContent.appendChild(noHistoryElement);
+        }
+    }
+    
+    // Function to use a reward
+    async function useReward(reward: Reward): Promise<void> {
+        try {
+            // Check if player has available rewards
+            if (!playerProfile.rewards || playerProfile.rewards.available <= 0) {
+                alert('No rewards available to use!');
+                return;
+            }
+            
+            // Confirm the reward usage
+            const confirmed = confirm(`Are you sure you want to use the "${reward.name}" reward?\n\n${reward.description}`);
+            if (!confirmed) return;
+            
+            // Use the reward
+            playerProfile = await window.electronAPI.useReward(reward.id, reward.value);
+            
+            // Apply reward effect
+            if (reward.id === RewardType.EXTEND_PLAY_TIME) {
+                // If we're already playing, add time to the current timer
+                if (currentState === AppState.PLAYING) {
+                    timeLeft += reward.value * 60; // Convert to seconds
+                    updateTimerDisplay();
+                } else {
+                    // Otherwise, just increase the base play time for next play session
+                    APP_CONFIG.TIMER.PLAY_TIME_MINUTES += reward.value;
+                    // Need to update timeLeft too if we're in READY state
+                    if (currentState === AppState.READY) {
+                        timeLeft = APP_CONFIG.TIMER.PLAY_TIME_MINUTES * 60;
+                        updateTimerDisplay();
+                    }
+                }
+                showNotification('Reward Used', `Added ${reward.value} minutes to play time!`);
+            } else if (reward.id === RewardType.REDUCE_COOLDOWN) {
+                // If in cooldown, reduce time
+                if (currentState === AppState.COOLDOWN) {
+                    timeLeft = Math.max(0, timeLeft - reward.value * 60); // Convert to seconds
+                    updateTimerDisplay();
+                    
+                    // Check if cooldown is now complete
+                    if (timeLeft <= 0) {
+                        stopTimer();
+                        showNotification('Cooldown Complete', 'Your cooldown time is over! You may start playing again.');
+                        updateResetButtonState();
+                    }
+                } else {
+                    // Otherwise, just decrease the base cooldown time for next cooldown
+                    APP_CONFIG.TIMER.COOLDOWN_TIME_MINUTES = Math.max(0, APP_CONFIG.TIMER.COOLDOWN_TIME_MINUTES - reward.value);
+                }
+                showNotification('Reward Used', `Reduced cooldown time by ${reward.value} minutes!`);
+            }
+            
+            // Refresh UI
+            renderRewards();
+            updateXpDisplay();
+        } catch (error) {
+            console.error('Error using reward:', error);
+            alert('Error using reward. Please try again.');
+        }
+    }
+
+    // Add event listener for rewards button  
+    rewardsBtn.addEventListener('click', toggleRewardsPanel);
+    
+    // Prevent clicks inside the rewards panel from closing it
+    rewardsPanel.addEventListener('click', (e: MouseEvent) => {
         e.stopPropagation();
     });
 
