@@ -64,6 +64,49 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const version = await window.electronAPI.getAppVersion();
             appVersionElement.textContent = `v${version}`;
+            
+            // Make the version clickable for update checks
+            appVersionElement.style.cursor = 'pointer';
+            appVersionElement.title = 'Click to check for updates';
+            // Make sure it's not part of the drag region
+            appVersionElement.style.setProperty('-webkit-app-region', 'no-drag');
+            
+            // Add click handler for update checks
+            appVersionElement.addEventListener('click', async () => {
+                console.log('Checking for updates...');
+                appVersionElement.textContent = 'Checking...';
+                
+                try {
+                    const result = await window.electronAPI.checkForUpdates();
+                    console.log('Update check result:', result);
+                    
+                    if (result.success) {
+                        if (result.updateAvailable) {
+                            appVersionElement.textContent = `v${version} → v${result.latestVersion}`;
+                            setTimeout(() => {
+                                appVersionElement.textContent = `v${version}`;
+                            }, 5000);
+                        } else {
+                            appVersionElement.textContent = `v${version} (latest)`;
+                            setTimeout(() => {
+                                appVersionElement.textContent = `v${version}`;
+                            }, 3000);
+                        }
+                    } else {
+                        appVersionElement.textContent = `v${version} (error)`;
+                        console.error('Update check failed:', result.error);
+                        setTimeout(() => {
+                            appVersionElement.textContent = `v${version}`;
+                        }, 3000);
+                    }
+                } catch (error) {
+                    console.error('Error checking for updates:', error);
+                    appVersionElement.textContent = `v${version} (error)`;
+                    setTimeout(() => {
+                        appVersionElement.textContent = `v${version}`;
+                    }, 3000);
+                }
+            });
         } catch (error) {
             console.error('Error getting app version:', error);
         }

@@ -19,6 +19,20 @@ autoUpdater.logger = console;
 autoUpdater.allowDowngrade = false;
 autoUpdater.allowPrerelease = true;
 autoUpdater.channel = "latest";
+// Force update configuration even in development mode
+autoUpdater.forceDevUpdateConfig = true;
+
+// Handle development mode updates differently
+const isDev = process.env.NODE_ENV === 'development';
+if (isDev) {
+  console.log('Running in development mode');
+  // Use the dev-app-update.yml file
+  process.env.APPIMAGE = path.join(__dirname, 'dev-app-update.yml');
+}
+
+// Enable debug logs
+console.log('Auto-updater debugging enabled');
+console.log('Current app version:', app.getVersion());
 
 // Get app version from package.json
 const appVersion = app.getVersion();
@@ -33,20 +47,25 @@ autoUpdater.on('checking-for-update', () => {
 
 autoUpdater.on('update-available', (info: UpdateInfo) => {
   console.log('Update available:', info);
+  console.log(`Current version: ${app.getVersion()}, New version: ${info.version}`);
   dialog.showMessageBox({
     type: 'info',
     title: 'Update Available',
     message: `A new version (${info.version}) is available and will be installed on quit.`,
+    detail: `Current version: ${app.getVersion()}`,
     buttons: ['OK']
   });
 });
 
-autoUpdater.on('update-not-available', () => {
+autoUpdater.on('update-not-available', (info: any) => {
   console.log('Update not available');
+  console.log('Update info:', info);
+  console.log(`Current version: ${app.getVersion()}`);
 });
 
 autoUpdater.on('error', (err) => {
   console.error('Auto updater error:', err);
+  console.error('Error details:', err.toString());
 });
 
 autoUpdater.on('download-progress', (progressObj: ProgressInfo) => {
@@ -114,7 +133,27 @@ const createWindow = () => {
         {
           label: 'Check for Updates',
           click: () => {
-            autoUpdater.checkForUpdatesAndNotify().catch((err: Error) => {
+            console.log('Manual update check initiated');
+            // Show dialog that we're checking for updates
+            dialog.showMessageBox({
+              type: 'info',
+              title: 'Checking for Updates',
+              message: 'Checking for updates...',
+              buttons: ['OK']
+            });
+            
+            // Force check for updates
+            autoUpdater.checkForUpdates().then((checkResult) => {
+              console.log('Update check result:', checkResult);
+              if (!checkResult) {
+                dialog.showMessageBox({
+                  type: 'info',
+                  title: 'No Updates Available',
+                  message: `You're running the latest version (${app.getVersion()})`,
+                  buttons: ['OK']
+                });
+              }
+            }).catch((err: Error) => {
               console.error('Error checking for updates:', err);
               dialog.showMessageBox({
                 type: 'error',
@@ -173,6 +212,27 @@ const createWindow = () => {
   // Add IPC handler to get the app version
   ipcMain.handle('get-app-version', () => {
     return appVersion;
+  });
+
+  // Add IPC handler for checking updates
+  ipcMain.handle('check-for-updates', async () => {
+    try {
+      console.log('Update check requested via IPC');
+      const checkResult = await autoUpdater.checkForUpdates();
+      console.log('Update check result:', checkResult);
+      return {
+        success: true,
+        updateAvailable: !!checkResult?.updateInfo,
+        currentVersion: app.getVersion(),
+        latestVersion: checkResult?.updateInfo?.version || null
+      };
+    } catch (err) {
+      console.error('Error checking for updates via IPC:', err);
+      return { 
+        success: false, 
+        error: err.toString() 
+      };
+    }
   });
 
   // Also need to expose a way to get initial theme state
