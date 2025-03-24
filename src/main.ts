@@ -63,6 +63,7 @@ const createWindow = async () => {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true
     },
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#333333' : '#f8f9fa', // Match theme background color
     alwaysOnTop: false,
@@ -75,6 +76,17 @@ const createWindow = async () => {
     resizable: false,
     show: false, // Don't show the window until it's ready
   });
+  
+  // Set Content Security Policy
+  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': ["default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebase.com https://*.firebaseapp.com"]
+      }
+    });
+  });
+  
   mainWindow.webContents.openDevTools();
 
   // Create application menu without update option
