@@ -1,16 +1,14 @@
-import { app, BrowserWindow, ipcMain, nativeTheme, Menu, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, nativeTheme, Menu, globalShortcut } from 'electron';
 import * as path from 'path';
 import started from 'electron-squirrel-startup';
 // Import player profile functions
 import * as playerProfile from './playerProfile';
-import { APP_CONFIG } from './config';
+import { PlayerProfile as BasePlayerProfile } from './playerProfile';
 import { RewardType } from './rewards';
 // Import dotenv for loading environment variables
 import * as dotenv from 'dotenv';
 // Import Firebase authentication
-import { authenticateWithFirebase, auth, initializeFirebase } from './services/firebase';
-// Import global shortcut module
-import { globalShortcut } from 'electron';
+import { auth, initializeFirebase } from './services/firebase';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -25,7 +23,14 @@ let isAuthenticated = false;
 let authenticatedEmail: string | null = null;
 
 // Player profile for the app session
-let playerProfileData: any = null;
+let playerProfileData: PlayerProfile = null;
+
+// Define the extended PlayerProfile type
+type PlayerProfile = BasePlayerProfile & {
+    level: number;
+    xp: number;
+    xpToNextLevel: number;
+};
 
 // Function to refresh player profile data
 async function refreshPlayerProfileData() {
@@ -186,7 +191,7 @@ const createWindow = async () => {
   });
 
   // Add handlers for completed chores
-  ipcMain.handle('player:add-completed-chore', async (event, { choreId, choreText }) => {
+  ipcMain.handle('player:add-completed-chore', async (event, { choreId }) => {
     // Use the proper updateChoreStatus function instead of the XP workaround
     const updatedProfile = await playerProfile.updateChoreStatus(playerProfileData, choreId, 'completed');
     playerProfileData = updatedProfile;

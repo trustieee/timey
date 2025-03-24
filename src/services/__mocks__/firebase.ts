@@ -1,6 +1,5 @@
 // Mock of firebase service for Jest testing
 import { UserCredential } from 'firebase/auth';
-import { PlayerProfile } from '../../playerProfile';
 
 // Mock app, auth, and db exports
 export const app = {};
@@ -35,7 +34,7 @@ export const initializeFirebase = jest.fn().mockImplementation(async () => {
 export const authenticateWithFirebase = jest.fn().mockImplementation(async () => {
   console.log('Mock Firebase: Authenticating with Firebase');
   await initializeFirebase();
-  
+
   // Return a minimal mock of UserCredential
   return {
     user: {

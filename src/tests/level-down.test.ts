@@ -1,6 +1,5 @@
 import { APP_CONFIG } from '../config';
 import {
-  getXpRequiredForLevel,
   calculatePlayerStats,
   PlayerProfile,
   DayProgress,
@@ -11,7 +10,6 @@ import {
 describe('Level Down Simulation Tests', () => {
   // Helper function to create a day's progress with specific completion
   function createDayProgress(date: string, completedCount: number, incompleteCount: number): DayProgress {
-    const totalChores = completedCount + incompleteCount;
     const statuses: ChoreStatus[] = [];
 
     // Add completed chores

@@ -1,6 +1,6 @@
 import { initializeApp, FirebaseApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, UserCredential, onAuthStateChanged, Auth } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, enableIndexedDbPersistence, connectFirestoreEmulator, Firestore, DocumentReference } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, Firestore, DocumentReference } from 'firebase/firestore';
 import { PlayerProfile } from '../playerProfile';
 
 // Check if we're in a test environment
@@ -39,7 +39,7 @@ const mockAuth: Auth = {
   app: mockApp,
   name: 'auth',
   config: {
-    apiKey: 'mock-api-key', 
+    apiKey: 'mock-api-key',
     apiHost: 'mock-host',
     apiScheme: 'https',
     tokenApiHost: 'mock-token-host',
@@ -57,7 +57,7 @@ const mockAuth: Auth = {
   beforeAuthStateChanged: () => { /* empty before auth state change handler */ return () => { /* empty cleanup function */ }; },
   authStateReady: () => { /* empty auth state ready function */ return Promise.resolve(); },
   emulatorConfig: null,
-  useDeviceLanguage: function() { /* empty language setter */ }
+  useDeviceLanguage: function () { /* empty language setter */ }
 };
 
 const mockFirestore = {
@@ -123,7 +123,7 @@ export const initializeFirebase = async (): Promise<boolean> => {
     const userCredential = await signInWithEmailAndPassword(auth, HARDCODED_EMAIL, HARDCODED_PASSWORD);
     console.log('Successfully authenticated with Firebase');
     console.log('User:', userCredential.user.email);
-    
+
     // Then verify Firestore access
     try {
       // Check if the user's profile document can be accessed
@@ -141,7 +141,7 @@ export const initializeFirebase = async (): Promise<boolean> => {
         firestoreAvailable = false;
       }
     }
-    
+
     authInitialized = true;
     return firestoreAvailable;
   } catch (error: any) {
@@ -205,7 +205,7 @@ export const loadPlayerProfileFromFirestore = async (): Promise<PlayerProfile | 
   if (!authInitialized) {
     await initializeFirebase();
   }
-  
+
   if (!firestoreAvailable) {
     console.log('Firestore not available for loading - skipping remote load');
     return null;
@@ -215,7 +215,7 @@ export const loadPlayerProfileFromFirestore = async (): Promise<PlayerProfile | 
     console.log(`Loading player profile from Firestore for user: ${USER_ID}`);
     const docRef = doc(db, 'playerProfiles', USER_ID);
     const docSnap = await getDoc(docRef);
-    
+
     if (docSnap.exists()) {
       console.log('Player profile loaded from Firestore');
       return docSnap.data() as PlayerProfile;
@@ -245,7 +245,7 @@ export const savePlayerProfileToFirestore = async (profile: PlayerProfile): Prom
   if (!authInitialized) {
     await initializeFirebase();
   }
-  
+
   if (!firestoreAvailable) {
     console.log('Firestore not available for saving - skipping remote save');
     return;

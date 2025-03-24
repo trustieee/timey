@@ -8,7 +8,7 @@ import {
   useReward
 } from '../playerProfile';
 import { APP_CONFIG } from '../config';
-import { getLocalDateString, getPreviousDateString, parseLocalDate } from '../utils';
+import { getLocalDateString, getPreviousDateString } from '../utils';
 import { RewardType } from '../rewards';
 
 // Mock fs module to avoid actual file operations
@@ -310,9 +310,6 @@ describe('Timer Functionality and Day Transitions', () => {
       profile.history[today] = createDayProgress(today);
       profile.rewards.available = 2;
 
-      // Record the default play time from config
-      const originalPlayTime = APP_CONFIG.TIMER.PLAY_TIME_MINUTES;
-
       // Use the extend play time reward
       const updatedProfile = await useReward(
         profile,
@@ -340,9 +337,6 @@ describe('Timer Functionality and Day Transitions', () => {
       // Initialize today and add some rewards
       profile.history[today] = createDayProgress(today);
       profile.rewards.available = 2;
-
-      // Record the default cooldown time from config
-      const originalCooldownTime = APP_CONFIG.TIMER.COOLDOWN_TIME_MINUTES;
 
       // Use the reduce cooldown reward
       const updatedProfile = await useReward(

@@ -5,9 +5,7 @@ import {
   PlayerProfile,
   DayProgress,
   finalizeDayProgress,
-  ChoreStatus,
-  addXp,
-  removeXp
+  ChoreStatus
 } from '../playerProfile';
 
 describe('Comprehensive XP & Leveling Tests', () => {
@@ -143,7 +141,6 @@ describe('Comprehensive XP & Leveling Tests', () => {
       };
 
       const multiDayStats = calculatePlayerStats(multiDayProfile);
-      const expectedTotalXp = 120 + 80 + 80; // 280 XP total
 
       // Check that level and XP progress are correct
       expect(multiDayStats.level).toBe(1);
@@ -284,9 +281,6 @@ describe('Comprehensive XP & Leveling Tests', () => {
         allCompletedDay,
         Array(12).fill('completed' as ChoreStatus)
       );
-
-      // Before finalization
-      const beforeXp = { ...penaltyProfile.history[allCompletedDay].xp };
 
       // Finalize day
       penaltyProfile = finalizeDayProgress(penaltyProfile, allCompletedDay) as PlayerProfile;

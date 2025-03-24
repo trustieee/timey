@@ -3,12 +3,11 @@
  */
 
 import './index.css';
-import { ChoreStatus, DayProgress } from './playerProfile';
+import { ChoreStatus, DayProgress, PlayerProfile as BasePlayerProfile } from './playerProfile';
 import { APP_CONFIG } from './config';
 import { 
     getLocalDateString, 
     formatDisplayDate, 
-    parseLocalDate,
     formatClockDate,
     formatClockTime
 } from './utils';
@@ -28,25 +27,16 @@ interface Chore {
     status: ChoreStatus;
 }
 
-// Define player profile interface
-interface PlayerProfile {
+// Define renderer-specific player profile interface
+interface RendererPlayerProfile extends BasePlayerProfile {
     level: number;
     xp: number;
     xpToNextLevel: number;
-    history: { [date: string]: DayProgress };
-    rewards?: {
-        available: number;
-        permanent: {
-            [rewardType in RewardType]?: number;
-        };
-    };
-}
-
-// Interface for completed chores tracking
-interface CompletedChore {
-    id: number;
-    text: string;
-    completedAt: string; // ISO datetime string in local time
+    completedChores: Array<{
+        id: number;
+        text: string;
+        completedAt: string;
+    }>;
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -68,12 +58,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     const availableRewardsCount = document.getElementById('available-rewards-count') as HTMLElement;
 
     // Player profile data
-    let playerProfile: PlayerProfile;
+    let playerProfile: RendererPlayerProfile;
 
     // Load player profile
     async function loadPlayerProfile() {
         try {
-            playerProfile = await window.electronAPI.loadPlayerProfile();
+            const baseProfile = await window.electronAPI.loadPlayerProfile();
+            // Convert base profile to renderer profile
+            playerProfile = {
+                ...baseProfile,
+                level: calculateLevel(baseProfile),
+                xp: calculateXp(baseProfile),
+                xpToNextLevel: calculateXpToNextLevel(baseProfile),
+                completedChores: getCompletedChores(baseProfile)
+            };
             updateXpDisplay();
         } catch (error) {
             console.error('Error loading player profile:', error);
@@ -82,9 +80,59 @@ document.addEventListener('DOMContentLoaded', async () => {
                 level: 1,
                 xp: 0,
                 xpToNextLevel: APP_CONFIG.PROFILE.XP_PER_LEVEL[0],
-                history: {}
+                history: {},
+                completedChores: [],
+                rewards: {
+                    available: 0,
+                    permanent: {}
+                }
             };
         }
+    }
+
+    // Helper functions to calculate profile properties
+    function calculateLevel(profile: BasePlayerProfile): number {
+        // Implementation from playerProfile.ts
+        let totalXp = 0;
+        for (const date in profile.history) {
+            totalXp += profile.history[date].xp.final;
+        }
+        let level = 1;
+        while (totalXp >= APP_CONFIG.PROFILE.XP_PER_LEVEL[level - 1]) {
+            totalXp -= APP_CONFIG.PROFILE.XP_PER_LEVEL[level - 1];
+            level++;
+        }
+        return level;
+    }
+
+    function calculateXp(profile: BasePlayerProfile): number {
+        let totalXp = 0;
+        for (const date in profile.history) {
+            totalXp += profile.history[date].xp.final;
+        }
+        return totalXp;
+    }
+
+    function calculateXpToNextLevel(profile: BasePlayerProfile): number {
+        const level = calculateLevel(profile);
+        return APP_CONFIG.PROFILE.XP_PER_LEVEL[level - 1];
+    }
+
+    function getCompletedChores(profile: BasePlayerProfile): Array<{ id: number; text: string; completedAt: string }> {
+        const completedChores: Array<{ id: number; text: string; completedAt: string }> = [];
+        for (const date in profile.history) {
+            const dayProgress = profile.history[date];
+            for (const chore of dayProgress.chores) {
+                if (chore.status === 'completed' && chore.completedAt) {
+                    completedChores.push({
+                        id: chore.id,
+                        text: chore.text,
+                        completedAt: chore.completedAt
+                    });
+                }
+            }
+        }
+        return completedChores;
     }
 
     // Update XP display
@@ -101,36 +149,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Update level indicator
         levelIndicatorElement.textContent = `Level ${playerProfile.level}`;
-    }
-
-    // Add XP to player
-    async function addXp(amount: number) {
-        try {
-            playerProfile = await window.electronAPI.addXp(amount);
-            updateXpDisplay();
-        } catch (error) {
-            console.error('Error adding XP:', error);
-        }
-    }
-
-    // Add completed chore
-    async function addCompletedChore(choreId: number, choreText: string) {
-        try {
-            playerProfile = await window.electronAPI.addCompletedChore(choreId, choreText);
-            updateXpDisplay();
-        } catch (error) {
-            console.error('Error adding completed chore:', error);
-        }
-    }
-
-    // Remove completed chore
-    async function removeCompletedChore(choreId: number) {
-        try {
-            playerProfile = await window.electronAPI.removeCompletedChore(choreId);
-            updateXpDisplay();
-        } catch (error) {
-            console.error('Error removing completed chore:', error);
-        }
     }
 
     // Load player profile at startup
@@ -579,10 +597,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Check if all chores are completed or N/A
     function checkAllChoresCompleted(): void {
-        const allDone = chores.every(chore =>
-            chore.status === 'completed' || chore.status === 'na'
-        );
-
         // Always show completion message, but with different text based on completion
         completionMessage.classList.remove('hidden');
         updateResetButtonState();
@@ -866,7 +880,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!confirmed) return;
             
             // Use the reward
-            playerProfile = await window.electronAPI.useReward(reward.id, reward.value);
+            const baseProfile = await window.electronAPI.useReward(reward.id, reward.value);
+            // Convert base profile to renderer profile
+            playerProfile = {
+                ...baseProfile,
+                level: calculateLevel(baseProfile),
+                xp: calculateXp(baseProfile),
+                xpToNextLevel: calculateXpToNextLevel(baseProfile),
+                completedChores: getCompletedChores(baseProfile)
+            };
             
             // Apply reward effect
             if (reward.id === RewardType.EXTEND_PLAY_TIME) {
@@ -887,9 +909,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 showNotification('Reward Used', `Added ${reward.value} minutes to play time permanently!`);
             } else if (reward.id === RewardType.REDUCE_COOLDOWN) {
-                // Get updated permanent cooldown reduction
-                const permanentReduction = getPermanentCooldownReduction();
-                
                 // If in cooldown, reduce time
                 if (currentState === AppState.COOLDOWN) {
                     // Apply the immediate reduction from the reward
@@ -927,7 +946,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     function playNotificationSound(): void {
         // You would need to add a sound file to your project and implement proper audio playback
         // For now, we'll just log to console
-        console.log('Playing notification sound');
         // Example implementation:
         // const audio = new Audio('path/to/notification.mp3');
         // audio.play();
@@ -1143,7 +1161,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     `;
     document.head.appendChild(style);
 
-    // Add a function to reload the profile and update UI
+    // Function to reload profile
     async function reloadProfile(): Promise<void> {
         try {
             // Store the previous profile to compare dates
@@ -1151,7 +1169,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const previousDate = previousProfile ? Object.keys(previousProfile.history).sort().pop() : null;
             
             // Reload the profile data
-            playerProfile = await window.electronAPI.loadPlayerProfile();
+            const baseProfile = await window.electronAPI.loadPlayerProfile();
+            // Convert base profile to renderer profile
+            playerProfile = {
+                ...baseProfile,
+                level: calculateLevel(baseProfile),
+                xp: calculateXp(baseProfile),
+                xpToNextLevel: calculateXpToNextLevel(baseProfile),
+                completedChores: getCompletedChores(baseProfile)
+            };
             updateXpDisplay();
             
             // Apply permanent bonuses after profile reload
@@ -1180,8 +1206,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             loadTodayChores().then(() => {
                 renderChores();
             });
+            
+            renderRewards();
         } catch (error) {
             console.error('Error reloading profile:', error);
+            alert('Error reloading profile. Please try again.');
         }
     }
 
@@ -1207,22 +1236,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (pauseButton) pauseButton.disabled = true;
         } catch (error) {
             console.error('Error resetting app state:', error);
-        }
-    }
-
-    // Pause the timer
-    function pauseTimer() {
-        try {
-            if (currentState === AppState.PLAYING && timerInterval) {
-                isPaused = true;
-                updatePauseButtonText();
-                currentStateElement.textContent = getStateDisplayName(currentState);
-            } else {
-                console.warn(`Cannot pause timer from state: ${currentState}`);
-            }
-        } catch (error) {
-            console.error('Error pausing timer:', error);
-            resetAppState();
         }
     }
 });

@@ -291,23 +291,18 @@ describe('Rewards Functionality', () => {
     });
 
     test('Should apply rewards correctly when permanent object is missing', async () => {
-        // Create a profile with missing permanent field
-        type ProfileWithoutPermanent = Omit<PlayerProfile & { level: number, xp: number, xpToNextLevel: number }, 'rewards'> & {
-            rewards: {
-                available: number;
-            }
-        };
         
-        const profileWithoutPermanent: ProfileWithoutPermanent = {
+        const profileWithoutPermanent: playerProfile.PlayerProfile & { level: number, xp: number, xpToNextLevel: number } = {
             ...testProfile,
             rewards: {
-                available: 3
+                available: 3,
+                permanent: {}
             }
         };
 
         // Use a reward
         const updatedProfile = await playerProfile.useReward(
-            profileWithoutPermanent as any,
+            profileWithoutPermanent,
             RewardType.EXTEND_PLAY_TIME,
             30
         );
@@ -318,18 +313,14 @@ describe('Rewards Functionality', () => {
     });
 
     test('Should retrieve correct permanentBonus value when rewards object is missing', () => {
-        // Simulate profile with missing rewards object
-        type ProfileWithoutRewards = Omit<PlayerProfile, 'rewards'> & {
-            history: Record<string, DayProgress>;
-        };
-        
-        const profileWithoutRewards: ProfileWithoutRewards = {
+        // Use a partial profile with only the required fields
+        const profileWithoutRewards: Partial<PlayerProfile> = {
             history: {},
         };
 
         // Get permanent bonuses
-        const playTimeBonus = playerProfile.getPermanentPlayTimeBonus(profileWithoutRewards as any);
-        const cooldownReduction = playerProfile.getPermanentCooldownReduction(profileWithoutRewards as any);
+        const playTimeBonus = playerProfile.getPermanentPlayTimeBonus(profileWithoutRewards as PlayerProfile);
+        const cooldownReduction = playerProfile.getPermanentCooldownReduction(profileWithoutRewards as PlayerProfile);
 
         // Should return 0 as default value
         expect(playTimeBonus).toBe(0);

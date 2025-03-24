@@ -558,6 +558,8 @@ export async function endPlaySession(
             // Calculate minutes played in this session
             const startTime = new Date(lastSession.start).getTime();
             const endTime = new Date(lastSession.end).getTime();
+            // minutesPlayed is used for future features
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const minutesPlayed = Math.floor((endTime - startTime) / (1000 * 60));
         }
     }
@@ -596,14 +598,19 @@ export function getPermanentCooldownReduction(profile: PlayerProfile): number {
 // to make the tests work properly without requiring awaits
 if (isTestEnvironment) {
     // Create synchronous versions of async functions for testing
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const originalUpdateChoreStatus = updateChoreStatus;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const originalUseReward = useReward;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const originalAddXp = addXp;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const originalRemoveXp = removeXp;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const originalSavePlayerProfile = savePlayerProfile;
 
     // Override updateChoreStatus to be synchronous in tests
-    (updateChoreStatus as any) = function (
+    (updateChoreStatus as unknown as (profile: PlayerProfile & { level: number, xp: number, xpToNextLevel: number }, choreId: number, status: ChoreStatus) => PlayerProfile & { level: number, xp: number, xpToNextLevel: number }) = function (
         profile: PlayerProfile & { level: number, xp: number, xpToNextLevel: number },
         choreId: number,
         status: ChoreStatus
@@ -636,9 +643,9 @@ if (isTestEnvironment) {
 
         // Handle XP changes synchronously for tests
         if (oldStatus === 'completed' && status !== 'completed') {
-            return (removeXp as any)(updatedProfile, APP_CONFIG.PROFILE.XP_FOR_CHORE);
+            return ((removeXp as unknown as (profile: PlayerProfile & { level: number, xp: number, xpToNextLevel: number }, xpAmount: number) => PlayerProfile & { level: number, xp: number, xpToNextLevel: number })(updatedProfile, APP_CONFIG.PROFILE.XP_FOR_CHORE));
         } else if (oldStatus !== 'completed' && status === 'completed') {
-            return (addXp as any)(updatedProfile, APP_CONFIG.PROFILE.XP_FOR_CHORE);
+            return ((addXp as unknown as (profile: PlayerProfile & { level: number, xp: number, xpToNextLevel: number }, xpAmount: number) => PlayerProfile & { level: number, xp: number, xpToNextLevel: number })(updatedProfile, APP_CONFIG.PROFILE.XP_FOR_CHORE));
         }
 
         const stats = calculatePlayerStats(updatedProfile);
@@ -651,7 +658,7 @@ if (isTestEnvironment) {
     };
 
     // Override useReward to be synchronous in tests
-    (useReward as any) = function (
+    (useReward as unknown as (profile: PlayerProfile & { level: number, xp: number, xpToNextLevel: number }, rewardType: RewardType, value: number) => PlayerProfile & { level: number, xp: number, xpToNextLevel: number }) = function (
         profile: PlayerProfile & { level: number, xp: number, xpToNextLevel: number },
         rewardType: RewardType,
         value: number
@@ -713,7 +720,7 @@ if (isTestEnvironment) {
     };
 
     // Override addXp to be synchronous in tests
-    (addXp as any) = function (
+    (addXp as unknown as (profile: PlayerProfile & { level: number, xp: number, xpToNextLevel: number }, xpAmount: number) => PlayerProfile & { level: number, xp: number, xpToNextLevel: number }) = function (
         profile: PlayerProfile & { level: number, xp: number, xpToNextLevel: number },
         xpAmount: number
     ): PlayerProfile & { level: number, xp: number, xpToNextLevel: number } {
@@ -753,7 +760,7 @@ if (isTestEnvironment) {
     };
 
     // Override removeXp to be synchronous in tests
-    (removeXp as any) = function (
+    (removeXp as unknown as (profile: PlayerProfile & { level: number, xp: number, xpToNextLevel: number }, xpAmount: number) => PlayerProfile & { level: number, xp: number, xpToNextLevel: number }) = function (
         profile: PlayerProfile & { level: number, xp: number, xpToNextLevel: number },
         xpAmount: number
     ): PlayerProfile & { level: number, xp: number, xpToNextLevel: number } {
@@ -785,7 +792,7 @@ if (isTestEnvironment) {
     };
 
     // Override savePlayerProfile to be a no-op in tests
-    (savePlayerProfile as any) = function (profile: PlayerProfile): void {
+    (savePlayerProfile as unknown as (profile: PlayerProfile) => void) = function (): void {
         // No-op in tests
         return;
     };

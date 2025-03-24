@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { RewardType } from './rewards';
+import { PlayerProfile as BasePlayerProfile } from './playerProfile';
 
 // Define global Window interface extension for TypeScript
 declare global {
@@ -11,38 +12,23 @@ declare global {
             // App version
             getAppVersion: () => Promise<string>;
             // New player profile methods
-            loadPlayerProfile: () => Promise<any>;
-            savePlayerProfile: (profile: any) => Promise<void>;
-            addXp: (amount: number) => Promise<any>;
-            removeXp: (amount: number) => Promise<any>;
-            addCompletedChore: (choreId: number, choreText: string) => Promise<any>;
-            removeCompletedChore: (choreId: number) => Promise<any>;
-            updateChoreStatus: (choreId: number, status: string) => Promise<any>;
+            loadPlayerProfile: () => Promise<BasePlayerProfile>;
+            savePlayerProfile: (profile: BasePlayerProfile) => Promise<void>;
+            addXp: (amount: number) => Promise<BasePlayerProfile>;
+            removeXp: (amount: number) => Promise<BasePlayerProfile>;
+            addCompletedChore: (choreId: number, choreText: string) => Promise<BasePlayerProfile>;
+            removeCompletedChore: (choreId: number) => Promise<BasePlayerProfile>;
+            updateChoreStatus: (choreId: number, status: string) => Promise<BasePlayerProfile>;
             // Play session tracking
-            startPlaySession: () => Promise<any>;
-            endPlaySession: () => Promise<any>;
+            startPlaySession: () => Promise<BasePlayerProfile>;
+            endPlaySession: () => Promise<BasePlayerProfile>;
             // New rewards methods
             getAvailableRewards: () => Promise<number>;
-            useReward: (rewardType: RewardType, rewardValue: number) => Promise<any>;
+            useReward: (rewardType: RewardType, rewardValue: number) => Promise<BasePlayerProfile>;
             // Firebase authentication
             getAuthStatus: () => Promise<{ isAuthenticated: boolean, email: string | null }>;
         }
     }
-}
-
-// Define player profile interface for type safety
-interface PlayerProfile {
-    level: number;
-    xp: number;
-    xpToNextLevel: number;
-    completedChores: Array<{
-        id: number;
-        text: string;
-        completedAt: string;
-    }>;
-    rewards?: {
-        available: number;
-    };
 }
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -60,7 +46,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // Player profile APIs
     loadPlayerProfile: () => ipcRenderer.invoke('load-player-profile'),
-    savePlayerProfile: (profile: PlayerProfile) => ipcRenderer.invoke('save-player-profile', profile),
+    savePlayerProfile: (profile: BasePlayerProfile) => ipcRenderer.invoke('save-player-profile', profile),
     addXp: (amount: number) => ipcRenderer.invoke('add-xp', amount),
     removeXp: (amount: number) => ipcRenderer.invoke('remove-xp', amount),
     addCompletedChore: (choreId: number, choreText: string) => ipcRenderer.invoke('player:add-completed-chore', { choreId, choreText }),
