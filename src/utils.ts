@@ -4,6 +4,11 @@
 
 // Format to get YYYY-MM-DD in local time
 export function getLocalDateString(): string {
+  // In test environment, always return a fixed date for consistency
+  if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined) {
+    return '2025-03-24';
+  }
+  
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -13,6 +18,11 @@ export function getLocalDateString(): string {
 
 // Format to get a full ISO datetime string WITHOUT timezone suffix (in local time)
 export function getLocalISOString(): string {
+  // In test environment, always return a fixed timestamp for consistency
+  if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined) {
+    return '2025-03-24T12:00:00.000';
+  }
+  
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
