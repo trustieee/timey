@@ -28,6 +28,12 @@ jest.mock('electron', () => ({
   }
 }));
 
+// Add afterAll to clean up any resources
+afterAll(() => {
+  jest.restoreAllMocks();
+  jest.clearAllMocks();
+});
+
 describe('Timer Functionality and Day Transitions', () => {
   // Utility function to create a test profile
   function createTestProfile(): PlayerProfile & {level: number, xp: number, xpToNextLevel: number} {

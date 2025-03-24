@@ -388,12 +388,13 @@ export function useReward(
     
     // Check if player has rewards available
     if (!updatedProfile.rewards || updatedProfile.rewards.available <= 0) {
-        console.error('No rewards available to use');
+        // No rewards available - this is an expected condition in some cases
         return updatedProfile;
     }
 
     // Validate reward type
     if (!Object.values(RewardType).includes(rewardType)) {
+        // Invalid reward type - this is an unexpected error
         console.error(`Invalid reward type: ${rewardType}`);
         return updatedProfile;
     }
