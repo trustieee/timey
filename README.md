@@ -14,7 +14,7 @@ npm start
 
 ## Releasing Updates
 
-This application uses GitHub Actions for automated builds and releases, and electron-updater for automatic updates.
+This application uses GitHub Actions for automated builds and releases.
 
 ### How to Release a New Version
 
@@ -31,29 +31,11 @@ This application uses GitHub Actions for automated builds and releases, and elec
 
 You can also manually trigger the build and publish workflow from the GitHub Actions tab.
 
-## Auto-Update Behavior
-
-The app will automatically check for updates when it starts up. When an update is available:
-
-1. Users will see a notification that an update is available
-2. The update will be downloaded in the background
-3. After download, users will be prompted to restart the app to apply the update
-
 ## Configuration
-
-### Environment Variables
-
-The app uses a `.env` file for environment variables like GitHub tokens. This file is gitignored for security.
-
-1. Create a `.env` file in the project root with:
-   ```
-   GITHUB_TOKEN=your_github_personal_access_token
-   ```
-2. Make sure the token has `repo` scope access to the repository
 
 ### Forge Configuration
 
-Auto-update settings are configured in `forge.config.ts`. The app uses GitHub's releases as its update server.
+Build settings are configured in `forge.config.ts`.
 
 ### Publishing Options
 
@@ -62,7 +44,7 @@ Auto-update settings are configured in `forge.config.ts`. The app uses GitHub's 
 
 ## Required Setup
 
-To enable automatic updates and publishing:
+For building and publishing:
 
 1. Place an icon file at `assets/icon.ico` for Windows builds
 2. Ensure your GitHub repository is set up correctly

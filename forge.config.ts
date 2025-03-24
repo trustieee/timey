@@ -11,15 +11,6 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-// Define environment variables to be passed to the app
-const env = {
-  GITHUB_TOKEN: process.env.GITHUB_TOKEN || '',
-  GH_TOKEN: process.env.GITHUB_TOKEN || process.env.GH_TOKEN || ''
-};
-
-// Log environment variables (without revealing the token)
-console.log('Building with GitHub token present:', !!env.GITHUB_TOKEN);
-
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
@@ -37,8 +28,7 @@ const config: ForgeConfig = {
   makers: [
     new MakerSquirrel({
       setupIcon: './assets/icon.ico',
-      iconUrl: 'https://raw.githubusercontent.com/trustieee/timey/main/assets/icon.ico',
-      remoteReleases: 'https://github.com/trustieee/timey'
+      iconUrl: 'https://raw.githubusercontent.com/trustieee/timey/main/assets/icon.ico'
     }), 
     new MakerZIP({}, ['darwin']), 
     new MakerRpm({}), 

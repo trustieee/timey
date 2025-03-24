@@ -43,15 +43,6 @@ jobs:
         run: echo "NODE_OPTIONS=--experimental-global-webcrypto" >> $GITHUB_ENV
         shell: bash
       
-      # Create a .env file with the GitHub token for the build process
-      - name: Create .env file
-        run: |
-          echo "# GitHub token for auto-updater (private repository access)" > .env
-          echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> .env
-          echo "# electron-updater specifically looks for GH_TOKEN" >> .env
-          echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> .env
-        shell: bash
-      
       - name: Build/Publish Electron App
         run: npm run publish
         env:

@@ -24,9 +24,6 @@ export const APP_CONFIG = {
   // Default chores
   CHORES: CHORES,
 
-  // Update check interval (in milliseconds)
-  UPDATE_CHECK_INTERVAL: 60 * 60 * 1000, // 1 hour
-
   // Profile refresh interval (in milliseconds)
   PROFILE_REFRESH_INTERVAL: 5 * 60 * 1000, // 5 minutes
 };
