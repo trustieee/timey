@@ -7,6 +7,8 @@ import { APP_CONFIG } from './config';
 import { RewardType } from './rewards';
 // Import dotenv for loading environment variables
 import * as dotenv from 'dotenv';
+// Import Firebase authentication
+import { authenticateWithFirebase, auth, initializeFirebase } from './services/firebase';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -16,17 +18,40 @@ if (started) {
   app.quit();
 }
 
+// Firebase authentication status
+let isAuthenticated = false;
+let authenticatedEmail: string | null = null;
+
 // Player profile for the app session
-let playerProfileData = playerProfile.loadPlayerProfile();
+let playerProfileData: any = null;
 
 // Function to refresh player profile data
-function refreshPlayerProfileData() {
-  playerProfileData = playerProfile.loadPlayerProfile();
+async function refreshPlayerProfileData() {
+  playerProfileData = await playerProfile.loadPlayerProfile();
 }
 
-const createWindow = () => {
+const createWindow = async () => {
   // Force dark mode at startup
   nativeTheme.themeSource = 'dark';
+
+  // Initialize Firebase first to establish connection and verify permissions
+  try {
+    const firestoreAvailable = await initializeFirebase();
+    console.log(`Firebase initialized. Firestore available: ${firestoreAvailable}`);
+    
+    if (auth.currentUser) {
+      isAuthenticated = true;
+      authenticatedEmail = auth.currentUser.email;
+      console.log(`User is authenticated: ${authenticatedEmail}`);
+    } else {
+      console.log('No authenticated user found after initialization');
+    }
+  } catch (error) {
+    console.error('Error initializing Firebase:', error);
+  }
+
+  // Now load player profile data after Firebase initialization
+  await refreshPlayerProfileData();
 
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -118,52 +143,47 @@ const createWindow = () => {
   });
 
   // Player profile IPC handlers
-  ipcMain.handle('load-player-profile', () => {
+  ipcMain.handle('load-player-profile', async () => {
     // Refresh the profile data to ensure we have the latest
-    refreshPlayerProfileData();
+    await refreshPlayerProfileData();
     return playerProfileData;
   });
 
-  ipcMain.handle('save-player-profile', (event, profile) => {
-    playerProfile.savePlayerProfile(profile);
+  ipcMain.handle('save-player-profile', async (event, profile) => {
+    await playerProfile.savePlayerProfile(profile);
     // Update our cached profile data
     playerProfileData = profile;
   });
 
-  ipcMain.handle('add-xp', (event, amount) => {
-    const updatedProfile = playerProfile.addXp(playerProfileData, amount);
-    playerProfile.savePlayerProfile(updatedProfile);
+  ipcMain.handle('add-xp', async (event, amount) => {
+    const updatedProfile = await playerProfile.addXp(playerProfileData, amount);
     playerProfileData = updatedProfile;
     return updatedProfile;
   });
 
-  ipcMain.handle('remove-xp', (event, amount) => {
-    const updatedProfile = playerProfile.removeXp(playerProfileData, amount);
-    playerProfile.savePlayerProfile(updatedProfile);
+  ipcMain.handle('remove-xp', async (event, amount) => {
+    const updatedProfile = await playerProfile.removeXp(playerProfileData, amount);
     playerProfileData = updatedProfile;
     return updatedProfile;
   });
 
-  ipcMain.handle('update-chore-status', (event, choreId, status) => {
-    const updatedProfile = playerProfile.updateChoreStatus(playerProfileData, choreId, status);
-    playerProfile.savePlayerProfile(updatedProfile);
+  ipcMain.handle('update-chore-status', async (event, choreId, status) => {
+    const updatedProfile = await playerProfile.updateChoreStatus(playerProfileData, choreId, status);
     playerProfileData = updatedProfile;
     return updatedProfile;
   });
 
   // Add handlers for completed chores
-  ipcMain.handle('player:add-completed-chore', (event, { choreId, choreText }) => {
+  ipcMain.handle('player:add-completed-chore', async (event, { choreId, choreText }) => {
     // Use the proper updateChoreStatus function instead of the XP workaround
-    const updatedProfile = playerProfile.updateChoreStatus(playerProfileData, choreId, 'completed');
-    playerProfile.savePlayerProfile(updatedProfile);
+    const updatedProfile = await playerProfile.updateChoreStatus(playerProfileData, choreId, 'completed');
     playerProfileData = updatedProfile;
     return updatedProfile;
   });
 
-  ipcMain.handle('player:remove-completed-chore', (event, { choreId }) => {
+  ipcMain.handle('player:remove-completed-chore', async (event, { choreId }) => {
     // Use the proper updateChoreStatus function instead of the XP workaround
-    const updatedProfile = playerProfile.updateChoreStatus(playerProfileData, choreId, 'incomplete');
-    playerProfile.savePlayerProfile(updatedProfile);
+    const updatedProfile = await playerProfile.updateChoreStatus(playerProfileData, choreId, 'incomplete');
     playerProfileData = updatedProfile;
     return updatedProfile;
   });
@@ -173,15 +193,22 @@ const createWindow = () => {
     return playerProfileData.rewards ? playerProfileData.rewards.available : 0;
   });
 
-  ipcMain.handle('use-reward', (event, rewardType, rewardValue) => {
-    const updatedProfile = playerProfile.useReward(
+  ipcMain.handle('use-reward', async (event, rewardType, rewardValue) => {
+    const updatedProfile = await playerProfile.useReward(
       playerProfileData, 
       rewardType as RewardType, 
       rewardValue
     );
-    playerProfile.savePlayerProfile(updatedProfile);
     playerProfileData = updatedProfile;
     return updatedProfile;
+  });
+
+  // Add IPC handler to get Firebase authentication status
+  ipcMain.handle('get-auth-status', () => {
+    return {
+      isAuthenticated,
+      email: authenticatedEmail
+    };
   });
 };
 
@@ -189,7 +216,9 @@ const createWindow = () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', () => {
-  createWindow();
+  createWindow().catch(err => {
+    console.error('Error creating window:', err);
+  });
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common
@@ -210,12 +239,12 @@ app.on('activate', () => {
 });
 
 // Save player profile when app is about to quit
-app.on('before-quit', () => {
+app.on('before-quit', async () => {
   // Make sure we have the latest profile data
-  refreshPlayerProfileData();
+  await refreshPlayerProfileData();
   
   // Save the profile
-  playerProfile.savePlayerProfile(playerProfileData);
+  await playerProfile.savePlayerProfile(playerProfileData);
 });
 
 // In this file you can include the rest of your app's specific main process

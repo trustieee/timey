@@ -4,6 +4,7 @@ import * as path from 'path';
 import { APP_CONFIG, DEFAULT_PROFILE } from './config';
 import { getLocalDateString, getLocalISOString, getPreviousDateString, parseLocalDate } from './utils';
 import { RewardType } from './rewards';
+import { loadPlayerProfileFromFirestore, savePlayerProfileToFirestore } from './services/firebase';
 
 // Chore status type
 export type ChoreStatus = 'completed' | 'incomplete' | 'na';
@@ -194,18 +195,58 @@ export function getXpRequiredForLevel(level: number): number {
     return APP_CONFIG.PROFILE.DEFAULT_XP_PER_LEVEL;
 }
 
-// Get the profile file path
+// Get the profile file path (kept for fallback purposes)
 function getProfilePath(): string {
     const userDataPath = app.getPath('userData');
     return path.join(userDataPath, 'playerProfile.json');
 }
 
-// Load the player profile
-export function loadPlayerProfile(): PlayerProfile & {level: number, xp: number, xpToNextLevel: number} {
-    const profilePath = getProfilePath();
-
+// Load the player profile from Firestore
+export async function loadPlayerProfile(): Promise<PlayerProfile & {level: number, xp: number, xpToNextLevel: number}> {
     try {
+        // Try to load from Firestore first
+        const firestoreProfile = await loadPlayerProfileFromFirestore();
+        
+        if (firestoreProfile) {
+            console.log('Using profile from Firestore');
+            // Make sure history is defined
+            if (!firestoreProfile.history) {
+                firestoreProfile.history = {};
+            }
+            
+            // Make sure rewards is defined
+            if (!firestoreProfile.rewards) {
+                firestoreProfile.rewards = { available: 0, permanent: {} };
+            }
+            
+            // Make sure permanent rewards is defined
+            if (!firestoreProfile.rewards.permanent) {
+                firestoreProfile.rewards.permanent = {};
+            }
+
+            // First check and finalize any previous incomplete days
+            const updatedProfile = checkAndFinalizePreviousDays(firestoreProfile);
+            
+            // Then initialize today's progress if needed
+            const finalProfile = initializeDay(updatedProfile);
+            
+            // Calculate player stats from history
+            const stats = calculatePlayerStats(finalProfile);
+            
+            // Return combined profile and stats
+            return { 
+                ...finalProfile, 
+                level: stats.level, 
+                xp: stats.xp, 
+                xpToNextLevel: stats.xpToNextLevel 
+            };
+        }
+        
+        // If no Firestore profile, try local file as fallback (for migration or offline mode)
+        console.log('Attempting to load profile from local storage');
+        const profilePath = getProfilePath();
         if (fs.existsSync(profilePath)) {
+            console.log('Loading profile from local file');
             const data = fs.readFileSync(profilePath, 'utf8');
             let profile = JSON.parse(data) as PlayerProfile;
             
@@ -223,6 +264,11 @@ export function loadPlayerProfile(): PlayerProfile & {level: number, xp: number,
             if (!profile.rewards.permanent) {
                 profile.rewards.permanent = {};
             }
+
+            // Try to save to Firestore for future use, but don't wait for it
+            savePlayerProfileToFirestore(profile)
+                .then(() => console.log('Migrated local profile to Firestore'))
+                .catch(err => console.warn('Failed to migrate profile to Firestore:', err));
 
             // First check and finalize any previous incomplete days
             const updatedProfile = checkAndFinalizePreviousDays(profile);
@@ -245,10 +291,28 @@ export function loadPlayerProfile(): PlayerProfile & {level: number, xp: number,
         console.error('Error loading player profile:', error);
     }
 
-    // Return default profile if loading fails or file doesn't exist
+    // Return default profile if loading fails or no profile exists
+    console.log('Creating new default profile');
     const defaultProfile = { history: {}, rewards: { available: 0, permanent: {} } };
     const initializedProfile = initializeDay(defaultProfile);
     const stats = calculatePlayerStats(initializedProfile);
+    
+    // Try to save the new default profile to Firestore, but don't wait for it
+    savePlayerProfileToFirestore(initializedProfile)
+        .then(() => console.log('Saved new default profile to Firestore'))
+        .catch(err => console.warn('Failed to save default profile to Firestore:', err));
+    
+    // Also save locally
+    try {
+        const profilePath = getProfilePath();
+        const data = JSON.stringify({
+            history: initializedProfile.history,
+            rewards: initializedProfile.rewards
+        }, null, 2);
+        fs.writeFileSync(profilePath, data, 'utf8');
+    } catch (localError) {
+        console.error('Error saving default profile locally:', localError);
+    }
     
     // Return combined profile and stats
     return { 
@@ -259,10 +323,8 @@ export function loadPlayerProfile(): PlayerProfile & {level: number, xp: number,
     };
 }
 
-// Save the player profile
-export function savePlayerProfile(profile: PlayerProfile): void {
-    const profilePath = getProfilePath();
-
+// Save the player profile to Firestore and local storage
+export async function savePlayerProfile(profile: PlayerProfile): Promise<void> {
     // We only need to save the history, not the calculated stats
     const storageProfile = {
         history: profile.history,
@@ -270,15 +332,23 @@ export function savePlayerProfile(profile: PlayerProfile): void {
     };
 
     try {
+        // Save to Firestore first (this is non-blocking)
+        savePlayerProfileToFirestore(storageProfile)
+            .then(() => console.log('Profile saved to Firestore'))
+            .catch(err => console.warn('Error saving to Firestore, using local storage only:', err));
+        
+        // Always save locally as backup
+        const profilePath = getProfilePath();
         const data = JSON.stringify(storageProfile, null, 2);
         fs.writeFileSync(profilePath, data, 'utf8');
+        console.log('Profile saved to local storage');
     } catch (error) {
         console.error('Error saving player profile:', error);
     }
 }
 
 // Add XP to player profile for today's progress
-export function addXp(profile: PlayerProfile & {level: number, xp: number, xpToNextLevel: number}, xpAmount: number): PlayerProfile & {level: number, xp: number, xpToNextLevel: number} {
+export async function addXp(profile: PlayerProfile & {level: number, xp: number, xpToNextLevel: number}, xpAmount: number): Promise<PlayerProfile & {level: number, xp: number, xpToNextLevel: number}> {
     // Create a deep copy of the profile to avoid mutation issues
     const updatedProfile = JSON.parse(JSON.stringify(profile)) as typeof profile;
     
@@ -309,6 +379,9 @@ export function addXp(profile: PlayerProfile & {level: number, xp: number, xpToN
         console.log(`Level up! Added ${stats.level - previousLevel} rewards. Now have ${updatedProfile.rewards.available} available.`);
     }
     
+    // Save the updated profile to Firestore
+    await savePlayerProfile(updatedProfile);
+    
     // Return updated profile with stats
     return { 
         ...updatedProfile, 
@@ -319,9 +392,12 @@ export function addXp(profile: PlayerProfile & {level: number, xp: number, xpToN
 }
 
 // Remove XP from player profile
-export function removeXp(profile: PlayerProfile & {level: number, xp: number, xpToNextLevel: number}, xpAmount: number): PlayerProfile & {level: number, xp: number, xpToNextLevel: number} {
+export async function removeXp(profile: PlayerProfile & {level: number, xp: number, xpToNextLevel: number}, xpAmount: number): Promise<PlayerProfile & {level: number, xp: number, xpToNextLevel: number}> {
+    // Create a deep copy of the profile to avoid mutation issues
+    const updatedProfile = JSON.parse(JSON.stringify(profile)) as typeof profile;
+    
     const today = getLocalDateString();
-    const dayProgress = profile.history[today];
+    const dayProgress = updatedProfile.history[today];
 
     // Remove XP from day's gained XP
     if (dayProgress) {
@@ -330,11 +406,14 @@ export function removeXp(profile: PlayerProfile & {level: number, xp: number, xp
     }
 
     // Recalculate player stats
-    const stats = calculatePlayerStats(profile);
+    const stats = calculatePlayerStats(updatedProfile);
+    
+    // Save the updated profile to Firestore
+    await savePlayerProfile(updatedProfile);
     
     // Return updated profile with stats
     return { 
-        ...profile, 
+        ...updatedProfile, 
         level: stats.level, 
         xp: stats.xp, 
         xpToNextLevel: stats.xpToNextLevel 
@@ -342,13 +421,16 @@ export function removeXp(profile: PlayerProfile & {level: number, xp: number, xp
 }
 
 // Update chore status in the current day's progress
-export function updateChoreStatus(
+export async function updateChoreStatus(
     profile: PlayerProfile & {level: number, xp: number, xpToNextLevel: number},
     choreId: number,
     status: ChoreStatus
-): PlayerProfile & {level: number, xp: number, xpToNextLevel: number} {
+): Promise<PlayerProfile & {level: number, xp: number, xpToNextLevel: number}> {
+    // Create a deep copy of the profile to avoid mutation issues
+    const updatedProfile = JSON.parse(JSON.stringify(profile)) as typeof profile;
+    
     const today = getLocalDateString();
-    const dayProgress = profile.history[today];
+    const dayProgress = updatedProfile.history[today];
 
     if (!dayProgress) return profile;
 
@@ -368,21 +450,29 @@ export function updateChoreStatus(
     // Handle XP changes
     if (oldStatus === 'completed' && status !== 'completed') {
         // Remove XP if un-completing a chore
-        return removeXp(profile, APP_CONFIG.PROFILE.XP_FOR_CHORE);
+        return removeXp(updatedProfile, APP_CONFIG.PROFILE.XP_FOR_CHORE);
     } else if (oldStatus !== 'completed' && status === 'completed') {
         // Add XP if completing a chore
-        return addXp(profile, APP_CONFIG.PROFILE.XP_FOR_CHORE);
+        return addXp(updatedProfile, APP_CONFIG.PROFILE.XP_FOR_CHORE);
     }
 
-    return profile;
+    // Save the updated profile to Firestore
+    await savePlayerProfile(updatedProfile);
+    
+    return { 
+        ...updatedProfile, 
+        level: calculatePlayerStats(updatedProfile).level, 
+        xp: calculatePlayerStats(updatedProfile).xp, 
+        xpToNextLevel: calculatePlayerStats(updatedProfile).xpToNextLevel 
+    };
 }
 
 // Use a reward
-export function useReward(
+export async function useReward(
     profile: PlayerProfile & {level: number, xp: number, xpToNextLevel: number},
     rewardType: RewardType,
     value: number
-): PlayerProfile & {level: number, xp: number, xpToNextLevel: number} {
+): Promise<PlayerProfile & {level: number, xp: number, xpToNextLevel: number}> {
     // Create a deep copy of the profile to avoid mutation issues
     const updatedProfile = JSON.parse(JSON.stringify(profile)) as typeof profile;
     
@@ -430,7 +520,16 @@ export function useReward(
         });
     }
 
-    return updatedProfile;
+    // Save the updated profile to Firestore
+    await savePlayerProfile(updatedProfile);
+    
+    const stats = calculatePlayerStats(updatedProfile);
+    return { 
+        ...updatedProfile, 
+        level: stats.level, 
+        xp: stats.xp, 
+        xpToNextLevel: stats.xpToNextLevel 
+    };
 }
 
 // Get permanent play time bonus in minutes

@@ -21,6 +21,8 @@ declare global {
             // New rewards methods
             getAvailableRewards: () => Promise<number>;
             useReward: (rewardType: RewardType, rewardValue: number) => Promise<any>;
+            // Firebase authentication
+            getAuthStatus: () => Promise<{ isAuthenticated: boolean, email: string | null }>;
         }
     }
 }
@@ -64,5 +66,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     
     // Rewards APIs
     getAvailableRewards: () => ipcRenderer.invoke('get-available-rewards'),
-    useReward: (rewardType: RewardType, rewardValue: number) => ipcRenderer.invoke('use-reward', rewardType, rewardValue)
+    useReward: (rewardType: RewardType, rewardValue: number) => ipcRenderer.invoke('use-reward', rewardType, rewardValue),
+    
+    // Firebase authentication status
+    getAuthStatus: () => ipcRenderer.invoke('get-auth-status')
 });
