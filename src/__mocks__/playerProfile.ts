@@ -20,7 +20,6 @@ export function createDayProgress(date: string): DayProgress {
             status: 'incomplete' as ChoreStatus
         })),
         playTime: {
-            totalMinutes: 0,
             sessions: [] as {start: string, end: string}[]
         },
         xp: {

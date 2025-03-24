@@ -46,15 +46,15 @@ describe('Edge Cases Tests', () => {
   }
 
   describe('XP Edge Cases', () => {
-    test('Should handle negative XP correctly', () => {
-      let profile = createTestProfile();
+    test('Should handle negative XP correctly', async () => {
+      const profile = createTestProfile();
       const today = getLocalDateString();
       
       // Setup today with initial XP
       profile.history[today] = {
         date: today,
         chores: [],
-        playTime: { totalMinutes: 0, sessions: [] },
+        playTime: { sessions: [] },
         xp: {
           gained: 100,
           penalties: 0,
@@ -64,7 +64,7 @@ describe('Edge Cases Tests', () => {
       };
       
       // Try to remove more XP than exists
-      const updatedProfile = removeXp(profile, 200);
+      const updatedProfile = await removeXp(profile, 200);
       
       // XP should be clamped to 0, not go negative
       expect(updatedProfile.history[today].xp.gained).toBe(0);
@@ -79,7 +79,7 @@ describe('Edge Cases Tests', () => {
       profile.history[today] = {
         date: today,
         chores: [],
-        playTime: { totalMinutes: 0, sessions: [] },
+        playTime: { sessions: [] },
         xp: {
           gained: 1000000, // 1 million XP
           penalties: 0,
@@ -119,8 +119,8 @@ describe('Edge Cases Tests', () => {
   });
 
   describe('Day Transition Edge Cases', () => {
-    test('Should handle multiple day gaps properly', () => {
-      let profile = createTestProfile();
+    test('Should handle multiple day gaps properly', async () => {
+      const profile = createTestProfile();
       
       // Set up history with gaps between days
       const today = getLocalDateString();
@@ -142,7 +142,7 @@ describe('Edge Cases Tests', () => {
       profile.history[day10] = {
         date: day10,
         chores: [{ id: 0, text: 'Test chore', status: 'incomplete' as ChoreStatus }],
-        playTime: { totalMinutes: 0, sessions: [] },
+        playTime: { sessions: [] },
         xp: { gained: 0, penalties: 0, final: 0 },
         completed: false
       };
@@ -150,7 +150,7 @@ describe('Edge Cases Tests', () => {
       profile.history[day7] = {
         date: day7,
         chores: [{ id: 0, text: 'Test chore', status: 'incomplete' as ChoreStatus }],
-        playTime: { totalMinutes: 0, sessions: [] },
+        playTime: { sessions: [] },
         xp: { gained: 0, penalties: 0, final: 0 },
         completed: false
       };
@@ -158,18 +158,15 @@ describe('Edge Cases Tests', () => {
       profile.history[day3] = {
         date: day3,
         chores: [{ id: 0, text: 'Test chore', status: 'incomplete' as ChoreStatus }],
-        playTime: { totalMinutes: 0, sessions: [] },
+        playTime: { sessions: [] },
         xp: { gained: 0, penalties: 0, final: 0 },
         completed: false
       };
       
       // Finalize all previous days
-      const updatedProfile = finalizeDayProgress(
-        finalizeDayProgress(
-          finalizeDayProgress(profile, day10), 
-          day7), 
-        day3
-      );
+      const updatedProfile1 = await finalizeDayProgress(profile, day10);
+      const updatedProfile2 = await finalizeDayProgress(updatedProfile1, day7);
+      const updatedProfile = await finalizeDayProgress(updatedProfile2, day3);
       
       // Verify all past days were finalized
       expect(updatedProfile.history[day10].completed).toBe(true);
@@ -182,7 +179,7 @@ describe('Edge Cases Tests', () => {
       expect(updatedProfile.history[day3].xp.penalties).toBe(APP_CONFIG.PROFILE.XP_PENALTY_FOR_CHORE);
     });
     
-    test('Should handle date changes correctly', () => {
+    test('Should handle date changes correctly', async () => {
       const profile = createTestProfile();
       
       // Create a date object for "today"
@@ -203,13 +200,13 @@ describe('Edge Cases Tests', () => {
           { id: 0, text: 'Test chore 1', status: 'completed' as ChoreStatus },
           { id: 1, text: 'Test chore 2', status: 'incomplete' as ChoreStatus }
         ],
-        playTime: { totalMinutes: 0, sessions: [] },
+        playTime: { sessions: [] },
         xp: { gained: 10, penalties: 0, final: 10 },
         completed: false
       };
       
       // Finalize yesterday
-      const updatedProfile = finalizeDayProgress(profile, yesterdayString);
+      const updatedProfile = await finalizeDayProgress(profile, yesterdayString);
       
       // Verify yesterday was finalized
       expect(updatedProfile.history[yesterdayString].completed).toBe(true);
@@ -221,7 +218,7 @@ describe('Edge Cases Tests', () => {
   });
 
   describe('Rewards Edge Cases', () => {
-    test('Should handle using a reward with no rewards available', () => {
+    test('Should handle using a reward with no rewards available', async () => {
       const profile = createTestProfile();
       const today = getLocalDateString();
       
@@ -229,7 +226,7 @@ describe('Edge Cases Tests', () => {
       profile.history[today] = {
         date: today,
         chores: [],
-        playTime: { totalMinutes: 0, sessions: [] },
+        playTime: { sessions: [] },
         xp: { gained: 0, penalties: 0, final: 0 },
         completed: false,
         rewardsUsed: []
@@ -239,7 +236,7 @@ describe('Edge Cases Tests', () => {
       profile.rewards.available = 0;
       
       // Try to use a reward
-      const updatedProfile = useReward(
+      const updatedProfile = await useReward(
         profile,
         RewardType.EXTEND_PLAY_TIME,
         60
@@ -250,7 +247,7 @@ describe('Edge Cases Tests', () => {
       expect(updatedProfile.history[today].rewardsUsed?.length || 0).toBe(0);
     });
     
-    test('Should handle multiple rewards used on the same day', () => {
+    test('Should handle multiple rewards used on the same day', async () => {
       const profile = createTestProfile();
       const today = getLocalDateString();
       
@@ -258,7 +255,7 @@ describe('Edge Cases Tests', () => {
       profile.history[today] = {
         date: today,
         chores: [],
-        playTime: { totalMinutes: 0, sessions: [] },
+        playTime: { sessions: [] },
         xp: { gained: 0, penalties: 0, final: 0 },
         completed: false,
         rewardsUsed: []
@@ -268,26 +265,26 @@ describe('Edge Cases Tests', () => {
       profile.rewards.available = 3;
       
       // Use three different reward combinations
-      let tempProfile = useReward(profile, RewardType.EXTEND_PLAY_TIME, 60);
-      tempProfile = useReward(tempProfile, RewardType.REDUCE_COOLDOWN, 30);
-      tempProfile = useReward(tempProfile, RewardType.EXTEND_PLAY_TIME, 120);
+      const tempProfile1 = await useReward(profile, RewardType.EXTEND_PLAY_TIME, 60);
+      const tempProfile2 = await useReward(tempProfile1, RewardType.REDUCE_COOLDOWN, 30);
+      const tempProfile = await useReward(tempProfile2, RewardType.EXTEND_PLAY_TIME, 120);
       
       // Verify all rewards were used
       expect(tempProfile.rewards.available).toBe(0);
       
       // Verify all rewards were recorded
       expect(tempProfile.history[today].rewardsUsed?.length).toBe(3);
-      expect(tempProfile.history[today].rewardsUsed?.map(r => r.type)).toContain(RewardType.EXTEND_PLAY_TIME);
-      expect(tempProfile.history[today].rewardsUsed?.map(r => r.type)).toContain(RewardType.REDUCE_COOLDOWN);
+      expect(tempProfile.history[today].rewardsUsed?.map((r: { type: RewardType }) => r.type)).toContain(RewardType.EXTEND_PLAY_TIME);
+      expect(tempProfile.history[today].rewardsUsed?.map((r: { type: RewardType }) => r.type)).toContain(RewardType.REDUCE_COOLDOWN);
       
       // Verify values were recorded properly
-      expect(tempProfile.history[today].rewardsUsed?.find(r => r.value === 120)).toBeDefined();
-      expect(tempProfile.history[today].rewardsUsed?.find(r => r.value === 30)).toBeDefined();
+      expect(tempProfile.history[today].rewardsUsed?.find((r: { value: number }) => r.value === 120)).toBeDefined();
+      expect(tempProfile.history[today].rewardsUsed?.find((r: { value: number }) => r.value === 30)).toBeDefined();
     });
   });
 
   describe('Chore Status Transitions', () => {
-    test('Should handle all transitions between chore statuses', () => {
+    test('Should handle all transitions between chore statuses', async () => {
       let profile = createTestProfile();
       const today = getLocalDateString();
       
@@ -297,34 +294,34 @@ describe('Edge Cases Tests', () => {
         chores: [
           { id: 0, text: 'Test chore', status: 'incomplete' as ChoreStatus }
         ],
-        playTime: { totalMinutes: 0, sessions: [] },
+        playTime: { sessions: [] },
         xp: { gained: 0, penalties: 0, final: 0 },
         completed: false
       };
       
       // Cycle 1: incomplete -> completed
-      profile = updateChoreStatus(profile, 0, 'completed');
+      profile = await updateChoreStatus(profile, 0, 'completed');
       expect(profile.history[today].chores[0].status).toBe('completed');
       expect(profile.history[today].xp.gained).toBe(APP_CONFIG.PROFILE.XP_FOR_CHORE);
       
       // Cycle 2: completed -> na
-      profile = updateChoreStatus(profile, 0, 'na');
+      profile = await updateChoreStatus(profile, 0, 'na');
       expect(profile.history[today].chores[0].status).toBe('na');
       expect(profile.history[today].xp.gained).toBe(0); // XP removed
       
       // Cycle 3: na -> incomplete
-      profile = updateChoreStatus(profile, 0, 'incomplete');
+      profile = await updateChoreStatus(profile, 0, 'incomplete');
       expect(profile.history[today].chores[0].status).toBe('incomplete');
       expect(profile.history[today].xp.gained).toBe(0);
       
       // Cycle 4: incomplete -> na -> completed
-      profile = updateChoreStatus(profile, 0, 'na');
-      profile = updateChoreStatus(profile, 0, 'completed');
+      profile = await updateChoreStatus(profile, 0, 'na');
+      profile = await updateChoreStatus(profile, 0, 'completed');
       expect(profile.history[today].chores[0].status).toBe('completed');
       expect(profile.history[today].xp.gained).toBe(APP_CONFIG.PROFILE.XP_FOR_CHORE);
     });
     
-    test('Should handle invalid chore ID', () => {
+    test('Should handle invalid chore ID', async () => {
       const profile = createTestProfile();
       const today = getLocalDateString();
       
@@ -334,13 +331,13 @@ describe('Edge Cases Tests', () => {
         chores: [
           { id: 0, text: 'Test chore', status: 'incomplete' as ChoreStatus }
         ],
-        playTime: { totalMinutes: 0, sessions: [] },
+        playTime: { sessions: [] },
         xp: { gained: 0, penalties: 0, final: 0 },
         completed: false
       };
       
       // Try to update a non-existent chore
-      const updatedProfile = updateChoreStatus(profile, 999, 'completed');
+      const updatedProfile = await updateChoreStatus(profile, 999, 'completed');
       
       // Profile should remain unchanged
       expect(updatedProfile).toEqual(profile);

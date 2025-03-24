@@ -23,7 +23,6 @@ const mockData = {
           { id: 1, text: 'Test chore 2', status: 'incomplete' }
         ],
         playTime: {
-          totalMinutes: 0,
           sessions: []
         },
         xp: {

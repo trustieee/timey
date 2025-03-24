@@ -18,6 +18,9 @@ declare global {
             addCompletedChore: (choreId: number, choreText: string) => Promise<any>;
             removeCompletedChore: (choreId: number) => Promise<any>;
             updateChoreStatus: (choreId: number, status: string) => Promise<any>;
+            // Play session tracking
+            startPlaySession: () => Promise<any>;
+            endPlaySession: () => Promise<any>;
             // New rewards methods
             getAvailableRewards: () => Promise<number>;
             useReward: (rewardType: RewardType, rewardValue: number) => Promise<any>;
@@ -63,6 +66,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     addCompletedChore: (choreId: number, choreText: string) => ipcRenderer.invoke('player:add-completed-chore', { choreId, choreText }),
     removeCompletedChore: (choreId: number) => ipcRenderer.invoke('player:remove-completed-chore', { choreId }),
     updateChoreStatus: (choreId: number, status: string) => ipcRenderer.invoke('update-chore-status', choreId, status),
+    
+    // Play session tracking
+    startPlaySession: () => ipcRenderer.invoke('start-play-session'),
+    endPlaySession: () => ipcRenderer.invoke('end-play-session'),
     
     // Rewards APIs
     getAvailableRewards: () => ipcRenderer.invoke('get-available-rewards'),

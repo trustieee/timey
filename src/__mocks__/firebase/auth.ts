@@ -41,11 +41,11 @@ const createMockAuth = () => ({
   settings: { appVerificationDisabledForTesting: false },
   onAuthStateChanged: jest.fn().mockImplementation((callback) => {
     callback(mockUser);
-    return () => {};
+    return () => { /* empty cleanup function */ };
   }),
   onIdTokenChanged: jest.fn().mockImplementation((callback) => {
     callback(mockUser);
-    return () => {};
+    return () => { /* empty cleanup function */ };
   }),
   setPersistence: jest.fn().mockResolvedValue(undefined),
   signOut: jest.fn().mockResolvedValue(undefined),
@@ -64,7 +64,7 @@ export const signInWithEmailAndPassword = jest.fn().mockImplementation(() =>
 
 export const onAuthStateChanged = jest.fn().mockImplementation((auth, callback) => {
   callback(mockUser);
-  return () => {};
+  return () => { /* empty cleanup function */ };
 });
 
 export const USER_CREDENTIAL = {

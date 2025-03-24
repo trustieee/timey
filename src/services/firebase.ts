@@ -49,15 +49,15 @@ const mockAuth: Auth = {
   languageCode: null,
   tenantId: null,
   settings: { appVerificationDisabledForTesting: false },
-  onAuthStateChanged: () => () => {},
-  onIdTokenChanged: () => () => {},
-  setPersistence: () => Promise.resolve(),
-  signOut: () => Promise.resolve(),
-  updateCurrentUser: () => Promise.resolve(),
-  beforeAuthStateChanged: () => () => {},
-  authStateReady: () => Promise.resolve(),
+  onAuthStateChanged: () => { /* empty auth state change handler */ return () => { /* empty cleanup function */ }; },
+  onIdTokenChanged: () => { /* empty token change handler */ return () => { /* empty cleanup function */ }; },
+  setPersistence: () => { /* empty persistence setter */ return Promise.resolve(); },
+  signOut: () => { /* empty sign out function */ return Promise.resolve(); },
+  updateCurrentUser: () => { /* empty user update function */ return Promise.resolve(); },
+  beforeAuthStateChanged: () => { /* empty before auth state change handler */ return () => { /* empty cleanup function */ }; },
+  authStateReady: () => { /* empty auth state ready function */ return Promise.resolve(); },
   emulatorConfig: null,
-  useDeviceLanguage: () => {}
+  useDeviceLanguage: function() { /* empty language setter */ }
 };
 
 const mockFirestore = {

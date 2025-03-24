@@ -265,7 +265,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let chores: Chore[] = JSON.parse(JSON.stringify(APP_CONFIG.CHORES)); // Deep copy
     console.log(chores);
     let currentState: AppState = AppState.READY;
-    let isPaused: boolean = false;
+    let isPaused = false;
 
     // Reset chores to uncompleted state - only used for new days
     function resetChores(): void {
@@ -300,7 +300,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         date: today,
                         chores: [],
                         playTime: {
-                            totalMinutes: 0,
                             sessions: []
                         },
                         xp: {
@@ -336,7 +335,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Update UI based on state
         switch (newState) {
-            case AppState.READY:
+            case AppState.READY: {
                 startTimerBtn.disabled = false;
                 pauseTimerBtn.disabled = true;
                 choresSection.classList.add('hidden');
@@ -350,14 +349,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 updatePauseButtonText();
                 updateTimerDisplay();
                 break;
+            }
 
-            case AppState.PLAYING:
+            case AppState.PLAYING: {
                 startTimerBtn.disabled = true;
                 pauseTimerBtn.disabled = false;
                 choresSection.classList.add('hidden');
                 break;
+            }
 
-            case AppState.COOLDOWN:
+            case AppState.COOLDOWN: {
                 startTimerBtn.disabled = true;
                 pauseTimerBtn.disabled = true;
                 resetAfterChoresBtn.disabled = true;
@@ -379,12 +380,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // If the cooldown time is already 0 after reduction, skip cooldown period
                 if (timeLeft <= 0) {
-                    stopTimer();
+                    stopTimer(false); // Not a play session ending, this is a cooldown
                     showNotification('Cooldown Skipped', 'Thanks to your rewards, you can start playing immediately!');
                     updateAppState(AppState.READY);
                 }
 
                 break;
+            }
         }
     }
 
@@ -426,6 +428,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function startTimer(): Promise<void> {
         try {
             if (currentState === AppState.READY) {
+                // Start a new play session in the profile
+                await window.electronAPI.startPlaySession();
+                
                 currentState = AppState.PLAYING;
                 updateAppState(AppState.PLAYING);
                 // Start play time
@@ -439,7 +444,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         updateTimerDisplay();
 
                         if (timeLeft <= 0) {
-                            stopTimer();
+                            stopTimer(true); // true indicates end of play session
                             playNotificationSound();
                             showNotification();
                             updateAppState(AppState.COOLDOWN);
@@ -469,7 +474,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 updateResetButtonState(); // Update button state every tick
 
                 if (timeLeft <= 0) {
-                    stopTimer();
+                    stopTimer(false); // false indicates not a play session ending
                     playNotificationSound();
                     showNotification('Cooldown Complete', 'Your cooldown period is over! Complete your daily objectives to start playing again.');
                     updateResetButtonState(); // Update one final time when timer hits 0
@@ -479,10 +484,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Stop the timer
-    function stopTimer(): void {
+    async function stopTimer(isPlaySessionEnding = false): Promise<void> {
         if (timerInterval) {
             clearInterval(timerInterval);
             timerInterval = null;
+        }
+        
+        // If this is a play session ending (not a cooldown or other timer)
+        if (isPlaySessionEnding && currentState === AppState.PLAYING) {
+            // End the play session in the profile
+            await window.electronAPI.endPlaySession();
         }
     }
 
@@ -587,18 +598,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         resetAfterChoresBtn.disabled = timeLeft > 0;
 
         // Update the completion message text based on state
+        const messageElement = completionMessage.querySelector('p');
+        if (!messageElement) return;
+        
         if (timeLeft > 0) {
-            completionMessage.querySelector('p')!.textContent =
+            messageElement.textContent =
                 `Cooldown time remaining. Complete your daily objectives while you wait!`;
         } else if (allChoresCompleted) {
-            completionMessage.querySelector('p')!.textContent =
+            messageElement.textContent =
                 'Great job completing your daily objectives! You can start play time now.';
         } else {
             const incompleteCount = chores.filter(chore =>
                 chore.status === 'incomplete'
             ).length;
 
-            completionMessage.querySelector('p')!.textContent =
+            messageElement.textContent =
                 `You have ${incompleteCount} incomplete ${incompleteCount === 1 ? 'daily objective' : 'daily objectives'}. Remember: -10 XP per incomplete daily objective at the end of the day!`;
         }
         completionMessage.classList.remove('hidden');
@@ -641,8 +655,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             timeLeft = (basePlayTime + permanentBonus) * 60;
             updateTimerDisplay();
         }
-        
-        console.log(`Applied permanent play time bonus: ${permanentBonus} minutes`);
     }
     
     // Get permanent play time bonus from profile
@@ -886,7 +898,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     
                     // Check if cooldown is now complete
                     if (timeLeft <= 0) {
-                        stopTimer();
+                        stopTimer(false); // Not a play session ending, this is a cooldown
                         showNotification('Cooldown Complete', 'Your cooldown time is over! You may start playing again.');
                         updateResetButtonState();
                     }
@@ -922,7 +934,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Show notification when timer ends
-    function showNotification(title: string = 'Time\'s Up!', message: string = 'Your play time is over. Time to complete your daily objectives!'): void {
+    function showNotification(title = 'Time\'s Up!', message = 'Your play time is over. Time to complete your daily objectives!'): void {
         // Check if browser notifications are supported
         if ('Notification' in window) {
             if (Notification.permission === 'granted') {

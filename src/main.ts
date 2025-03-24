@@ -215,6 +215,19 @@ const createWindow = async () => {
     return updatedProfile;
   });
 
+  // Add handlers for play session tracking
+  ipcMain.handle('start-play-session', async () => {
+    const updatedProfile = await playerProfile.startPlaySession(playerProfileData);
+    playerProfileData = updatedProfile;
+    return updatedProfile;
+  });
+
+  ipcMain.handle('end-play-session', async () => {
+    const updatedProfile = await playerProfile.endPlaySession(playerProfileData);
+    playerProfileData = updatedProfile;
+    return updatedProfile;
+  });
+
   // Add IPC handler to get Firebase authentication status
   ipcMain.handle('get-auth-status', () => {
     return {
