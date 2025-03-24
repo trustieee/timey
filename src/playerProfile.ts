@@ -1,6 +1,3 @@
-import { app } from 'electron';
-import * as fs from 'fs';
-import * as path from 'path';
 import { APP_CONFIG, DEFAULT_PROFILE } from './config';
 import { getLocalDateString, getLocalISOString, getPreviousDateString, parseLocalDate } from './utils';
 import { RewardType } from './rewards';
@@ -198,16 +195,12 @@ export function getXpRequiredForLevel(level: number): number {
     return APP_CONFIG.PROFILE.DEFAULT_XP_PER_LEVEL;
 }
 
-// Get the profile file path (kept for fallback purposes)
-function getProfilePath(): string {
-    const userDataPath = app.getPath('userData');
-    return path.join(userDataPath, 'playerProfile.json');
-}
+// Firestore is now the only storage method
 
 // Load the player profile from Firestore
 export async function loadPlayerProfile(): Promise<PlayerProfile & {level: number, xp: number, xpToNextLevel: number}> {
     try {
-        // Try to load from Firestore first
+        // Try to load from Firestore
         const firestoreProfile = await loadPlayerProfileFromFirestore();
         
         if (firestoreProfile) {
@@ -245,88 +238,51 @@ export async function loadPlayerProfile(): Promise<PlayerProfile & {level: numbe
             };
         }
         
-        // If no Firestore profile, try local file as fallback (for migration or offline mode)
-        console.log('Attempting to load profile from local storage');
-        const profilePath = getProfilePath();
-        if (fs.existsSync(profilePath)) {
-            console.log('Loading profile from local file');
-            const data = fs.readFileSync(profilePath, 'utf8');
-            let profile = JSON.parse(data) as PlayerProfile;
-            
-            // Make sure history is defined
-            if (!profile.history) {
-                profile.history = {};
-            }
-            
-            // Make sure rewards is defined
-            if (!profile.rewards) {
-                profile.rewards = { available: 0, permanent: {} };
-            }
-            
-            // Make sure permanent rewards is defined
-            if (!profile.rewards.permanent) {
-                profile.rewards.permanent = {};
-            }
-
-            // Try to save to Firestore for future use, but don't wait for it
-            savePlayerProfileToFirestore(profile)
-                .then(() => console.log('Migrated local profile to Firestore'))
-                .catch(err => console.warn('Failed to migrate profile to Firestore:', err));
-
-            // First check and finalize any previous incomplete days
-            const updatedProfile = checkAndFinalizePreviousDays(profile);
-            
-            // Then initialize today's progress if needed
-            const finalProfile = initializeDay(updatedProfile);
-            
-            // Calculate player stats from history
-            const stats = calculatePlayerStats(finalProfile);
-            
-            // Return combined profile and stats
-            return { 
-                ...finalProfile, 
-                level: stats.level, 
-                xp: stats.xp, 
-                xpToNextLevel: stats.xpToNextLevel 
-            };
-        }
+        // If no profile exists, create a default one
+        console.log('Creating new default profile');
+        const defaultProfile = { history: {}, rewards: { available: 0, permanent: {} } };
+        const initializedProfile = initializeDay(defaultProfile);
+        const stats = calculatePlayerStats(initializedProfile);
+        
+        // Save the new default profile to Firestore
+        await savePlayerProfileToFirestore(initializedProfile);
+        console.log('Saved new default profile to Firestore');
+        
+        // Return combined profile and stats
+        return { 
+            ...initializedProfile, 
+            level: stats.level, 
+            xp: stats.xp, 
+            xpToNextLevel: stats.xpToNextLevel 
+        };
     } catch (error) {
         console.error('Error loading player profile:', error);
+        
+        // Create a default profile if loading fails
+        console.log('Creating new default profile after error');
+        const defaultProfile = { history: {}, rewards: { available: 0, permanent: {} } };
+        const initializedProfile = initializeDay(defaultProfile);
+        const stats = calculatePlayerStats(initializedProfile);
+        
+        // Try to save the new default profile to Firestore
+        try {
+            await savePlayerProfileToFirestore(initializedProfile);
+            console.log('Saved new default profile to Firestore after error');
+        } catch (saveError) {
+            console.error('Failed to save default profile to Firestore:', saveError);
+        }
+        
+        // Return combined profile and stats
+        return { 
+            ...initializedProfile, 
+            level: stats.level, 
+            xp: stats.xp, 
+            xpToNextLevel: stats.xpToNextLevel 
+        };
     }
-
-    // Return default profile if loading fails or no profile exists
-    console.log('Creating new default profile');
-    const defaultProfile = { history: {}, rewards: { available: 0, permanent: {} } };
-    const initializedProfile = initializeDay(defaultProfile);
-    const stats = calculatePlayerStats(initializedProfile);
-    
-    // Try to save the new default profile to Firestore, but don't wait for it
-    savePlayerProfileToFirestore(initializedProfile)
-        .then(() => console.log('Saved new default profile to Firestore'))
-        .catch(err => console.warn('Failed to save default profile to Firestore:', err));
-    
-    // Also save locally
-    try {
-        const profilePath = getProfilePath();
-        const data = JSON.stringify({
-            history: initializedProfile.history,
-            rewards: initializedProfile.rewards
-        }, null, 2);
-        fs.writeFileSync(profilePath, data, 'utf8');
-    } catch (localError) {
-        console.error('Error saving default profile locally:', localError);
-    }
-    
-    // Return combined profile and stats
-    return { 
-        ...initializedProfile, 
-        level: stats.level, 
-        xp: stats.xp, 
-        xpToNextLevel: stats.xpToNextLevel 
-    };
 }
 
-// Save the player profile to Firestore and local storage
+// Save the player profile to Firestore only
 export async function savePlayerProfile(profile: PlayerProfile): Promise<void> {
     // We only need to save the history, not the calculated stats
     const storageProfile = {
@@ -335,18 +291,11 @@ export async function savePlayerProfile(profile: PlayerProfile): Promise<void> {
     };
 
     try {
-        // Save to Firestore first (this is non-blocking)
-        savePlayerProfileToFirestore(storageProfile)
-            .then(() => console.log('Profile saved to Firestore'))
-            .catch(err => console.warn('Error saving to Firestore, using local storage only:', err));
-        
-        // Always save locally as backup
-        const profilePath = getProfilePath();
-        const data = JSON.stringify(storageProfile, null, 2);
-        fs.writeFileSync(profilePath, data, 'utf8');
-        console.log('Profile saved to local storage');
+        // Save to Firestore
+        await savePlayerProfileToFirestore(storageProfile);
+        console.log('Profile saved to Firestore');
     } catch (error) {
-        console.error('Error saving player profile:', error);
+        console.error('Error saving player profile to Firestore:', error);
     }
 }
 

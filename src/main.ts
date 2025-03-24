@@ -9,6 +9,8 @@ import { RewardType } from './rewards';
 import * as dotenv from 'dotenv';
 // Import Firebase authentication
 import { authenticateWithFirebase, auth, initializeFirebase } from './services/firebase';
+// Import global shortcut module
+import { globalShortcut } from 'electron';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -73,6 +75,7 @@ const createWindow = async () => {
     resizable: false,
     show: false, // Don't show the window until it's ready
   });
+  mainWindow.webContents.openDevTools();
 
   // Create application menu without update option
   const appMenu = Menu.buildFromTemplate([
@@ -114,9 +117,6 @@ const createWindow = async () => {
   } else {
     mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
   }
-
-  // Open the DevTools.
-  // mainWindow.webContents.openDevTools();
 
   ipcMain.on('window:move', (_, { mouseX, mouseY }) => {
     const [x, y] = mainWindow.getPosition();
@@ -209,6 +209,13 @@ const createWindow = async () => {
       isAuthenticated,
       email: authenticatedEmail
     };
+  });
+
+  // Register global shortcut for DevTools
+  globalShortcut.register('CommandOrControl+Shift+I', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.toggleDevTools();
+    }
   });
 };
 

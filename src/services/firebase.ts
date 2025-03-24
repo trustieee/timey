@@ -53,7 +53,11 @@ const mockAuth: Auth = {
   onIdTokenChanged: () => () => {},
   setPersistence: () => Promise.resolve(),
   signOut: () => Promise.resolve(),
-  updateCurrentUser: () => Promise.resolve()
+  updateCurrentUser: () => Promise.resolve(),
+  beforeAuthStateChanged: () => () => {},
+  authStateReady: () => Promise.resolve(),
+  emulatorConfig: null,
+  useDeviceLanguage: () => {}
 };
 
 const mockFirestore = {

@@ -2,10 +2,23 @@
  * Utility functions for consistent date/time handling
  */
 
+// Check if we're in a test environment - safe way to check without directly using process
+// This is made as a function so it can be mocked in tests
+export function isTestEnvironment(): boolean {
+  try {
+    // In renderer process, process might not be defined
+    return typeof process !== 'undefined' && 
+           (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined);
+  } catch (e) {
+    // If process is not defined or error occurs, we're not in a test
+    return false;
+  }
+}
+
 // Format to get YYYY-MM-DD in local time
 export function getLocalDateString(): string {
   // In test environment, always return a fixed date for consistency
-  if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined) {
+  if (isTestEnvironment()) {
     return '2025-03-24';
   }
   
@@ -19,7 +32,7 @@ export function getLocalDateString(): string {
 // Format to get a full ISO datetime string WITHOUT timezone suffix (in local time)
 export function getLocalISOString(): string {
   // In test environment, always return a fixed timestamp for consistency
-  if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined) {
+  if (isTestEnvironment()) {
     return '2025-03-24T12:00:00.000';
   }
   
