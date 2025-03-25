@@ -232,10 +232,41 @@ export const authenticateWithFirebase = async (email?: string, password?: string
 
   console.log('Attempting to authenticate with Firebase');
   
-  // Initialize Firebase with the provided credentials
-  await initializeFirebase(email, password);
-  
-  return signInWithEmailAndPassword(auth, email, password);
+  try {
+    // First authenticate with Firebase Auth
+    const result = await signInWithEmailAndPassword(auth, email, password);
+    console.log('Successfully authenticated with Firebase Auth');
+    
+    // After successful authentication, we need to verify Firestore access
+    try {
+      // Create a Firestore user ID from email
+      const userId = email.replace(/[@.]/g, '_');
+      
+      // Check if the user's profile document can be accessed
+      const docRef = doc(db, 'playerProfiles', userId);
+      await getDoc(docRef);
+      
+      console.log('Firestore access confirmed after authentication - remote storage is available');
+      firestoreAvailable = true;
+    } catch (err: any) {
+      if (err.code === 'permission-denied') {
+        console.warn('Firestore permissions are insufficient - using local storage only');
+        firestoreAvailable = false;
+      } else {
+        console.error('Error checking Firestore access after authentication:', err);
+        firestoreAvailable = false;
+      }
+    }
+    
+    // Set authInitialized to true
+    authInitialized = true;
+    
+    return result;
+  } catch (error) {
+    console.error('Firebase authentication failed:', error);
+    firestoreAvailable = false;
+    throw error;
+  }
 };
 
 /**
@@ -266,17 +297,21 @@ export const loadPlayerProfileFromFirestore = async (): Promise<PlayerProfile | 
     return null;
   }
 
-  // Initialize Firebase if not already done
-  if (!authInitialized) {
-    await initializeFirebase();
-  }
-
-  if (!firestoreAvailable) {
-    console.log('Firestore not available for loading - skipping remote load');
-    return null;
-  }
+  // Ensure Firebase is initialized first
+  await ensureInitialized();
 
   try {
+    // Check if we are authenticated and if Firestore is available
+    if (!auth.currentUser) {
+      console.log('No authenticated user found, cannot load profile from Firestore');
+      return null;
+    }
+
+    if (!firestoreAvailable) {
+      console.log('Firestore connection not available, cannot load profile');
+      return null;
+    }
+    
     // Get the current user's email
     const currentUser = auth.currentUser;
     if (!currentUser || !currentUser.email) {
@@ -316,17 +351,21 @@ export const savePlayerProfileToFirestore = async (profile: PlayerProfile): Prom
     return;
   }
 
-  // Initialize Firebase if not already done
-  if (!authInitialized) {
-    await initializeFirebase();
-  }
-
-  if (!firestoreAvailable) {
-    console.log('Firestore not available for saving - skipping remote save');
-    return;
-  }
+  // Ensure Firebase is initialized first
+  await ensureInitialized();
 
   try {
+    // Check if we are authenticated and if Firestore is available
+    if (!auth.currentUser) {
+      console.log('No authenticated user found, cannot save profile to Firestore');
+      return;
+    }
+    
+    if (!firestoreAvailable) {
+      console.log('Firestore connection not available, cannot save profile');
+      return;
+    }
+    
     // Get the current user's email
     const currentUser = auth.currentUser;
     if (!currentUser || !currentUser.email) {
@@ -340,7 +379,7 @@ export const savePlayerProfileToFirestore = async (profile: PlayerProfile): Prom
     console.log(`Saving player profile to Firestore for user: ${userId}`);
     const docRef = doc(db, 'playerProfiles', userId);
     await setDoc(docRef, profile, { merge: true });
-    console.log('Player profile saved to Firestore');
+    console.log('Player profile saved to Firestore successfully');
   } catch (error) {
     console.error('Error saving player profile to Firestore:', error);
     firestoreAvailable = false;

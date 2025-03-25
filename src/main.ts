@@ -265,6 +265,11 @@ const createWindow = async () => {
       const result = await authenticateWithFirebase(email, password);
       isAuthenticated = true;
       authenticatedEmail = result.user.email;
+      
+      // Explicitly reinitialize Firebase to verify Firestore access after authentication
+      const firestoreAvailable = await initializeFirebase(email, password);
+      console.log(`Firebase authenticated. Firestore available: ${firestoreAvailable}`);
+      
       return { success: true, user: { email: result.user.email } };
     } catch (error) {
       console.error('Authentication error:', error);

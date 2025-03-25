@@ -1041,14 +1041,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     const emailInput = document.getElementById('email') as HTMLInputElement;
     const passwordInput = document.getElementById('password') as HTMLInputElement;
 
+    // Add error message element for login form
+    const loginErrorMsg = document.createElement('div');
+    loginErrorMsg.className = 'login-error-message';
+    loginErrorMsg.style.color = '#FF5252';
+    loginErrorMsg.style.margin = '10px 0';
+    loginErrorMsg.style.padding = '8px';
+    loginErrorMsg.style.borderRadius = '4px';
+    loginErrorMsg.style.backgroundColor = 'rgba(255, 82, 82, 0.1)';
+    loginErrorMsg.style.display = 'none';
+    
+    // Insert error message before the sign-in button
+    const formGroup = signInButton.parentElement;
+    formGroup.insertBefore(loginErrorMsg, signInButton);
+
     signInButton.addEventListener('click', async () => {
+        // Clear any previous error messages
+        loginErrorMsg.style.display = 'none';
+        loginErrorMsg.textContent = '';
+        
         // Get the email and password values
         const email = emailInput.value.trim();
         const password = passwordInput.value.trim();
 
         // Validate inputs
         if (!email || !password) {
-            alert('Please enter both email and password.');
+            loginErrorMsg.textContent = 'Please enter both email and password.';
+            loginErrorMsg.style.display = 'block';
+            emailInput.focus();
             return;
         }
 
@@ -1062,6 +1082,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             if (result.success) {
                 console.log('Sign-in successful', result.user.email);
+                signInButton.textContent = 'Signed in';
                 
                 // Update authentication state
                 isAuthenticated = true;
@@ -1069,19 +1090,39 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Close the login panel
                 loginPanel.classList.remove('visible');
                 
-                // Reload the profile
-                await reloadProfile();
+                // Force a complete profile reload
+                try {
+                    // First reload the profile from server
+                    await reloadProfile();
+                    
+                    // Then redraw the UI components
+                    updateXpDisplay();
+                    loadTodayChores().then(() => {
+                        renderChores();
+                    });
+                    renderRewards();
+                    
+                    console.log('Profile and UI refreshed after authentication');
+                } catch (err) {
+                    console.error('Error refreshing profile after login:', err);
+                }
             } else {
                 throw new Error(result.error || 'Authentication failed');
             }
         } catch (error: any) {
             // Handle authentication errors
             console.error('Authentication failed:', error);
-            alert(`Sign-in failed: ${error.message}`);
-        } finally {
-            // Reset button state
+            
+            // Display error in the custom error element (no alert)
+            loginErrorMsg.textContent = `Sign-in failed: ${error.message}`;
+            loginErrorMsg.style.display = 'block';
+            
+            // Re-enable inputs
             signInButton.textContent = 'Sign In';
             signInButton.disabled = false;
+            
+            // Focus the email input for retry
+            emailInput.focus();
         }
     });
 
