@@ -441,11 +441,37 @@
     }
 
     .history-panel h2 {
-      padding: 15px;
       margin: 0;
+      padding: 15px;
+      text-align: center;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       font-size: 18px;
       flex-shrink: 0;
+    }
+
+    /* XP summary in history */
+    .xp-summary {
+      font-size: 0.8em;
+      margin-left: 10px;
+      font-weight: normal;
+    }
+    
+    .xp-gained {
+      color: #4CAF50;
+      font-weight: bold;
+    }
+    
+    .xp-penalty {
+      color: #FF5252;
+      font-weight: bold;
+    }
+    
+    html.light-mode .xp-gained {
+      color: #2E7D32;
+    }
+    
+    html.light-mode .xp-penalty {
+      color: #D32F2F;
     }
 
     .history-content {
@@ -462,8 +488,12 @@
     }
 
     .history-date h3 {
-      margin: 0 0 10px 0;
+      margin: 15px 0 10px;
+      padding: 0 15px;
       font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
     }
 
     .history-chore {

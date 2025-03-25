@@ -740,8 +740,44 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Use the utility function to format the date consistently
             const formattedDate = formatDisplayDate(date);
-
-            dateSection.innerHTML = `<h3>${formattedDate}</h3>`;
+            
+            // Create heading element with date
+            const headingEl = document.createElement('h3');
+            headingEl.textContent = formattedDate;
+            
+            // Add XP gains and penalties if they exist
+            if (dayHistory.xp) {
+                const xpContainer = document.createElement('span');
+                xpContainer.className = 'xp-summary';
+                
+                // Show positive XP if any was gained
+                if (dayHistory.xp.gained > 0) {
+                    const xpGained = document.createElement('span');
+                    xpGained.className = 'xp-gained';
+                    xpGained.textContent = `+${dayHistory.xp.gained}`;
+                    xpContainer.appendChild(xpGained);
+                }
+                
+                // Show negative XP if any penalties were applied
+                if (dayHistory.xp.penalties > 0) {
+                    // Add a space if we already added the gained XP
+                    if (dayHistory.xp.gained > 0) {
+                        xpContainer.appendChild(document.createTextNode(' '));
+                    }
+                    
+                    const xpPenalty = document.createElement('span');
+                    xpPenalty.className = 'xp-penalty';
+                    xpPenalty.textContent = `-${dayHistory.xp.penalties}`;
+                    xpContainer.appendChild(xpPenalty);
+                }
+                
+                // If we added any XP information, append it to the heading
+                if (dayHistory.xp.gained > 0 || dayHistory.xp.penalties > 0) {
+                    headingEl.appendChild(xpContainer);
+                }
+            }
+            
+            dateSection.appendChild(headingEl);
 
             // Add chores for this date
             dayHistory.chores.forEach(chore => {
