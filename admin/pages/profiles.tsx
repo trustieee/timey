@@ -4,7 +4,7 @@ import Head from "next/head";
 import Layout from "../components/Layout";
 import { PlayerProfile, ChoreStatus } from "../../src/playerProfile";
 import { db, auth } from "../utils/firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { APP_CONFIG } from "../../src/config";
 import {
   signInWithEmailAndPassword,
@@ -18,6 +18,12 @@ interface AdminUserProfile extends PlayerProfile {
   uid: string;
 }
 
+// Interface for a chore item
+interface ChoreItem {
+  id: number;
+  text: string;
+}
+
 const ProfilesPage: NextPage = () => {
   const [profiles, setProfiles] = useState<AdminUserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +35,17 @@ const ProfilesPage: NextPage = () => {
     Record<string, boolean>
   >({});
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
+
+  // Chores modal state
+  const [isChoresModalOpen, setIsChoresModalOpen] = useState(false);
+  const [selectedProfileUid, setSelectedProfileUid] = useState<string | null>(
+    null
+  );
+  const [userChores, setUserChores] = useState<ChoreItem[]>([]);
+  const [newChoreText, setNewChoreText] = useState("");
+  const [editingChoreId, setEditingChoreId] = useState<number | null>(null);
+  const [editingChoreText, setEditingChoreText] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   // Check auth state on component mount
   useEffect(() => {
@@ -341,6 +358,94 @@ const ProfilesPage: NextPage = () => {
     }
   };
 
+  // Open chores modal for a specific profile
+  const openChoresModal = (profile: AdminUserProfile) => {
+    setSelectedProfileUid(profile.uid);
+    // Initialize with existing chores if available or empty array
+    setUserChores(profile.chores || []);
+    setIsChoresModalOpen(true);
+  };
+
+  // Close chores modal and reset state
+  const closeChoresModal = () => {
+    setIsChoresModalOpen(false);
+    setSelectedProfileUid(null);
+    setUserChores([]);
+    setNewChoreText("");
+    setEditingChoreId(null);
+    setEditingChoreText("");
+  };
+
+  // Add a new chore
+  const handleAddChore = () => {
+    if (!newChoreText.trim()) return;
+
+    const newId =
+      userChores.length > 0
+        ? Math.max(...userChores.map((chore) => chore.id)) + 1
+        : 0;
+
+    setUserChores([...userChores, { id: newId, text: newChoreText.trim() }]);
+
+    setNewChoreText("");
+  };
+
+  // Start editing a chore
+  const startEditChore = (chore: ChoreItem) => {
+    setEditingChoreId(chore.id);
+    setEditingChoreText(chore.text);
+  };
+
+  // Save chore edit
+  const saveChoreEdit = () => {
+    if (!editingChoreText.trim() || editingChoreId === null) return;
+
+    setUserChores(
+      userChores.map((chore) =>
+        chore.id === editingChoreId
+          ? { ...chore, text: editingChoreText.trim() }
+          : chore
+      )
+    );
+
+    setEditingChoreId(null);
+    setEditingChoreText("");
+  };
+
+  // Delete a chore
+  const deleteChore = (id: number) => {
+    setUserChores(userChores.filter((chore) => chore.id !== id));
+  };
+
+  // Save chores to Firestore
+  const saveChores = async () => {
+    if (!selectedProfileUid) return;
+
+    setIsSaving(true);
+    try {
+      const profileRef = doc(db, "playerProfiles", selectedProfileUid);
+      await updateDoc(profileRef, {
+        chores: userChores,
+      });
+
+      // Update the local profiles state
+      setProfiles(
+        profiles.map((profile) =>
+          profile.uid === selectedProfileUid
+            ? { ...profile, chores: userChores }
+            : profile
+        )
+      );
+
+      closeChoresModal();
+    } catch (error) {
+      console.error("Error saving chores:", error);
+      setError("Failed to save chores");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <Layout>
       <Head>
@@ -477,6 +582,30 @@ const ProfilesPage: NextPage = () => {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3 mt-2 md:mt-0">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openChoresModal(profile);
+                        }}
+                        className="flex items-center bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-white transition-colors"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4 mr-1"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                        Manage Chores
+                      </button>
+
                       <div className="flex items-center bg-[rgba(76,175,80,0.2)] px-3 py-1 rounded border border-green-900">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -897,6 +1026,161 @@ const ProfilesPage: NextPage = () => {
           </div>
         )}
       </div>
+
+      {/* Chores Management Modal */}
+      {isChoresModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#333] rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="p-4 border-b border-gray-700 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-green-400">
+                Manage Chores
+              </h2>
+              <button
+                onClick={closeChoresModal}
+                className="text-gray-400 hover:text-white"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-4 flex-1 overflow-y-auto">
+              <div className="mb-4">
+                <div className="flex">
+                  <input
+                    type="text"
+                    value={newChoreText}
+                    onChange={(e) => setNewChoreText(e.target.value)}
+                    placeholder="Enter new chore..."
+                    className="flex-1 px-3 py-2 bg-[#444] border border-gray-600 rounded-l-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 text-white"
+                    onKeyPress={(e) => e.key === "Enter" && handleAddChore()}
+                  />
+                  <button
+                    onClick={handleAddChore}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-r-md text-white transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                {userChores.length === 0 ? (
+                  <p className="text-gray-400 text-center italic py-4">
+                    No chores added yet
+                  </p>
+                ) : (
+                  userChores.map((chore) => (
+                    <div
+                      key={chore.id}
+                      className="bg-[#444] rounded-md border border-gray-600 p-2 flex justify-between items-center"
+                    >
+                      {editingChoreId === chore.id ? (
+                        <div className="flex flex-1 mr-2">
+                          <input
+                            type="text"
+                            value={editingChoreText}
+                            onChange={(e) =>
+                              setEditingChoreText(e.target.value)
+                            }
+                            className="flex-1 px-2 py-1 bg-[#555] border border-gray-500 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 text-white"
+                            onKeyPress={(e) =>
+                              e.key === "Enter" && saveChoreEdit()
+                            }
+                          />
+                          <button
+                            onClick={saveChoreEdit}
+                            className="ml-2 px-2 py-1 bg-green-600 hover:bg-green-700 rounded-md text-white transition-colors text-sm"
+                          >
+                            Save
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-white flex-1">{chore.text}</span>
+                      )}
+
+                      <div className="flex space-x-1">
+                        {editingChoreId !== chore.id && (
+                          <button
+                            onClick={() => startEditChore(chore)}
+                            className="p-1 text-blue-400 hover:text-blue-300 transition-colors"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-5 w-5"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                              />
+                            </svg>
+                          </button>
+                        )}
+                        <button
+                          onClick={() => deleteChore(chore.id)}
+                          className="p-1 text-red-400 hover:text-red-300 transition-colors"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-gray-700 flex justify-end">
+              <button
+                onClick={closeChoresModal}
+                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded mr-2 text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveChores}
+                disabled={isSaving}
+                className={`px-4 py-2 rounded text-white transition-colors ${
+                  isSaving
+                    ? "bg-blue-800 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700"
+                }`}
+              >
+                {isSaving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx>{`
         .custom-scrollbar::-webkit-scrollbar {
