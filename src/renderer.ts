@@ -584,7 +584,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.electronAPI.updateChoreStatus(id, newStatus)
             .then(() => {
                 // Reload the entire profile to ensure consistency
-                reloadProfile();
+                reloadProfile().then(() => {
+                    // Re-render chores in the main list
+                    renderChores();
+                    
+                    // Re-render the history panel if it's visible
+                    if (historyPanel.classList.contains('visible')) {
+                        renderHistory();
+                    }
+                });
             })
             .catch(err => {
                 console.error('Error updating chore status:', err);
@@ -721,6 +729,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Get dates in reverse chronological order
         const dates = Object.keys(playerProfile.history).sort().reverse();
+        const today = getLocalDateString(); // Get today's date to identify current day's chores
 
         dates.forEach(date => {
             const dayHistory = playerProfile.history[date];
@@ -738,12 +747,31 @@ document.addEventListener('DOMContentLoaded', async () => {
             dayHistory.chores.forEach(chore => {
                 const choreElement = document.createElement('div');
                 choreElement.className = 'history-chore';
-
+                
+                const isCurrentDay = date === today;
                 const statusIcon = getStatusIcon(chore.status as ChoreStatus);
-                choreElement.innerHTML = `
-                    <div class="status ${chore.status}">${statusIcon}</div>
-                    <span>${chore.text}</span>
-                `;
+                
+                // Create status element
+                const statusElement = document.createElement('div');
+                statusElement.className = `status ${chore.status}`;
+                statusElement.innerHTML = statusIcon;
+                
+                // Add a cursor and hover effect for today's chores to indicate they're clickable
+                if (isCurrentDay) {
+                    statusElement.classList.add('clickable');
+                    
+                    // Add click handler to cycle status for today's chores
+                    statusElement.addEventListener('click', () => {
+                        cycleChoreStatus(chore.id);
+                    });
+                }
+                
+                const textElement = document.createElement('span');
+                textElement.textContent = chore.text;
+                
+                // Append child elements instead of using innerHTML
+                choreElement.appendChild(statusElement);
+                choreElement.appendChild(textElement);
 
                 dateSection.appendChild(choreElement);
             });
