@@ -3,12 +3,11 @@
  */
 
 import './index.css';
-import { ChoreStatus, DayProgress } from './playerProfile';
+import { ChoreStatus, DayProgress, PlayerProfile as BasePlayerProfile } from './playerProfile';
 import { APP_CONFIG } from './config';
-import { 
-    getLocalDateString, 
-    formatDisplayDate, 
-    parseLocalDate,
+import {
+    getLocalDateString,
+    formatDisplayDate,
     formatClockDate,
     formatClockTime
 } from './utils';
@@ -28,25 +27,16 @@ interface Chore {
     status: ChoreStatus;
 }
 
-// Define player profile interface
-interface PlayerProfile {
+// Define renderer-specific player profile interface
+interface RendererPlayerProfile extends BasePlayerProfile {
     level: number;
     xp: number;
     xpToNextLevel: number;
-    history: { [date: string]: DayProgress };
-    rewards?: {
-        available: number;
-        permanent: {
-            [rewardType in RewardType]?: number;
-        };
-    };
-}
-
-// Interface for completed chores tracking
-interface CompletedChore {
-    id: number;
-    text: string;
-    completedAt: string; // ISO datetime string in local time
+    completedChores: Array<{
+        id: number;
+        text: string;
+        completedAt: string;
+    }>;
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -68,12 +58,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     const availableRewardsCount = document.getElementById('available-rewards-count') as HTMLElement;
 
     // Player profile data
-    let playerProfile: PlayerProfile;
+    let playerProfile: RendererPlayerProfile;
 
     // Load player profile
     async function loadPlayerProfile() {
         try {
-            playerProfile = await window.electronAPI.loadPlayerProfile();
+            const baseProfile = await window.electronAPI.loadPlayerProfile();
+            // Convert base profile to renderer profile
+            playerProfile = {
+                ...baseProfile,
+                level: calculateLevel(baseProfile),
+                xp: calculateXp(baseProfile),
+                xpToNextLevel: calculateXpToNextLevel(baseProfile),
+                completedChores: getCompletedChores(baseProfile)
+            };
             updateXpDisplay();
         } catch (error) {
             console.error('Error loading player profile:', error);
@@ -82,9 +80,59 @@ document.addEventListener('DOMContentLoaded', async () => {
                 level: 1,
                 xp: 0,
                 xpToNextLevel: APP_CONFIG.PROFILE.XP_PER_LEVEL[0],
-                history: {}
+                history: {},
+                completedChores: [],
+                rewards: {
+                    available: 0,
+                    permanent: {}
+                }
             };
         }
+    }
+
+    // Helper functions to calculate profile properties
+    function calculateLevel(profile: BasePlayerProfile): number {
+        // Implementation from playerProfile.ts
+        let totalXp = 0;
+        for (const date in profile.history) {
+            totalXp += profile.history[date].xp.final;
+        }
+        let level = 1;
+        while (totalXp >= APP_CONFIG.PROFILE.XP_PER_LEVEL[level - 1]) {
+            totalXp -= APP_CONFIG.PROFILE.XP_PER_LEVEL[level - 1];
+            level++;
+        }
+        return level;
+    }
+
+    function calculateXp(profile: BasePlayerProfile): number {
+        let totalXp = 0;
+        for (const date in profile.history) {
+            totalXp += profile.history[date].xp.final;
+        }
+        return totalXp;
+    }
+
+    function calculateXpToNextLevel(profile: BasePlayerProfile): number {
+        const level = calculateLevel(profile);
+        return APP_CONFIG.PROFILE.XP_PER_LEVEL[level - 1];
+    }
+
+    function getCompletedChores(profile: BasePlayerProfile): Array<{ id: number; text: string; completedAt: string }> {
+        const completedChores: Array<{ id: number; text: string; completedAt: string }> = [];
+        for (const date in profile.history) {
+            const dayProgress = profile.history[date];
+            for (const chore of dayProgress.chores) {
+                if (chore.status === 'completed' && chore.completedAt) {
+                    completedChores.push({
+                        id: chore.id,
+                        text: chore.text,
+                        completedAt: chore.completedAt
+                    });
+                }
+            }
+        }
+        return completedChores;
     }
 
     // Update XP display
@@ -101,36 +149,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Update level indicator
         levelIndicatorElement.textContent = `Level ${playerProfile.level}`;
-    }
-
-    // Add XP to player
-    async function addXp(amount: number) {
-        try {
-            playerProfile = await window.electronAPI.addXp(amount);
-            updateXpDisplay();
-        } catch (error) {
-            console.error('Error adding XP:', error);
-        }
-    }
-
-    // Add completed chore
-    async function addCompletedChore(choreId: number, choreText: string) {
-        try {
-            playerProfile = await window.electronAPI.addCompletedChore(choreId, choreText);
-            updateXpDisplay();
-        } catch (error) {
-            console.error('Error adding completed chore:', error);
-        }
-    }
-
-    // Remove completed chore
-    async function removeCompletedChore(choreId: number) {
-        try {
-            playerProfile = await window.electronAPI.removeCompletedChore(choreId);
-            updateXpDisplay();
-        } catch (error) {
-            console.error('Error removing completed chore:', error);
-        }
     }
 
     // Load player profile at startup
@@ -263,9 +281,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let timerInterval: number | null = null;
     let timeLeft = APP_CONFIG.TIMER.PLAY_TIME_MINUTES * 60; // in seconds (will be updated with permanent bonus after profile loads)
     let chores: Chore[] = JSON.parse(JSON.stringify(APP_CONFIG.CHORES)); // Deep copy
-    console.log(chores);
     let currentState: AppState = AppState.READY;
-    let isPaused: boolean = false;
+    let isPaused = false;
 
     // Reset chores to uncompleted state - only used for new days
     function resetChores(): void {
@@ -300,7 +317,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         date: today,
                         chores: [],
                         playTime: {
-                            totalMinutes: 0,
                             sessions: []
                         },
                         xp: {
@@ -336,41 +352,43 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Update UI based on state
         switch (newState) {
-            case AppState.READY:
+            case AppState.READY: {
                 startTimerBtn.disabled = false;
                 pauseTimerBtn.disabled = true;
                 choresSection.classList.add('hidden');
-                
+
                 // Apply permanent play time bonus
                 const basePlayTime = APP_CONFIG.TIMER.PLAY_TIME_MINUTES;
                 const permanentPlayBonus = getPermanentPlayTimeBonus();
                 timeLeft = (basePlayTime + permanentPlayBonus) * 60;
-                
+
                 isPaused = false;
                 updatePauseButtonText();
                 updateTimerDisplay();
                 break;
+            }
 
-            case AppState.PLAYING:
+            case AppState.PLAYING: {
                 startTimerBtn.disabled = true;
                 pauseTimerBtn.disabled = false;
                 choresSection.classList.add('hidden');
                 break;
+            }
 
-            case AppState.COOLDOWN:
+            case AppState.COOLDOWN: {
                 startTimerBtn.disabled = true;
                 pauseTimerBtn.disabled = true;
                 resetAfterChoresBtn.disabled = true;
                 choresSection.classList.remove('hidden');
-                
+
                 // Apply permanent cooldown reduction
                 const baseCooldown = APP_CONFIG.TIMER.COOLDOWN_TIME_MINUTES;
                 const permanentCooldownReduction = getPermanentCooldownReduction();
                 const effectiveCooldown = Math.max(0, baseCooldown - permanentCooldownReduction);
                 timeLeft = effectiveCooldown * 60;
-                
+
                 console.log(`Applied cooldown reduction: Base ${baseCooldown} - Permanent ${permanentCooldownReduction} = ${effectiveCooldown} minutes`);
-                
+
                 isPaused = false;
                 updatePauseButtonText();
                 loadTodayChores().then(() => {
@@ -379,12 +397,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // If the cooldown time is already 0 after reduction, skip cooldown period
                 if (timeLeft <= 0) {
-                    stopTimer();
+                    stopTimer(false); // Not a play session ending, this is a cooldown
                     showNotification('Cooldown Skipped', 'Thanks to your rewards, you can start playing immediately!');
                     updateAppState(AppState.READY);
                 }
 
                 break;
+            }
         }
     }
 
@@ -426,6 +445,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function startTimer(): Promise<void> {
         try {
             if (currentState === AppState.READY) {
+                // Start a new play session in the profile
+                await window.electronAPI.startPlaySession();
+
                 currentState = AppState.PLAYING;
                 updateAppState(AppState.PLAYING);
                 // Start play time
@@ -439,7 +461,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         updateTimerDisplay();
 
                         if (timeLeft <= 0) {
-                            stopTimer();
+                            stopTimer(true); // true indicates end of play session
                             playNotificationSound();
                             showNotification();
                             updateAppState(AppState.COOLDOWN);
@@ -469,7 +491,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 updateResetButtonState(); // Update button state every tick
 
                 if (timeLeft <= 0) {
-                    stopTimer();
+                    stopTimer(false); // false indicates not a play session ending
                     playNotificationSound();
                     showNotification('Cooldown Complete', 'Your cooldown period is over! Complete your daily objectives to start playing again.');
                     updateResetButtonState(); // Update one final time when timer hits 0
@@ -479,10 +501,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Stop the timer
-    function stopTimer(): void {
+    async function stopTimer(isPlaySessionEnding = false): Promise<void> {
         if (timerInterval) {
             clearInterval(timerInterval);
             timerInterval = null;
+        }
+
+        // If this is a play session ending (not a cooldown or other timer)
+        if (isPlaySessionEnding && currentState === AppState.PLAYING) {
+            // End the play session in the profile
+            await window.electronAPI.endPlaySession();
         }
     }
 
@@ -568,10 +596,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Check if all chores are completed or N/A
     function checkAllChoresCompleted(): void {
-        const allDone = chores.every(chore =>
-            chore.status === 'completed' || chore.status === 'na'
-        );
-
         // Always show completion message, but with different text based on completion
         completionMessage.classList.remove('hidden');
         updateResetButtonState();
@@ -587,18 +611,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         resetAfterChoresBtn.disabled = timeLeft > 0;
 
         // Update the completion message text based on state
+        const messageElement = completionMessage.querySelector('p');
+        if (!messageElement) return;
+
         if (timeLeft > 0) {
-            completionMessage.querySelector('p')!.textContent =
+            messageElement.textContent =
                 `Cooldown time remaining. Complete your daily objectives while you wait!`;
         } else if (allChoresCompleted) {
-            completionMessage.querySelector('p')!.textContent =
+            messageElement.textContent =
                 'Great job completing your daily objectives! You can start play time now.';
         } else {
             const incompleteCount = chores.filter(chore =>
                 chore.status === 'incomplete'
             ).length;
 
-            completionMessage.querySelector('p')!.textContent =
+            messageElement.textContent =
                 `You have ${incompleteCount} incomplete ${incompleteCount === 1 ? 'daily objective' : 'daily objectives'}. Remember: -10 XP per incomplete daily objective at the end of the day!`;
         }
         completionMessage.classList.remove('hidden');
@@ -617,34 +644,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialize the app
     async function initializeApp(): Promise<void> {
         await reloadProfile();
-        
+
         // Apply permanent play time bonus to the timer
         applyPermanentBonuses();
-        
+
         updateAppState(AppState.READY);
         updateTimerDisplay();
-        
+
         // Set up a regular profile refresh to handle day changes
         setInterval(() => {
             reloadProfile();
         }, APP_CONFIG.PROFILE_REFRESH_INTERVAL);
     }
-    
+
     // Function to apply permanent bonuses from rewards
     function applyPermanentBonuses(): void {
         // Calculate effective play time with permanent bonus
         const basePlayTime = APP_CONFIG.TIMER.PLAY_TIME_MINUTES;
         const permanentBonus = getPermanentPlayTimeBonus();
-        
+
         // Only update timer if in READY state
         if (currentState === AppState.READY) {
             timeLeft = (basePlayTime + permanentBonus) * 60;
             updateTimerDisplay();
         }
-        
-        console.log(`Applied permanent play time bonus: ${permanentBonus} minutes`);
     }
-    
+
     // Get permanent play time bonus from profile
     function getPermanentPlayTimeBonus(): number {
         if (!playerProfile?.rewards?.permanent || !playerProfile.rewards.permanent[RewardType.EXTEND_PLAY_TIME]) {
@@ -652,7 +677,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         return playerProfile.rewards.permanent[RewardType.EXTEND_PLAY_TIME];
     }
-    
+
     // Get permanent cooldown reduction from profile
     function getPermanentCooldownReduction(): number {
         if (!playerProfile?.rewards?.permanent || !playerProfile.rewards.permanent[RewardType.REDUCE_COOLDOWN]) {
@@ -660,7 +685,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         return playerProfile.rewards.permanent[RewardType.REDUCE_COOLDOWN];
     }
-    
+
     // Start app initialization
     initializeApp();
 
@@ -672,12 +697,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     function toggleHistoryPanel(e: MouseEvent): void {
         e.stopPropagation(); // Prevent event from bubbling up
         historyPanel.classList.toggle('visible');
-        
+
         // Hide rewards panel if it's open
         if (rewardsPanel.classList.contains('visible')) {
             rewardsPanel.classList.remove('visible');
         }
-        
+
+        // Hide login panel if it's open and user is authenticated
+        if (isAuthenticated && loginPanel.classList.contains('visible')) {
+            loginPanel.classList.remove('visible');
+        }
+
         if (historyPanel.classList.contains('visible')) {
             // Refresh player profile before rendering history
             loadPlayerProfile().then(() => {
@@ -743,6 +773,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             rewardsPanel.classList.contains('visible')) {
             rewardsPanel.classList.remove('visible');
         }
+
+        // Only close the login panel if user is authenticated
+        if (isAuthenticated &&
+            !loginPanel.contains(target) &&
+            !loginBtn.contains(target) &&
+            loginPanel.classList.contains('visible')) {
+            loginPanel.classList.remove('visible');
+        }
     });
 
     // Prevent clicks inside the history panel from closing it
@@ -753,83 +791,95 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Rewards panel functionality
     function toggleRewardsPanel(e: MouseEvent): void {
         e.stopPropagation(); // Prevent event from bubbling up
-        rewardsPanel.classList.toggle('visible');
-        
-        // Hide history panel if it's open
-        if (historyPanel.classList.contains('visible')) {
-            historyPanel.classList.remove('visible');
-        }
-        
-        if (rewardsPanel.classList.contains('visible')) {
-            // Refresh player profile before rendering rewards
-            loadPlayerProfile().then(() => {
-                renderRewards();
-            });
+
+        // Only allow toggling rewards panel if authenticated
+        if (isAuthenticated) {
+            rewardsPanel.classList.toggle('visible');
+
+            // Hide history panel if it's open
+            if (historyPanel.classList.contains('visible')) {
+                historyPanel.classList.remove('visible');
+            }
+
+            // Hide login panel if it's open and user is authenticated
+            if (loginPanel.classList.contains('visible')) {
+                loginPanel.classList.remove('visible');
+            }
+
+            if (rewardsPanel.classList.contains('visible')) {
+                // Refresh player profile before rendering rewards
+                loadPlayerProfile().then(() => {
+                    renderRewards();
+                });
+            }
+        } else {
+            // If not authenticated, ensure login panel is visible
+            loginPanel.classList.add('visible');
         }
     }
 
     async function renderRewards(): Promise<void> {
         rewardsContent.innerHTML = '';
-        
+
         // Get available rewards from player profile
         const availableRewards = playerProfile.rewards ? playerProfile.rewards.available : 0;
         availableRewardsCount.textContent = availableRewards.toString();
-        
+
         // Create reward items
         REWARDS.forEach(reward => {
             const rewardElement = document.createElement('div');
             rewardElement.className = `reward-item${availableRewards === 0 ? ' disabled' : ''}`;
-            
+
             rewardElement.innerHTML = `
                 <h3>${reward.name}</h3>
                 <p>${reward.description}</p>
             `;
-            
+
             // Add click handler if rewards are available
             if (availableRewards > 0) {
                 rewardElement.addEventListener('click', () => {
                     useReward(reward);
                 });
             }
-            
+
             rewardsContent.appendChild(rewardElement);
         });
-        
+
         // Show history of used rewards
         const rewardHistory = document.createElement('div');
         rewardHistory.className = 'reward-history';
         rewardHistory.innerHTML = '<h3>Reward History</h3>';
-        
+
         let hasHistory = false;
-        
+
         // Gather all reward usages from all days
         const dates = Object.keys(playerProfile.history).sort().reverse();
-        
+
         dates.forEach(date => {
             const dayHistory = playerProfile.history[date];
             if (!dayHistory || !dayHistory.rewardsUsed || dayHistory.rewardsUsed.length === 0) return;
-            
+
             hasHistory = true;
-            
+
             dayHistory.rewardsUsed.forEach(usedReward => {
                 const reward = REWARDS.find(r => r.id === usedReward.type);
                 if (!reward) return;
-                
+
                 const historyElement = document.createElement('div');
                 historyElement.className = 'reward-history-item';
-                
+
                 // Format date for display
                 const formattedDate = formatDisplayDate(date);
-                
+
                 historyElement.innerHTML = `
                     <div>${reward.name}: ${reward.description}</div>
                     <div class="date">${formattedDate}</div>
                 `;
-                
+
                 rewardHistory.appendChild(historyElement);
             });
         });
-        
+
         if (hasHistory) {
             rewardsContent.appendChild(rewardHistory);
         } else {
@@ -839,7 +889,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             rewardsContent.appendChild(noHistoryElement);
         }
     }
-    
+
     // Function to use a reward
     async function useReward(reward: Reward): Promise<void> {
         try {
@@ -848,19 +898,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                 alert('No rewards available to use!');
                 return;
             }
-            
+
             // Confirm the reward usage
             const confirmed = confirm(`Are you sure you want to use the "${reward.name}" reward?\n\n${reward.description}`);
             if (!confirmed) return;
-            
+
             // Use the reward
-            playerProfile = await window.electronAPI.useReward(reward.id, reward.value);
-            
+            const baseProfile = await window.electronAPI.useReward(reward.id, reward.value);
+            // Convert base profile to renderer profile
+            playerProfile = {
+                ...baseProfile,
+                level: calculateLevel(baseProfile),
+                xp: calculateXp(baseProfile),
+                xpToNextLevel: calculateXpToNextLevel(baseProfile),
+                completedChores: getCompletedChores(baseProfile)
+            };
+
             // Apply reward effect
             if (reward.id === RewardType.EXTEND_PLAY_TIME) {
                 // Get updated permanent bonus
                 const permanentBonus = getPermanentPlayTimeBonus();
-                
+
                 // If we're already playing, add time to the current timer
                 if (currentState === AppState.PLAYING) {
                     timeLeft += reward.value * 60; // Convert to seconds
@@ -875,25 +933,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 showNotification('Reward Used', `Added ${reward.value} minutes to play time permanently!`);
             } else if (reward.id === RewardType.REDUCE_COOLDOWN) {
-                // Get updated permanent cooldown reduction
-                const permanentReduction = getPermanentCooldownReduction();
-                
                 // If in cooldown, reduce time
                 if (currentState === AppState.COOLDOWN) {
                     // Apply the immediate reduction from the reward
                     timeLeft = Math.max(0, timeLeft - reward.value * 60); // Convert to seconds
                     updateTimerDisplay();
-                    
+
                     // Check if cooldown is now complete
                     if (timeLeft <= 0) {
-                        stopTimer();
+                        stopTimer(false); // Not a play session ending, this is a cooldown
                         showNotification('Cooldown Complete', 'Your cooldown time is over! You may start playing again.');
                         updateResetButtonState();
                     }
                 }
                 showNotification('Reward Used', `Reduced cooldown time by ${reward.value} minutes permanently!`);
             }
-            
+
             // Refresh UI
             renderRewards();
             updateXpDisplay();
@@ -905,24 +960,199 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Add event listener for rewards button  
     rewardsBtn.addEventListener('click', toggleRewardsPanel);
-    
+
     // Prevent clicks inside the rewards panel from closing it
     rewardsPanel.addEventListener('click', (e: MouseEvent) => {
         e.stopPropagation();
+    });
+
+    // Login panel functionality
+    const loginBtn = document.getElementById('show-login') as HTMLButtonElement;
+    const loginPanel = document.getElementById('login-panel') as HTMLElement;
+
+    // Track authentication status
+    let isAuthenticated = false;
+
+    // Check authentication status on startup
+    async function checkAuthStatus() {
+        try {
+            const status = await window.electronAPI.getAuthStatus();
+            isAuthenticated = status.isAuthenticated;
+
+            // If not authenticated, show login panel
+            if (!isAuthenticated) {
+                loginPanel.classList.add('visible');
+            }
+            return status.isAuthenticated;
+        } catch (error) {
+            console.error('Failed to check auth status:', error);
+            return false;
+        }
+    }
+
+    // Check auth status when page loads
+    checkAuthStatus();
+
+    function toggleLoginPanel(e: MouseEvent): void {
+        e.stopPropagation(); // Prevent event from bubbling up
+
+        // If authenticated, toggle panel normally
+        if (isAuthenticated) {
+            loginPanel.classList.toggle('visible');
+
+            // Hide other panels if they're open
+            if (historyPanel.classList.contains('visible')) {
+                historyPanel.classList.remove('visible');
+            }
+
+            if (rewardsPanel.classList.contains('visible')) {
+                rewardsPanel.classList.remove('visible');
+            }
+        } else {
+            // If not authenticated, force panel to stay open
+            loginPanel.classList.add('visible');
+        }
+    }
+
+    // Add event listener for login button
+    loginBtn.addEventListener('click', toggleLoginPanel);
+
+    // Prevent clicks inside the login panel from closing it
+    loginPanel.addEventListener('click', (e: MouseEvent) => {
+        e.stopPropagation();
+    });
+
+    // Modify the document click event to respect authentication state
+    document.addEventListener('click', (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        // Only close the login panel on outside click if user is authenticated
+        if (isAuthenticated &&
+            !loginPanel.contains(target) &&
+            !loginBtn.contains(target) &&
+            loginPanel.classList.contains('visible')) {
+            loginPanel.classList.remove('visible');
+        }
+    });
+
+    // Modify sign-in button click handler to update authentication state
+    const signInButton = document.getElementById('sign-in-button') as HTMLButtonElement;
+    const emailInput = document.getElementById('email') as HTMLInputElement;
+    const passwordInput = document.getElementById('password') as HTMLInputElement;
+
+    // Add error message element for login form
+    const loginErrorMsg = document.createElement('div');
+    loginErrorMsg.className = 'login-error-message';
+    loginErrorMsg.style.color = '#FF5252';
+    loginErrorMsg.style.margin = '10px 0';
+    loginErrorMsg.style.padding = '8px';
+    loginErrorMsg.style.borderRadius = '4px';
+    loginErrorMsg.style.backgroundColor = 'rgba(255, 82, 82, 0.1)';
+    loginErrorMsg.style.display = 'none';
+
+    // Insert error message before the sign-in button
+    const formGroup = signInButton.parentElement;
+    formGroup.insertBefore(loginErrorMsg, signInButton);
+
+    // Add event listeners for Enter key in login inputs
+    emailInput.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            // If enter is pressed in the email field, move focus to password
+            // unless password already has a value, then submit the form
+            if (passwordInput.value.trim()) {
+                signInButton.click();
+            } else {
+                passwordInput.focus();
+            }
+        }
+    });
+
+    passwordInput.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            // If enter is pressed in the password field, submit the form
+            signInButton.click();
+        }
+    });
+
+    signInButton.addEventListener('click', async () => {
+        // Clear any previous error messages
+        loginErrorMsg.style.display = 'none';
+        loginErrorMsg.textContent = '';
+
+        // Get the email and password values
+        const email = emailInput.value.trim();
+        const password = passwordInput.value.trim();
+
+        // Validate inputs
+        if (!email || !password) {
+            loginErrorMsg.textContent = 'Please enter both email and password.';
+            loginErrorMsg.style.display = 'block';
+            emailInput.focus();
+            return;
+        }
+
+        try {
+            // Show loading state
+            signInButton.textContent = 'Signing in...';
+            signInButton.disabled = true;
+
+            // Use IPC to authenticate with Firebase
+            const result = await window.electronAPI.authenticateWithFirebase(email, password);
+
+            if (result.success) {
+                console.log('Sign-in successful', result.user.email);
+                signInButton.textContent = 'Signed in';
+
+                // Update authentication state
+                isAuthenticated = true;
+
+                // Close the login panel
+                loginPanel.classList.remove('visible');
+
+                // Force a complete profile reload
+                try {
+                    // First reload the profile from server
+                    await reloadProfile();
+
+                    // Then redraw the UI components
+                    updateXpDisplay();
+                    loadTodayChores().then(() => {
+                        renderChores();
+                    });
+                    renderRewards();
+                } catch (err) {
+                    console.error('Error refreshing profile after login:', err);
+                }
+            } else {
+                throw new Error(result.error || 'Authentication failed');
+            }
+        } catch (error: any) {
+            // Handle authentication errors
+            console.error('Authentication failed:', error);
+
+            // Display error in the custom error element (no alert)
+            loginErrorMsg.textContent = `Sign-in failed: ${error.message}`;
+            loginErrorMsg.style.display = 'block';
+
+            // Re-enable inputs
+            signInButton.textContent = 'Sign In';
+            signInButton.disabled = false;
+
+            // Focus the email input for retry
+            emailInput.focus();
+        }
     });
 
     // Play notification sound when timer ends
     function playNotificationSound(): void {
         // You would need to add a sound file to your project and implement proper audio playback
         // For now, we'll just log to console
-        console.log('Playing notification sound');
         // Example implementation:
         // const audio = new Audio('path/to/notification.mp3');
         // audio.play();
     }
 
     // Show notification when timer ends
-    function showNotification(title: string = 'Time\'s Up!', message: string = 'Your play time is over. Time to complete your daily objectives!'): void {
+    function showNotification(title = 'Time\'s Up!', message = 'Your play time is over. Time to complete your daily objectives!'): void {
         // Check if browser notifications are supported
         if ('Notification' in window) {
             if (Notification.permission === 'granted') {
@@ -1131,45 +1361,56 @@ document.addEventListener('DOMContentLoaded', async () => {
     `;
     document.head.appendChild(style);
 
-    // Add a function to reload the profile and update UI
-    async function reloadProfile(): Promise<void> {
+    // Function to reload profile data
+    async function reloadProfile() {
         try {
             // Store the previous profile to compare dates
-            const previousProfile = playerProfile ? {...playerProfile} : null;
+            const previousProfile = playerProfile ? { ...playerProfile } : null;
             const previousDate = previousProfile ? Object.keys(previousProfile.history).sort().pop() : null;
-            
+
             // Reload the profile data
-            playerProfile = await window.electronAPI.loadPlayerProfile();
+            const baseProfile = await window.electronAPI.loadPlayerProfile();
+            // Convert base profile to renderer profile
+            playerProfile = {
+                ...baseProfile,
+                level: calculateLevel(baseProfile),
+                xp: calculateXp(baseProfile),
+                xpToNextLevel: calculateXpToNextLevel(baseProfile),
+                completedChores: getCompletedChores(baseProfile)
+            };
             updateXpDisplay();
-            
+
             // Apply permanent bonuses after profile reload
             applyPermanentBonuses();
-            
+
             // Get the current date
             const currentDate = getLocalDateString();
-            
+
             // If we had a previous profile and the date has changed, check for penalties
             if (previousProfile && previousDate && previousDate !== currentDate) {
                 const previousDayData = previousProfile.history[previousDate] as DayProgress;
-                
+
                 // Check if previousDayData has penalties
-                if (previousDayData && 
+                if (previousDayData &&
                     previousDayData.xp &&
                     previousDayData.xp.penalties > 0) {
                     // Show message about penalties from previous day
                     showNotification(
-                        'Daily Objectives Summary', 
+                        'Daily Objectives Summary',
                         `You received a ${previousDayData.xp.penalties} XP penalty for incomplete objectives yesterday.`
                     );
                 }
             }
-            
+
             // Load today's chores with the refreshed profile
             loadTodayChores().then(() => {
                 renderChores();
             });
+
+            renderRewards();
         } catch (error) {
             console.error('Error reloading profile:', error);
+            alert('Error reloading profile. Please try again.');
         }
     }
 
@@ -1179,15 +1420,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             clearInterval(timerInterval);
             timerInterval = null;
             currentState = AppState.READY;
-            
+
             // Use base time + permanent bonus
             const basePlayTime = APP_CONFIG.TIMER.PLAY_TIME_MINUTES;
             const permanentBonus = getPermanentPlayTimeBonus();
             timeLeft = (basePlayTime + permanentBonus) * 60;
-            
+
             updateTimerDisplay();
             updateAppState(AppState.READY);
-            
+
             // Enable start button, disable pause
             const startButton = document.getElementById('start-timer') as HTMLButtonElement;
             const pauseButton = document.getElementById('pause-timer') as HTMLButtonElement;
@@ -1195,22 +1436,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (pauseButton) pauseButton.disabled = true;
         } catch (error) {
             console.error('Error resetting app state:', error);
-        }
-    }
-
-    // Pause the timer
-    function pauseTimer() {
-        try {
-            if (currentState === AppState.PLAYING && timerInterval) {
-                isPaused = true;
-                updatePauseButtonText();
-                currentStateElement.textContent = getStateDisplayName(currentState);
-            } else {
-                console.warn(`Cannot pause timer from state: ${currentState}`);
-            }
-        } catch (error) {
-            console.error('Error pausing timer:', error);
-            resetAppState();
         }
     }
 });
