@@ -27,6 +27,10 @@ declare global {
             useReward: (rewardType: RewardType, rewardValue: number) => Promise<BasePlayerProfile>;
             // Firebase authentication
             getAuthStatus: () => Promise<{ isAuthenticated: boolean, email: string | null }>;
+            // Firebase configuration
+            getFirebaseConfig: () => Promise<any>;
+            // Firebase authentication
+            authenticateWithFirebase: (email: string, password: string) => Promise<any>;
         }
     }
 }
@@ -62,5 +66,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     useReward: (rewardType: RewardType, rewardValue: number) => ipcRenderer.invoke('use-reward', rewardType, rewardValue),
     
     // Firebase authentication status
-    getAuthStatus: () => ipcRenderer.invoke('get-auth-status')
+    getAuthStatus: () => ipcRenderer.invoke('get-auth-status'),
+    
+    // Get Firebase configuration
+    getFirebaseConfig: () => ipcRenderer.invoke('get-firebase-config'),
+    
+    // Authenticate with Firebase
+    authenticateWithFirebase: (email: string, password: string) => 
+        ipcRenderer.invoke('authenticate-with-firebase', email, password)
 });

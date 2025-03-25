@@ -704,8 +704,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             rewardsPanel.classList.remove('visible');
         }
         
-        // Hide login panel if it's open
-        if (loginPanel.classList.contains('visible')) {
+        // Hide login panel if it's open and user is authenticated
+        if (isAuthenticated && loginPanel.classList.contains('visible')) {
             loginPanel.classList.remove('visible');
         }
         
@@ -775,7 +775,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             rewardsPanel.classList.remove('visible');
         }
         
-        if (!loginPanel.contains(target) &&
+        // Only close the login panel if user is authenticated
+        if (isAuthenticated && 
+            !loginPanel.contains(target) &&
             !loginBtn.contains(target) &&
             loginPanel.classList.contains('visible')) {
             loginPanel.classList.remove('visible');
@@ -790,23 +792,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Rewards panel functionality
     function toggleRewardsPanel(e: MouseEvent): void {
         e.stopPropagation(); // Prevent event from bubbling up
-        rewardsPanel.classList.toggle('visible');
         
-        // Hide history panel if it's open
-        if (historyPanel.classList.contains('visible')) {
-            historyPanel.classList.remove('visible');
-        }
-        
-        // Hide login panel if it's open
-        if (loginPanel.classList.contains('visible')) {
-            loginPanel.classList.remove('visible');
-        }
-        
-        if (rewardsPanel.classList.contains('visible')) {
-            // Refresh player profile before rendering rewards
-            loadPlayerProfile().then(() => {
-                renderRewards();
-            });
+        // Only allow toggling rewards panel if authenticated
+        if (isAuthenticated) {
+            rewardsPanel.classList.toggle('visible');
+            
+            // Hide history panel if it's open
+            if (historyPanel.classList.contains('visible')) {
+                historyPanel.classList.remove('visible');
+            }
+            
+            // Hide login panel if it's open and user is authenticated
+            if (loginPanel.classList.contains('visible')) {
+                loginPanel.classList.remove('visible');
+            }
+            
+            if (rewardsPanel.classList.contains('visible')) {
+                // Refresh player profile before rendering rewards
+                loadPlayerProfile().then(() => {
+                    renderRewards();
+                });
+            }
+        } else {
+            // If not authenticated, ensure login panel is visible
+            loginPanel.classList.add('visible');
         }
     }
 
@@ -962,18 +971,48 @@ document.addEventListener('DOMContentLoaded', async () => {
     const loginBtn = document.getElementById('show-login') as HTMLButtonElement;
     const loginPanel = document.getElementById('login-panel') as HTMLElement;
     const loginContent = loginPanel.querySelector('.login-content') as HTMLElement;
+    
+    // Track authentication status
+    let isAuthenticated = false;
+
+    // Check authentication status on startup
+    async function checkAuthStatus() {
+        try {
+            const status = await window.electronAPI.getAuthStatus();
+            isAuthenticated = status.isAuthenticated;
+            
+            // If not authenticated, show login panel
+            if (!isAuthenticated) {
+                loginPanel.classList.add('visible');
+            }
+            return status.isAuthenticated;
+        } catch (error) {
+            console.error('Failed to check auth status:', error);
+            return false;
+        }
+    }
+
+    // Check auth status when page loads
+    checkAuthStatus();
 
     function toggleLoginPanel(e: MouseEvent): void {
         e.stopPropagation(); // Prevent event from bubbling up
-        loginPanel.classList.toggle('visible');
         
-        // Hide other panels if they're open
-        if (historyPanel.classList.contains('visible')) {
-            historyPanel.classList.remove('visible');
-        }
-        
-        if (rewardsPanel.classList.contains('visible')) {
-            rewardsPanel.classList.remove('visible');
+        // If authenticated, toggle panel normally
+        if (isAuthenticated) {
+            loginPanel.classList.toggle('visible');
+            
+            // Hide other panels if they're open
+            if (historyPanel.classList.contains('visible')) {
+                historyPanel.classList.remove('visible');
+            }
+            
+            if (rewardsPanel.classList.contains('visible')) {
+                rewardsPanel.classList.remove('visible');
+            }
+        } else {
+            // If not authenticated, force panel to stay open
+            loginPanel.classList.add('visible');
         }
     }
 
@@ -983,6 +1022,67 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Prevent clicks inside the login panel from closing it
     loginPanel.addEventListener('click', (e: MouseEvent) => {
         e.stopPropagation();
+    });
+
+    // Modify the document click event to respect authentication state
+    document.addEventListener('click', (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        // Only close the login panel on outside click if user is authenticated
+        if (isAuthenticated && 
+            !loginPanel.contains(target) &&
+            !loginBtn.contains(target) &&
+            loginPanel.classList.contains('visible')) {
+            loginPanel.classList.remove('visible');
+        }
+    });
+
+    // Modify sign-in button click handler to update authentication state
+    const signInButton = document.getElementById('sign-in-button') as HTMLButtonElement;
+    const emailInput = document.getElementById('email') as HTMLInputElement;
+    const passwordInput = document.getElementById('password') as HTMLInputElement;
+
+    signInButton.addEventListener('click', async () => {
+        // Get the email and password values
+        const email = emailInput.value.trim();
+        const password = passwordInput.value.trim();
+
+        // Validate inputs
+        if (!email || !password) {
+            alert('Please enter both email and password.');
+            return;
+        }
+
+        try {
+            // Show loading state
+            signInButton.textContent = 'Signing in...';
+            signInButton.disabled = true;
+
+            // Use IPC to authenticate with Firebase
+            const result = await window.electronAPI.authenticateWithFirebase(email, password);
+            
+            if (result.success) {
+                console.log('Sign-in successful', result.user.email);
+                
+                // Update authentication state
+                isAuthenticated = true;
+                
+                // Close the login panel
+                loginPanel.classList.remove('visible');
+                
+                // Reload the profile
+                await reloadProfile();
+            } else {
+                throw new Error(result.error || 'Authentication failed');
+            }
+        } catch (error: any) {
+            // Handle authentication errors
+            console.error('Authentication failed:', error);
+            alert(`Sign-in failed: ${error.message}`);
+        } finally {
+            // Reset button state
+            signInButton.textContent = 'Sign In';
+            signInButton.disabled = false;
+        }
     });
 
     // Play notification sound when timer ends
@@ -1204,8 +1304,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     `;
     document.head.appendChild(style);
 
-    // Function to reload profile
-    async function reloadProfile(): Promise<void> {
+    // Function to reload profile data
+    async function reloadProfile() {
         try {
             // Store the previous profile to compare dates
             const previousProfile = playerProfile ? {...playerProfile} : null;

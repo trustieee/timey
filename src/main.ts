@@ -8,10 +8,21 @@ import { RewardType } from './rewards';
 // Import dotenv for loading environment variables
 import * as dotenv from 'dotenv';
 // Import Firebase authentication
-import { auth, initializeFirebase } from './services/firebase';
+import { auth, initializeFirebase, authenticateWithFirebase } from './services/firebase';
 
 // Load environment variables from .env file
 dotenv.config();
+
+// Firebase configuration from environment variables
+const firebaseConfig = {
+  apiKey: process.env.FIREBASE_API_KEY,
+  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.FIREBASE_PROJECT_ID,
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.FIREBASE_APP_ID,
+  measurementId: process.env.FIREBASE_MEASUREMENT_ID,
+};
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -41,17 +52,19 @@ const createWindow = async () => {
   // Force dark mode at startup
   nativeTheme.themeSource = 'dark';
 
-  // Initialize Firebase first to establish connection and verify permissions
+  // Initialize Firebase first to establish connection but don't authenticate
   try {
+    // Initialize Firebase without credentials (no auto-login)
     const firestoreAvailable = await initializeFirebase();
     console.log(`Firebase initialized. Firestore available: ${firestoreAvailable}`);
     
+    // Check if there's already a user authenticated (from a previous session)
     if (auth.currentUser) {
       isAuthenticated = true;
       authenticatedEmail = auth.currentUser.email;
       console.log(`User is authenticated: ${authenticatedEmail}`);
     } else {
-      console.log('No authenticated user found after initialization');
+      console.log('No authenticated user found - user needs to sign in');
     }
   } catch (error) {
     console.error('Error initializing Firebase:', error);
@@ -239,6 +252,24 @@ const createWindow = async () => {
       isAuthenticated,
       email: authenticatedEmail
     };
+  });
+
+  // Add IPC handler to get Firebase configuration
+  ipcMain.handle('get-firebase-config', () => {
+    return firebaseConfig;
+  });
+
+  // Add IPC handler to authenticate with Firebase
+  ipcMain.handle('authenticate-with-firebase', async (_, email, password) => {
+    try {
+      const result = await authenticateWithFirebase(email, password);
+      isAuthenticated = true;
+      authenticatedEmail = result.user.email;
+      return { success: true, user: { email: result.user.email } };
+    } catch (error) {
+      console.error('Authentication error:', error);
+      return { success: false, error: error.message };
+    }
   });
 
   // Register global shortcut for DevTools
