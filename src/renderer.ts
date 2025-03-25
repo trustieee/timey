@@ -970,7 +970,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Login panel functionality
     const loginBtn = document.getElementById('show-login') as HTMLButtonElement;
     const loginPanel = document.getElementById('login-panel') as HTMLElement;
-    const loginContent = loginPanel.querySelector('.login-content') as HTMLElement;
     
     // Track authentication status
     let isAuthenticated = false;

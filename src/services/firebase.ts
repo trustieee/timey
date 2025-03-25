@@ -102,10 +102,6 @@ if (!isRenderer) {
   db = isTestEnvironment ? mockFirestore : getFirestore(app);
 }
 
-// Hardcoded credentials as requested
-const HARDCODED_EMAIL = 'mariocatch@gmail.com';
-const HARDCODED_PASSWORD = 'gibson15';
-
 // Track if Firestore operations are available
 let firestoreAvailable = false; // Start with false until authentication confirms access
 let authInitialized = false;
@@ -322,12 +318,10 @@ export const loadPlayerProfileFromFirestore = async (): Promise<PlayerProfile | 
     // Create user ID from email
     const userId = currentUser.email.replace(/[@.]/g, '_');
     
-    console.log(`Loading player profile from Firestore for user: ${userId}`);
     const docRef = doc(db, 'playerProfiles', userId);
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
-      console.log('Player profile loaded from Firestore');
       return docSnap.data() as PlayerProfile;
     } else {
       console.log('No player profile found in Firestore');
@@ -379,7 +373,6 @@ export const savePlayerProfileToFirestore = async (profile: PlayerProfile): Prom
     console.log(`Saving player profile to Firestore for user: ${userId}`);
     const docRef = doc(db, 'playerProfiles', userId);
     await setDoc(docRef, profile, { merge: true });
-    console.log('Player profile saved to Firestore successfully');
   } catch (error) {
     console.error('Error saving player profile to Firestore:', error);
     firestoreAvailable = false;

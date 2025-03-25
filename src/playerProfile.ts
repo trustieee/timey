@@ -202,7 +202,6 @@ export async function loadPlayerProfile(): Promise<PlayerProfile & { level: numb
         const firestoreProfile = await loadPlayerProfileFromFirestore();
 
         if (firestoreProfile) {
-            console.log('Using profile from Firestore');
             // Make sure history is defined
             if (!firestoreProfile.history) {
                 firestoreProfile.history = {};
@@ -291,7 +290,6 @@ export async function savePlayerProfile(profile: PlayerProfile): Promise<void> {
     try {
         // Save to Firestore
         await savePlayerProfileToFirestore(storageProfile);
-        console.log('Profile saved to Firestore');
     } catch (error) {
         console.error('Error saving player profile to Firestore:', error);
     }
