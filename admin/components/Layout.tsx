@@ -15,13 +15,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </h1>
           <nav>
             <ul className="flex space-x-6">
-              <li className="hover:text-green-400 transition-colors">
-                <Link href="/">Dashboard</Link>
-              </li>
-              <li className="hover:text-green-400 transition-colors">
-                <Link href="/users">Users</Link>
-              </li>
-              <li className="hover:text-green-400 transition-colors">
+              <li className="text-green-400 font-semibold">
                 <Link href="/profiles">Profiles</Link>
               </li>
             </ul>
@@ -33,9 +27,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="container mx-auto text-center">
           <p>
             Timey Admin Dashboard &copy; {new Date().getFullYear()} |
-            <span className="text-green-400 ml-2">
-              The perfect way to manage your Timey app
-            </span>
+            <span className="text-green-400 ml-2">User Profile Management</span>
           </p>
         </div>
       </footer>
