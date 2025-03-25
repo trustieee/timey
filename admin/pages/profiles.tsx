@@ -1,11 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import type { NextPage } from "next";
 import Head from "next/head";
 import Layout from "../components/Layout";
 import { PlayerProfile, ChoreStatus } from "../../src/playerProfile";
 import { db, auth } from "../utils/firebase";
 import { collection, getDocs } from "firebase/firestore";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import {
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut,
+} from "firebase/auth";
 import { FirebaseError } from "firebase/app";
 
 // Interface for admin view (only adding what we need on top of PlayerProfile)
@@ -15,7 +19,7 @@ interface AdminUserProfile extends PlayerProfile {
 
 const ProfilesPage: NextPage = () => {
   const [profiles, setProfiles] = useState<AdminUserProfile[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,6 +28,24 @@ const ProfilesPage: NextPage = () => {
     Record<string, boolean>
   >({});
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
+
+  // Check auth state on component mount
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // User is signed in
+        setIsAuthenticated(true);
+        fetchProfiles();
+      } else {
+        // User is signed out
+        setIsAuthenticated(false);
+        setLoading(false);
+      }
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, []);
 
   // Toggle profile expansion
   const toggleProfileExpansion = (uid: string) => {
@@ -204,8 +226,7 @@ const ProfilesPage: NextPage = () => {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      setIsAuthenticated(true);
-      fetchProfiles();
+      // No need to set isAuthenticated here as onAuthStateChanged will handle it
     } catch (error: FirebaseError | unknown) {
       console.error("Authentication error:", error);
       const errorMessage =
@@ -240,6 +261,16 @@ const ProfilesPage: NextPage = () => {
     }
   };
 
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      // Auth state listener will update the state
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
+
   return (
     <Layout>
       <Head>
@@ -248,9 +279,19 @@ const ProfilesPage: NextPage = () => {
       </Head>
 
       <div className="bg-[#222] shadow-lg rounded-lg p-6 text-white">
-        <h1 className="text-2xl font-bold mb-6 text-green-400 border-b border-gray-700 pb-2">
-          User Profiles {profiles.length > 0 && `(${profiles.length})`}
-        </h1>
+        <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-2">
+          <h1 className="text-2xl font-bold text-green-400">
+            User Profiles {profiles.length > 0 && `(${profiles.length})`}
+          </h1>
+          {isAuthenticated && (
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-white transition-colors"
+            >
+              Logout
+            </button>
+          )}
+        </div>
 
         {!isAuthenticated ? (
           <div className="max-w-md mx-auto bg-[#333] p-6 rounded-lg shadow-md border border-gray-700">
