@@ -1,1150 +1,1170 @@
 <!DOCTYPE html>
 <html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Timey</title>
 
-<head>
-  <meta charset="UTF-8" />
-  <title>Timey</title>
+    <!-- This script runs before any rendering to prevent flash -->
+    <script>
+      // Check system preference synchronously before page loads
+      const prefersDarkMode = window.matchMedia(
+        "(prefers-color-scheme: dark)"
+      ).matches;
 
-  <!-- This script runs before any rendering to prevent flash -->
-  <script>
-    // Check system preference synchronously before page loads
-    const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      // Apply theme class immediately to prevent flash
+      document.documentElement.classList.add(
+        prefersDarkMode ? "dark-mode" : "light-mode"
+      );
+    </script>
+  </head>
 
-    // Apply theme class immediately to prevent flash
-    document.documentElement.classList.add(prefersDarkMode ? 'dark-mode' : 'light-mode');
-  </script>
-</head>
-
-<body>
-  <div class="app-container">
-    <!-- This div will act as your draggable title bar -->
-    <div class="top-bar">
-      <div class="app-title">
-        <h1 class="title">Timey <span id="app-version"></span></h1>
+  <body>
+    <div class="app-container">
+      <!-- This div will act as your draggable title bar -->
+      <div class="top-bar">
+        <div class="app-title">
+          <h1 class="title">Timey <span id="app-version"></span></h1>
+        </div>
+        <div id="top-date-time">3/15/2025 12:21 PM</div>
+        <div class="window-controls">
+          <button id="show-rewards">🎁</button>
+          <button id="show-history">📋</button>
+          <button id="show-login">👤</button>
+          <button id="toggle-dark-mode"></button>
+        </div>
       </div>
-      <div id="top-date-time">3/15/2025 12:21 PM</div>
-      <div class="window-controls">
-        <button id="show-rewards">🎁</button>
-        <button id="show-history">📋</button>
-        <button id="show-login">👤</button>
-        <button id="toggle-dark-mode"></button>
-      </div>
-    </div>
 
-    <!-- History panel (hidden by default) -->
-    <div id="history-panel" class="history-panel">
-      <h2>Daily Objectives History</h2>
-      <div class="history-content">
-        <!-- History items will be dynamically added here -->
+      <!-- History panel (hidden by default) -->
+      <div id="history-panel" class="history-panel">
+        <h2>Daily Objectives History</h2>
+        <div class="history-content">
+          <!-- History items will be dynamically added here -->
+        </div>
       </div>
-    </div>
 
-    <!-- Login panel (hidden by default) -->
-    <div id="login-panel" class="login-panel">
-      <h2>Login</h2>
-      <div class="login-content">
-        <div class="login-form">
-          <div class="form-group">
-            <label for="email">Email</label>
-            <input type="email" id="email" placeholder="Enter your email" value="mariocatch@gmail.com">
+      <!-- Login panel (hidden by default) -->
+      <div id="login-panel" class="login-panel">
+        <h2>Login</h2>
+        <div class="login-content">
+          <div class="login-form">
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input
+                type="email"
+                id="email"
+                placeholder="Enter your email"
+                value="mariocatch@gmail.com"
+              />
+            </div>
+            <div class="form-group">
+              <label for="password">Password</label>
+              <input
+                type="password"
+                id="password"
+                placeholder="Enter your password"
+                value=""
+              />
+            </div>
+            <button id="sign-in-button" class="primary-button">Sign In</button>
           </div>
-          <div class="form-group">
-            <label for="password">Password</label>
-            <input type="password" id="password" placeholder="Enter your password" value="gibson15">
+        </div>
+      </div>
+
+      <!-- Rewards panel (hidden by default) -->
+      <div id="rewards-panel" class="rewards-panel">
+        <h2>Level Rewards</h2>
+        <div class="rewards-available">
+          <span>Available Rewards: </span>
+          <span id="available-rewards-count">0</span>
+        </div>
+        <div class="rewards-content">
+          <!-- Rewards will be dynamically added here -->
+        </div>
+      </div>
+
+      <!-- App content -->
+      <div class="app-content">
+        <!-- Current state indicator -->
+        <div class="state-indicator">
+          <div id="current-state" class="state-badge">Ready to Play</div>
+        </div>
+
+        <!-- Timer section -->
+        <div class="timer-section">
+          <div id="timer-display">01:00:00</div>
+          <div class="timer-controls">
+            <button id="start-timer" class="primary-button">
+              Start Play Time
+            </button>
+            <button id="pause-timer" class="secondary-button" disabled>
+              Pause
+            </button>
           </div>
-          <button id="sign-in-button" class="primary-button">Sign In</button>
         </div>
-      </div>
-    </div>
 
-    <!-- Rewards panel (hidden by default) -->
-    <div id="rewards-panel" class="rewards-panel">
-      <h2>Level Rewards</h2>
-      <div class="rewards-available">
-        <span>Available Rewards: </span>
-        <span id="available-rewards-count">0</span>
-      </div>
-      <div class="rewards-content">
-        <!-- Rewards will be dynamically added here -->
-      </div>
-    </div>
-
-    <!-- App content -->
-    <div class="app-content">
-      <!-- Current state indicator -->
-      <div class="state-indicator">
-        <div id="current-state" class="state-badge">Ready to Play</div>
-      </div>
-
-      <!-- Timer section -->
-      <div class="timer-section">
-        <div id="timer-display">01:00:00</div>
-        <div class="timer-controls">
-          <button id="start-timer" class="primary-button">Start Play Time</button>
-          <button id="pause-timer" class="secondary-button" disabled>Pause</button>
-        </div>
-      </div>
-
-      <!-- Daily Objectives section (hidden by default, shown during cooldown) -->
-      <div id="chores-section" class="chores-section hidden">
-        <h2>Complete these daily objectives before playing again:</h2>
-        <div class="chores-list" id="chores-list">
-          <!-- Daily objectives will be dynamically added here -->
-        </div>
-        <div class="completion-message hidden" id="completion-message">
-          <p>Great job completing your daily objectives!</p>
-          <button id="reset-after-chores" class="primary-button">Start Play Time Again</button>
-        </div>
-      </div>
-
-      <!-- XP section -->
-      <div class="xp-section">
-        <div class="xp-display">
-          <div class="xp-bar-container">
-            <div id="xp-bar" class="xp-bar"></div>
+        <!-- Daily Objectives section (hidden by default, shown during cooldown) -->
+        <div id="chores-section" class="chores-section hidden">
+          <h2>Complete these daily objectives before playing again:</h2>
+          <div class="chores-list" id="chores-list">
+            <!-- Daily objectives will be dynamically added here -->
           </div>
-          <div class="xp-text">0 XP</div>
+          <div class="completion-message hidden" id="completion-message">
+            <p>Great job completing your daily objectives!</p>
+            <button id="reset-after-chores" class="primary-button">
+              Start Play Time Again
+            </button>
+          </div>
         </div>
-        <div class="level-indicator">Level 1</div>
+
+        <!-- XP section -->
+        <div class="xp-section">
+          <div class="xp-display">
+            <div class="xp-bar-container">
+              <div id="xp-bar" class="xp-bar"></div>
+            </div>
+            <div class="xp-text">0 XP</div>
+          </div>
+          <div class="level-indicator">Level 1</div>
+        </div>
       </div>
     </div>
-  </div>
-
-  <style>
-    /* Default styles - Dark mode first */
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      transition: background-color 0.3s, color 0.3s;
-      background: #333;
-      color: white;
-    }
-
-    .app-container {
-      width: 100%;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .top-bar {
-      height: 50px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0 15px;
-      -webkit-app-region: drag;
-      cursor: move;
-      transition: background-color 0.3s;
-      background-color: #222;
-    }
-
-    .title {
-      margin: 0;
-      font-size: 24px;
-    }
-
-    #app-version {
-      font-size: 14px;
-      opacity: 0.7;
-      margin-left: 5px;
-      font-weight: normal;
-      text-decoration: none;
-      transition: opacity 0.3s;
-    }
-
-    #top-date-time {
-      font-size: 16px;
-      opacity: 0.85;
-      font-weight: 500;
-      -webkit-app-region: drag;
-    }
-
-    #toggle-dark-mode {
-      -webkit-app-region: no-drag;
-      background-color: transparent;
-      border: none;
-      cursor: pointer;
-      font-size: 20px;
-      padding: 5px;
-      margin: 0;
-      content: '💡';
-    }
-
-    .app-content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      align-items: center;
-      padding: 20px;
-      overflow-y: auto;
-    }
-
-    /* bottom center of container*/
-    .xp-section {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 90%;
-      text-align: center;
-    }
-
-    .xp-display {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 10px;
-    }
-
-    .xp-bar-container {
-      width: 100%;
-      height: 15px;
-      background-color: rgba(255, 255, 255, 0.2);
-      border-radius: 10px;
-      overflow: hidden;
-      margin-right: 10px;
-    }
-
-    .xp-bar {
-      width: 0%;
-      /* Will be updated by JS */
-      height: 100%;
-      background-color: #4CAF50;
-      border-radius: 10px;
-      transition: width 0.5s ease-in-out;
-    }
-
-    .xp-text {
-      margin-left: 10px;
-      font-weight: bold;
-      min-width: 80px;
-      text-align: left;
-    }
-
-    .level-indicator {
-      margin-top: 5px;
-      font-weight: bold;
-      font-size: 14px;
-    }
-
-    .state-indicator {
-      margin-bottom: 20px;
-      width: 100%;
-      display: flex;
-      justify-content: center;
-    }
-
-    .state-badge {
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-weight: bold;
-      background-color: #4CAF50;
-      display: inline-block;
-    }
-
-    .state-badge.playing {
-      background-color: #2196F3;
-    }
-
-    .state-badge.cooldown {
-      background-color: #FF9800;
-    }
-
-    .state-badge.ready {
-      background-color: #4CAF50;
-    }
-
-    .timer-section {
-      text-align: center;
-      margin-bottom: 30px;
-    }
-
-    #timer-display {
-      font-size: 64px;
-      font-weight: bold;
-      margin-bottom: 20px;
-    }
-
-    .timer-controls {
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-    }
-
-    .primary-button,
-    .secondary-button {
-      -webkit-app-region: no-drag;
-      padding: 10px 20px;
-      border-radius: 5px;
-      border: none;
-      font-size: 16px;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-
-    .primary-button {
-      background-color: #4CAF50;
-      color: white;
-    }
-
-    .primary-button:hover {
-      background-color: #3e8e41;
-    }
-
-    .primary-button:disabled {
-      background-color: #cccccc;
-      cursor: not-allowed;
-    }
-
-    .secondary-button {
-      background-color: #f44336;
-      color: white;
-    }
-
-    .secondary-button:hover {
-      background-color: #d32f2f;
-    }
-
-    .secondary-button:disabled {
-      background-color: #cccccc;
-      cursor: not-allowed;
-    }
-
-    .chores-section {
-      width: 100%;
-      max-width: 500px;
-      transition: opacity 0.3s;
-    }
-
-    .chores-list {
-      margin-top: 20px;
-      margin-bottom: 20px;
-      width: 100%;
-    }
-
-    .chore-item {
-      display: flex;
-      align-items: center;
-      padding: 10px;
-      margin-bottom: 10px;
-      background-color: rgba(255, 255, 255, 0.1);
-      border-radius: 5px;
-    }
-
-    .chore-item input[type="checkbox"] {
-      margin-right: 10px;
-      width: 20px;
-      height: 20px;
-    }
-
-    .chore-item.completed {
-      text-decoration: line-through;
-      opacity: 0.7;
-    }
-
-    .completion-message {
-      text-align: center;
-      padding: 15px;
-      background-color: rgba(76, 175, 80, 0.2);
-      border-radius: 5px;
-      color: white;
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    /* Light mode styles */
-    html.light-mode body {
-      background: #f8f9fa;
-      color: #333333;
-    }
-
-    html.light-mode .top-bar {
-      background-color: #ffffff;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    html.light-mode .chore-item {
-      background-color: rgba(0, 0, 0, 0.03);
-      border: 1px solid rgba(0, 0, 0, 0.08);
-    }
-
-    html.light-mode .completion-message {
-      background-color: rgba(76, 175, 80, 0.2);
-      border: 1px solid rgba(76, 175, 80, 0.3);
-      color: #333333;
-    }
-
-    html.light-mode .completion-message p {
-      color: #333333;
-      font-weight: bold;
-      text-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
-    }
-
-    html.light-mode .xp-bar-container {
-      background-color: rgba(0, 0, 0, 0.1);
-      border: 1px solid rgba(0, 0, 0, 0.15);
-    }
-
-    html.light-mode .primary-button {
-      background-color: #4285F4;
-    }
-
-    html.light-mode .primary-button:hover {
-      background-color: #3367d6;
-    }
-
-    html.light-mode .secondary-button {
-      background-color: #ea4335;
-    }
-
-    html.light-mode .secondary-button:hover {
-      background-color: #d33828;
-    }
-
-    html.light-mode .primary-button:disabled {
-      background-color: #cccccc;
-      color: #777777;
-      cursor: not-allowed;
-    }
-
-    html.light-mode .secondary-button:disabled {
-      background-color: #cccccc;
-      color: #777777;
-      cursor: not-allowed;
-    }
-
-    /* History panel styles */
-    .history-panel {
-      position: fixed;
-      top: 50px;
-      right: 0;
-      width: 300px;
-      height: calc(100vh - 50px);
-      background-color: #222;
-      box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
-      z-index: 1000;
-      transition: transform 0.3s ease;
-      transform: translateX(100%);
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .history-panel.visible {
-      transform: translateX(0);
-    }
-
-    .history-panel h2 {
-      margin: 0;
-      padding: 15px;
-      text-align: center;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      font-size: 18px;
-      flex-shrink: 0;
-    }
-
-    /* XP summary in history */
-    .xp-summary {
-      font-size: 0.8em;
-      margin-left: 10px;
-      font-weight: normal;
-    }
-    
-    .xp-gained {
-      color: #4CAF50;
-      font-weight: bold;
-    }
-    
-    .xp-penalty {
-      color: #FF5252;
-      font-weight: bold;
-    }
-    
-    html.light-mode .xp-gained {
-      color: #2E7D32;
-    }
-    
-    html.light-mode .xp-penalty {
-      color: #D32F2F;
-    }
-
-    .history-content {
-      padding: 15px;
-      flex: 1;
-      overflow-y: auto;
-    }
-
-    .history-date {
-      margin: 10px 0;
-      padding: 10px;
-      background-color: rgba(255, 255, 255, 0.1);
-      border-radius: 5px;
-    }
-
-    .history-date h3 {
-      margin: 15px 0 10px;
-      padding: 0 15px;
-      font-size: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-    }
-
-    .history-chore {
-      margin: 5px 0;
-      padding: 5px 0;
-      display: flex;
-      align-items: center;
-      font-size: 14px;
-    }
-
-    .history-chore .status {
-      margin-right: 10px;
-      width: 20px;
-      height: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 50%;
-      font-size: 12px;
-    }
-
-    .history-chore .status.completed {
-      background-color: #4CAF50;
-      color: white;
-    }
-
-    .history-chore .status.na {
-      background-color: #9E9E9E;
-      color: white;
-    }
-
-    .history-chore .status.incomplete {
-      background-color: #FF5252;
-      color: white;
-    }
-
-    /* Clickable status indicators */
-    .history-chore .status.clickable {
-      cursor: pointer;
-      position: relative;
-    }
-    
-    .history-chore .status.clickable:hover {
-      box-shadow: 0 0 5px 2px rgba(255, 255, 255, 0.3);
-      transform: scale(1.1);
-    }
-    
-    .history-chore .status.clickable:after {
-      content: '⟳';
-      position: absolute;
-      bottom: -6px;
-      right: -6px;
-      font-size: 10px;
-      opacity: 0.7;
-      background: rgba(0, 0, 0, 0.5);
-      border-radius: 50%;
-      width: 12px;
-      height: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    html.light-mode .history-chore .status.clickable:hover {
-      box-shadow: 0 0 5px 2px rgba(0, 0, 0, 0.2);
-    }
-
-    /* History navigation */
-    #show-history {
-      -webkit-app-region: no-drag;
-      background-color: transparent;
-      border: none;
-      cursor: pointer;
-      font-size: 20px;
-      padding: 5px;
-      margin: 0 5px;
-    }
-
-    /* Light mode adjustments for history panel */
-    html.light-mode .history-panel {
-      background-color: #ffffff;
-      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
-      border-left: 1px solid rgba(0, 0, 0, 0.1);
-    }
-
-    html.light-mode .history-panel h2 {
-      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-      color: #333333;
-    }
-
-    html.light-mode .history-date {
-      background-color: rgba(0, 0, 0, 0.03);
-      border: 1px solid rgba(0, 0, 0, 0.05);
-    }
-
-    html.light-mode .history-date h3 {
-      color: #333333;
-    }
-
-    html.light-mode .history-chore {
-      color: #555555;
-    }
-
-    /* Rewards panel styles */
-    .rewards-panel {
-      position: fixed;
-      top: 50px;
-      right: 0;
-      width: 300px;
-      height: calc(100vh - 50px);
-      background-color: #222;
-      box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
-      z-index: 1000;
-      transition: transform 0.3s ease;
-      transform: translateX(100%);
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .rewards-panel.visible {
-      transform: translateX(0);
-    }
-
-    .rewards-panel h2 {
-      padding: 15px;
-      margin: 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      font-size: 18px;
-      flex-shrink: 0;
-    }
-
-    .rewards-available {
-      padding: 15px;
-      font-size: 16px;
-      font-weight: bold;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .rewards-content {
-      padding: 15px;
-      flex: 1;
-      overflow-y: auto;
-    }
-
-    .reward-item {
-      margin: 10px 0;
-      padding: 15px;
-      background-color: rgba(255, 255, 255, 0.1);
-      border-radius: 5px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .reward-item:hover {
-      background-color: rgba(255, 255, 255, 0.2);
-    }
-
-    .reward-item.disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .reward-item h3 {
-      margin: 0 0 10px 0;
-      font-size: 16px;
-    }
-
-    .reward-item p {
-      margin: 0;
-      font-size: 14px;
-      color: rgba(255, 255, 255, 0.7);
-    }
-
-    .reward-history {
-      margin-top: 20px;
-      padding-top: 15px;
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .reward-history h3 {
-      margin: 0 0 10px 0;
-      font-size: 16px;
-    }
-
-    .reward-history-item {
-      margin: 5px 0;
-      padding: 10px;
-      background-color: rgba(255, 255, 255, 0.05);
-      border-radius: 5px;
-      font-size: 14px;
-    }
-
-    .reward-history-item .date {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.5);
-      margin-top: 5px;
-    }
-
-    #show-rewards {
-      -webkit-app-region: no-drag;
-      background-color: transparent;
-      border: none;
-      cursor: pointer;
-      font-size: 20px;
-      padding: 5px;
-      margin: 0 5px;
-    }
-
-    /* Light mode adjustments for rewards panel */
-    html.light-mode .rewards-panel {
-      background-color: #ffffff;
-      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
-      border-left: 1px solid rgba(0, 0, 0, 0.1);
-    }
-
-    html.light-mode .rewards-panel h2 {
-      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-      color: #333333;
-    }
-
-    html.light-mode .rewards-available {
-      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-      color: #333333;
-    }
-
-    html.light-mode .reward-item {
-      background-color: rgba(0, 0, 0, 0.03);
-      border: 1px solid rgba(0, 0, 0, 0.05);
-    }
-
-    html.light-mode .reward-item:hover {
-      background-color: rgba(0, 0, 0, 0.07);
-    }
-
-    html.light-mode .reward-item h3 {
-      color: #333333;
-    }
-
-    html.light-mode .reward-item p {
-      color: #555555;
-    }
-
-    html.light-mode .reward-history {
-      border-top: 1px solid rgba(0, 0, 0, 0.1);
-    }
-
-    html.light-mode .reward-history h3 {
-      color: #333333;
-    }
-
-    html.light-mode .reward-history-item {
-      background-color: rgba(0, 0, 0, 0.02);
-      border: 1px solid rgba(0, 0, 0, 0.04);
-    }
-
-    html.light-mode .reward-history-item .date {
-      color: #777777;
-    }
-
-    html.light-mode .state-badge {
-      color: white;
-    }
-
-    html.light-mode .xp-section {
-      background-color: rgba(0, 0, 0, 0.08);
-      border-radius: 10px;
-      padding: 15px;
-      border: 1px solid rgba(0, 0, 0, 0.1);
-    }
-
-    html.light-mode .xp-bar-container {
-      background-color: rgba(0, 0, 0, 0.1);
-      border: 1px solid rgba(0, 0, 0, 0.15);
-    }
-
-    html.light-mode .xp-bar {
-      background-color: #4285F4;
-    }
-
-    html.light-mode .xp-text {
-      color: #333333;
-      font-weight: bold;
-    }
-
-    html.light-mode .level-indicator {
-      color: #333333;
-    }
-
-    /* Improve cooldown message/completion message readability */
-    .completion-message {
-      text-align: center;
-      padding: 15px;
-      background-color: rgba(76, 175, 80, 0.2);
-      border-radius: 5px;
-      color: white;
-    }
-
-    html.light-mode .completion-message {
-      background-color: rgba(76, 175, 80, 0.2);
-      border: 1px solid rgba(76, 175, 80, 0.3);
-      color: #333333;
-    }
-
-    /* Target specifically the objectives info message */
-    .completion-message p {
-      font-weight: bold;
-    }
-
-    /* Additional styles for the chores section in light mode */
-    html.light-mode #chores-section .completion-message {
-      background-color: rgba(76, 175, 80, 0.3);
-      border: 1px solid rgba(76, 175, 80, 0.4);
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    }
-
-    /* Additional styles for the error dialog */
-    .error-dialog {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.7);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 2000;
-    }
-
-    .error-dialog-content {
-      background-color: #333;
-      border-radius: 8px;
-      padding: 20px;
-      width: 80%;
-      max-width: 500px;
-      max-height: 80vh;
-      overflow-y: auto;
-      box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-    }
-
-    .error-dialog h3 {
-      margin-top: 0;
-      color: #FF5252;
-    }
-
-    .error-dialog pre {
-      background-color: #222;
-      padding: 10px;
-      border-radius: 4px;
-      overflow-x: auto;
-      white-space: pre-wrap;
-      font-family: monospace;
-      margin-bottom: 15px;
-      color: #f8f8f8;
-      border: 1px solid #444;
-    }
-
-    .error-dialog .close-btn {
-      background-color: #FF5252;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 4px;
-      cursor: pointer;
-      display: block;
-      margin: 0 auto;
-    }
-
-    .error-dialog .close-btn:hover {
-      background-color: #ff7575;
-    }
-
-    /* Light mode styles for the error dialog */
-    html.light-mode .error-dialog-content {
-      background-color: #f8f9fa;
-      color: #333;
-      box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-    }
-
-    html.light-mode .error-dialog h3 {
-      color: #d32f2f;
-    }
-
-    html.light-mode .error-dialog pre {
-      background-color: #f1f1f1;
-      color: #333;
-      border: 1px solid #ddd;
-    }
-
-    html.light-mode .error-dialog .close-btn {
-      background-color: #d32f2f;
-    }
-
-    html.light-mode .error-dialog .close-btn:hover {
-      background-color: #e57373;
-    }
-
-    #check-updates {
-      background: none;
-      border: none;
-      font-size: 14px;
-      cursor: pointer;
-      padding: 3px 5px;
-      margin-left: 5px;
-      border-radius: 4px;
-      -webkit-app-region: no-drag !important;
-      transition: background-color 0.3s;
-    }
-
-    #check-updates:hover {
-      background-color: rgba(255, 255, 255, 0.1);
-    }
-
-    /* Update Dialog */
-    .update-dialog {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-
-    .update-dialog-content {
-      background-color: var(--bg-color);
-      color: var(--text-color);
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-      width: 80%;
-      max-width: 500px;
-    }
-
-    .update-dialog h3 {
-      margin-top: 0;
-      color: var(--accent-color);
-    }
-
-    .release-notes {
-      margin: 15px 0;
-      padding: 10px;
-      background-color: var(--secondary-bg-color);
-      border-radius: 4px;
-      max-height: 200px;
-      overflow-y: auto;
-    }
-
-    .release-notes h4 {
-      margin-top: 0;
-      color: var(--accent-color);
-    }
-
-    .dialog-buttons {
-      display: flex;
-      justify-content: flex-end;
-      margin-top: 20px;
-      gap: 10px;
-    }
-
-    .download-btn, .close-btn {
-      padding: 8px 16px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-
-    .download-btn {
-      background-color: var(--accent-color);
-      color: white;
-    }
-
-    .close-btn {
-      background-color: var(--secondary-bg-color);
-      color: var(--text-color);
-    }
-
-    /* Error Dialog - same styling as update dialog */
-    .error-dialog {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-
-    .error-dialog-content {
-      background-color: var(--bg-color);
-      color: var(--text-color);
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-      width: 80%;
-      max-width: 500px;
-    }
-
-    .error-dialog pre {
-      background-color: var(--secondary-bg-color);
-      padding: 10px;
-      border-radius: 4px;
-      overflow-x: auto;
-      white-space: pre-wrap;
-      margin-bottom: 20px;
-    }
-
-    /* Login panel styles */
-    .login-panel {
-      position: fixed;
-      top: 50px;
-      right: 0;
-      width: 300px;
-      height: calc(100vh - 50px);
-      background-color: #222;
-      box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
-      z-index: 1000;
-      transition: transform 0.3s ease;
-      transform: translateX(100%);
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .login-panel.visible {
-      transform: translateX(0);
-    }
-
-    .login-panel h2 {
-      padding: 15px;
-      margin: 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      font-size: 18px;
-      flex-shrink: 0;
-    }
-
-    .login-content {
-      padding: 15px;
-      flex: 1;
-      overflow-y: auto;
-    }
-
-    .login-form {
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-    }
-
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-
-    .form-group label {
-      font-size: 14px;
-      font-weight: bold;
-    }
-
-    .form-group input {
-      padding: 10px;
-      border-radius: 5px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      background-color: rgba(255, 255, 255, 0.1);
-      color: white;
-      font-size: 14px;
-    }
-
-    #show-login {
-      -webkit-app-region: no-drag;
-      background-color: transparent;
-      border: none;
-      cursor: pointer;
-      font-size: 20px;
-      padding: 5px;
-      margin: 0 5px;
-    }
-
-    /* Light mode adjustments for login panel */
-    html.light-mode .login-panel {
-      background-color: #ffffff;
-      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
-      border-left: 1px solid rgba(0, 0, 0, 0.1);
-    }
-
-    html.light-mode .login-panel h2 {
-      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-      color: #333333;
-    }
-
-    html.light-mode .form-group label {
-      color: #333333;
-    }
-
-    html.light-mode .form-group input {
-      border: 1px solid rgba(0, 0, 0, 0.1);
-      background-color: rgba(0, 0, 0, 0.03);
-      color: #333333;
-    }
-
-    /* Login status styles */
-    .login-status {
-      margin-bottom: 15px;
-    }
-
-    .login-status-message {
-      padding: 10px;
-      border-radius: 5px;
-      margin-bottom: 10px;
-      font-size: 14px;
-      background-color: rgba(255, 255, 255, 0.1);
-    }
-
-    .login-status-message.error {
-      background-color: rgba(255, 82, 82, 0.2);
-      color: #FF5252;
-    }
-
-    .login-status-message.success {
-      background-color: rgba(76, 175, 80, 0.2);
-      color: #4CAF50;
-    }
-
-    .login-status-message p {
-      margin: 0 0 10px 0;
-    }
-
-    html.light-mode .login-status-message {
-      background-color: rgba(0, 0, 0, 0.03);
-    }
-
-    html.light-mode .login-status-message.error {
-      background-color: rgba(255, 82, 82, 0.1);
-      color: #d32f2f;
-    }
-
-    html.light-mode .login-status-message.success {
-      background-color: rgba(76, 175, 80, 0.1);
-      color: #388E3C;
-    }
-  </style>
-
-  <script type="module" src="/src/renderer.ts"></script>
-</body>
 
+    <style>
+      /* Default styles - Dark mode first */
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        transition: background-color 0.3s, color 0.3s;
+        background: #333;
+        color: white;
+      }
+
+      .app-container {
+        width: 100%;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .top-bar {
+        height: 50px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 15px;
+        -webkit-app-region: drag;
+        cursor: move;
+        transition: background-color 0.3s;
+        background-color: #222;
+      }
+
+      .title {
+        margin: 0;
+        font-size: 24px;
+      }
+
+      #app-version {
+        font-size: 14px;
+        opacity: 0.7;
+        margin-left: 5px;
+        font-weight: normal;
+        text-decoration: none;
+        transition: opacity 0.3s;
+      }
+
+      #top-date-time {
+        font-size: 16px;
+        opacity: 0.85;
+        font-weight: 500;
+        -webkit-app-region: drag;
+      }
+
+      #toggle-dark-mode {
+        -webkit-app-region: no-drag;
+        background-color: transparent;
+        border: none;
+        cursor: pointer;
+        font-size: 20px;
+        padding: 5px;
+        margin: 0;
+        content: "💡";
+      }
+
+      .app-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: center;
+        padding: 20px;
+        overflow-y: auto;
+      }
+
+      /* bottom center of container*/
+      .xp-section {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
+        text-align: center;
+      }
+
+      .xp-display {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 10px;
+      }
+
+      .xp-bar-container {
+        width: 100%;
+        height: 15px;
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+        overflow: hidden;
+        margin-right: 10px;
+      }
+
+      .xp-bar {
+        width: 0%;
+        /* Will be updated by JS */
+        height: 100%;
+        background-color: #4caf50;
+        border-radius: 10px;
+        transition: width 0.5s ease-in-out;
+      }
+
+      .xp-text {
+        margin-left: 10px;
+        font-weight: bold;
+        min-width: 80px;
+        text-align: left;
+      }
+
+      .level-indicator {
+        margin-top: 5px;
+        font-weight: bold;
+        font-size: 14px;
+      }
+
+      .state-indicator {
+        margin-bottom: 20px;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+      }
+
+      .state-badge {
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: bold;
+        background-color: #4caf50;
+        display: inline-block;
+      }
+
+      .state-badge.playing {
+        background-color: #2196f3;
+      }
+
+      .state-badge.cooldown {
+        background-color: #ff9800;
+      }
+
+      .state-badge.ready {
+        background-color: #4caf50;
+      }
+
+      .timer-section {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+
+      #timer-display {
+        font-size: 64px;
+        font-weight: bold;
+        margin-bottom: 20px;
+      }
+
+      .timer-controls {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+      }
+
+      .primary-button,
+      .secondary-button {
+        -webkit-app-region: no-drag;
+        padding: 10px 20px;
+        border-radius: 5px;
+        border: none;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      .primary-button {
+        background-color: #4caf50;
+        color: white;
+      }
+
+      .primary-button:hover {
+        background-color: #3e8e41;
+      }
+
+      .primary-button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
+
+      .secondary-button {
+        background-color: #f44336;
+        color: white;
+      }
+
+      .secondary-button:hover {
+        background-color: #d32f2f;
+      }
+
+      .secondary-button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
+
+      .chores-section {
+        width: 100%;
+        max-width: 500px;
+        transition: opacity 0.3s;
+      }
+
+      .chores-list {
+        margin-top: 20px;
+        margin-bottom: 20px;
+        width: 100%;
+      }
+
+      .chore-item {
+        display: flex;
+        align-items: center;
+        padding: 10px;
+        margin-bottom: 10px;
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 5px;
+      }
+
+      .chore-item input[type="checkbox"] {
+        margin-right: 10px;
+        width: 20px;
+        height: 20px;
+      }
+
+      .chore-item.completed {
+        text-decoration: line-through;
+        opacity: 0.7;
+      }
+
+      .completion-message {
+        text-align: center;
+        padding: 15px;
+        background-color: rgba(76, 175, 80, 0.2);
+        border-radius: 5px;
+        color: white;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      /* Light mode styles */
+      html.light-mode body {
+        background: #f8f9fa;
+        color: #333333;
+      }
+
+      html.light-mode .top-bar {
+        background-color: #ffffff;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      html.light-mode .chore-item {
+        background-color: rgba(0, 0, 0, 0.03);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+      }
+
+      html.light-mode .completion-message {
+        background-color: rgba(76, 175, 80, 0.2);
+        border: 1px solid rgba(76, 175, 80, 0.3);
+        color: #333333;
+      }
+
+      html.light-mode .completion-message p {
+        color: #333333;
+        font-weight: bold;
+        text-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+      }
+
+      html.light-mode .xp-bar-container {
+        background-color: rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(0, 0, 0, 0.15);
+      }
+
+      html.light-mode .primary-button {
+        background-color: #4285f4;
+      }
+
+      html.light-mode .primary-button:hover {
+        background-color: #3367d6;
+      }
+
+      html.light-mode .secondary-button {
+        background-color: #ea4335;
+      }
+
+      html.light-mode .secondary-button:hover {
+        background-color: #d33828;
+      }
+
+      html.light-mode .primary-button:disabled {
+        background-color: #cccccc;
+        color: #777777;
+        cursor: not-allowed;
+      }
+
+      html.light-mode .secondary-button:disabled {
+        background-color: #cccccc;
+        color: #777777;
+        cursor: not-allowed;
+      }
+
+      /* History panel styles */
+      .history-panel {
+        position: fixed;
+        top: 50px;
+        right: 0;
+        width: 300px;
+        height: calc(100vh - 50px);
+        background-color: #222;
+        box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+        transition: transform 0.3s ease;
+        transform: translateX(100%);
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .history-panel.visible {
+        transform: translateX(0);
+      }
+
+      .history-panel h2 {
+        margin: 0;
+        padding: 15px;
+        text-align: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        font-size: 18px;
+        flex-shrink: 0;
+      }
+
+      /* XP summary in history */
+      .xp-summary {
+        font-size: 0.8em;
+        margin-left: 10px;
+        font-weight: normal;
+      }
+
+      .xp-gained {
+        color: #4caf50;
+        font-weight: bold;
+      }
+
+      .xp-penalty {
+        color: #ff5252;
+        font-weight: bold;
+      }
+
+      html.light-mode .xp-gained {
+        color: #2e7d32;
+      }
+
+      html.light-mode .xp-penalty {
+        color: #d32f2f;
+      }
+
+      .history-content {
+        padding: 15px;
+        flex: 1;
+        overflow-y: auto;
+      }
+
+      .history-date {
+        margin: 10px 0;
+        padding: 10px;
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 5px;
+      }
+
+      .history-date h3 {
+        margin: 15px 0 10px;
+        padding: 0 15px;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+      }
+
+      .history-chore {
+        margin: 5px 0;
+        padding: 5px 0;
+        display: flex;
+        align-items: center;
+        font-size: 14px;
+      }
+
+      .history-chore .status {
+        margin-right: 10px;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        font-size: 12px;
+      }
+
+      .history-chore .status.completed {
+        background-color: #4caf50;
+        color: white;
+      }
+
+      .history-chore .status.na {
+        background-color: #9e9e9e;
+        color: white;
+      }
+
+      .history-chore .status.incomplete {
+        background-color: #ff5252;
+        color: white;
+      }
+
+      /* Clickable status indicators */
+      .history-chore .status.clickable {
+        cursor: pointer;
+        position: relative;
+      }
+
+      .history-chore .status.clickable:hover {
+        box-shadow: 0 0 5px 2px rgba(255, 255, 255, 0.3);
+        transform: scale(1.1);
+      }
+
+      .history-chore .status.clickable:after {
+        content: "⟳";
+        position: absolute;
+        bottom: -6px;
+        right: -6px;
+        font-size: 10px;
+        opacity: 0.7;
+        background: rgba(0, 0, 0, 0.5);
+        border-radius: 50%;
+        width: 12px;
+        height: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      html.light-mode .history-chore .status.clickable:hover {
+        box-shadow: 0 0 5px 2px rgba(0, 0, 0, 0.2);
+      }
+
+      /* History navigation */
+      #show-history {
+        -webkit-app-region: no-drag;
+        background-color: transparent;
+        border: none;
+        cursor: pointer;
+        font-size: 20px;
+        padding: 5px;
+        margin: 0 5px;
+      }
+
+      /* Light mode adjustments for history panel */
+      html.light-mode .history-panel {
+        background-color: #ffffff;
+        box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+        border-left: 1px solid rgba(0, 0, 0, 0.1);
+      }
+
+      html.light-mode .history-panel h2 {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        color: #333333;
+      }
+
+      html.light-mode .history-date {
+        background-color: rgba(0, 0, 0, 0.03);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+      }
+
+      html.light-mode .history-date h3 {
+        color: #333333;
+      }
+
+      html.light-mode .history-chore {
+        color: #555555;
+      }
+
+      /* Rewards panel styles */
+      .rewards-panel {
+        position: fixed;
+        top: 50px;
+        right: 0;
+        width: 300px;
+        height: calc(100vh - 50px);
+        background-color: #222;
+        box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+        transition: transform 0.3s ease;
+        transform: translateX(100%);
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .rewards-panel.visible {
+        transform: translateX(0);
+      }
+
+      .rewards-panel h2 {
+        padding: 15px;
+        margin: 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        font-size: 18px;
+        flex-shrink: 0;
+      }
+
+      .rewards-available {
+        padding: 15px;
+        font-size: 16px;
+        font-weight: bold;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .rewards-content {
+        padding: 15px;
+        flex: 1;
+        overflow-y: auto;
+      }
+
+      .reward-item {
+        margin: 10px 0;
+        padding: 15px;
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .reward-item:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+      }
+
+      .reward-item.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .reward-item h3 {
+        margin: 0 0 10px 0;
+        font-size: 16px;
+      }
+
+      .reward-item p {
+        margin: 0;
+        font-size: 14px;
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      .reward-history {
+        margin-top: 20px;
+        padding-top: 15px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .reward-history h3 {
+        margin: 0 0 10px 0;
+        font-size: 16px;
+      }
+
+      .reward-history-item {
+        margin: 5px 0;
+        padding: 10px;
+        background-color: rgba(255, 255, 255, 0.05);
+        border-radius: 5px;
+        font-size: 14px;
+      }
+
+      .reward-history-item .date {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.5);
+        margin-top: 5px;
+      }
+
+      #show-rewards {
+        -webkit-app-region: no-drag;
+        background-color: transparent;
+        border: none;
+        cursor: pointer;
+        font-size: 20px;
+        padding: 5px;
+        margin: 0 5px;
+      }
+
+      /* Light mode adjustments for rewards panel */
+      html.light-mode .rewards-panel {
+        background-color: #ffffff;
+        box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+        border-left: 1px solid rgba(0, 0, 0, 0.1);
+      }
+
+      html.light-mode .rewards-panel h2 {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        color: #333333;
+      }
+
+      html.light-mode .rewards-available {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        color: #333333;
+      }
+
+      html.light-mode .reward-item {
+        background-color: rgba(0, 0, 0, 0.03);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+      }
+
+      html.light-mode .reward-item:hover {
+        background-color: rgba(0, 0, 0, 0.07);
+      }
+
+      html.light-mode .reward-item h3 {
+        color: #333333;
+      }
+
+      html.light-mode .reward-item p {
+        color: #555555;
+      }
+
+      html.light-mode .reward-history {
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+      }
+
+      html.light-mode .reward-history h3 {
+        color: #333333;
+      }
+
+      html.light-mode .reward-history-item {
+        background-color: rgba(0, 0, 0, 0.02);
+        border: 1px solid rgba(0, 0, 0, 0.04);
+      }
+
+      html.light-mode .reward-history-item .date {
+        color: #777777;
+      }
+
+      html.light-mode .state-badge {
+        color: white;
+      }
+
+      html.light-mode .xp-section {
+        background-color: rgba(0, 0, 0, 0.08);
+        border-radius: 10px;
+        padding: 15px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+      }
+
+      html.light-mode .xp-bar-container {
+        background-color: rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(0, 0, 0, 0.15);
+      }
+
+      html.light-mode .xp-bar {
+        background-color: #4285f4;
+      }
+
+      html.light-mode .xp-text {
+        color: #333333;
+        font-weight: bold;
+      }
+
+      html.light-mode .level-indicator {
+        color: #333333;
+      }
+
+      /* Improve cooldown message/completion message readability */
+      .completion-message {
+        text-align: center;
+        padding: 15px;
+        background-color: rgba(76, 175, 80, 0.2);
+        border-radius: 5px;
+        color: white;
+      }
+
+      html.light-mode .completion-message {
+        background-color: rgba(76, 175, 80, 0.2);
+        border: 1px solid rgba(76, 175, 80, 0.3);
+        color: #333333;
+      }
+
+      /* Target specifically the objectives info message */
+      .completion-message p {
+        font-weight: bold;
+      }
+
+      /* Additional styles for the chores section in light mode */
+      html.light-mode #chores-section .completion-message {
+        background-color: rgba(76, 175, 80, 0.3);
+        border: 1px solid rgba(76, 175, 80, 0.4);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Additional styles for the error dialog */
+      .error-dialog {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
+      }
+
+      .error-dialog-content {
+        background-color: #333;
+        border-radius: 8px;
+        padding: 20px;
+        width: 80%;
+        max-width: 500px;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+      }
+
+      .error-dialog h3 {
+        margin-top: 0;
+        color: #ff5252;
+      }
+
+      .error-dialog pre {
+        background-color: #222;
+        padding: 10px;
+        border-radius: 4px;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        font-family: monospace;
+        margin-bottom: 15px;
+        color: #f8f8f8;
+        border: 1px solid #444;
+      }
+
+      .error-dialog .close-btn {
+        background-color: #ff5252;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        display: block;
+        margin: 0 auto;
+      }
+
+      .error-dialog .close-btn:hover {
+        background-color: #ff7575;
+      }
+
+      /* Light mode styles for the error dialog */
+      html.light-mode .error-dialog-content {
+        background-color: #f8f9fa;
+        color: #333;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+      }
+
+      html.light-mode .error-dialog h3 {
+        color: #d32f2f;
+      }
+
+      html.light-mode .error-dialog pre {
+        background-color: #f1f1f1;
+        color: #333;
+        border: 1px solid #ddd;
+      }
+
+      html.light-mode .error-dialog .close-btn {
+        background-color: #d32f2f;
+      }
+
+      html.light-mode .error-dialog .close-btn:hover {
+        background-color: #e57373;
+      }
+
+      #check-updates {
+        background: none;
+        border: none;
+        font-size: 14px;
+        cursor: pointer;
+        padding: 3px 5px;
+        margin-left: 5px;
+        border-radius: 4px;
+        -webkit-app-region: no-drag !important;
+        transition: background-color 0.3s;
+      }
+
+      #check-updates:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+
+      /* Update Dialog */
+      .update-dialog {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+
+      .update-dialog-content {
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        width: 80%;
+        max-width: 500px;
+      }
+
+      .update-dialog h3 {
+        margin-top: 0;
+        color: var(--accent-color);
+      }
+
+      .release-notes {
+        margin: 15px 0;
+        padding: 10px;
+        background-color: var(--secondary-bg-color);
+        border-radius: 4px;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+
+      .release-notes h4 {
+        margin-top: 0;
+        color: var(--accent-color);
+      }
+
+      .dialog-buttons {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 20px;
+        gap: 10px;
+      }
+
+      .download-btn,
+      .close-btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+
+      .download-btn {
+        background-color: var(--accent-color);
+        color: white;
+      }
+
+      .close-btn {
+        background-color: var(--secondary-bg-color);
+        color: var(--text-color);
+      }
+
+      /* Error Dialog - same styling as update dialog */
+      .error-dialog {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+
+      .error-dialog-content {
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        width: 80%;
+        max-width: 500px;
+      }
+
+      .error-dialog pre {
+        background-color: var(--secondary-bg-color);
+        padding: 10px;
+        border-radius: 4px;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        margin-bottom: 20px;
+      }
+
+      /* Login panel styles */
+      .login-panel {
+        position: fixed;
+        top: 50px;
+        right: 0;
+        width: 300px;
+        height: calc(100vh - 50px);
+        background-color: #222;
+        box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+        transition: transform 0.3s ease;
+        transform: translateX(100%);
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .login-panel.visible {
+        transform: translateX(0);
+      }
+
+      .login-panel h2 {
+        padding: 15px;
+        margin: 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        font-size: 18px;
+        flex-shrink: 0;
+      }
+
+      .login-content {
+        padding: 15px;
+        flex: 1;
+        overflow-y: auto;
+      }
+
+      .login-form {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .form-group label {
+        font-size: 14px;
+        font-weight: bold;
+      }
+
+      .form-group input {
+        padding: 10px;
+        border-radius: 5px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background-color: rgba(255, 255, 255, 0.1);
+        color: white;
+        font-size: 14px;
+      }
+
+      #show-login {
+        -webkit-app-region: no-drag;
+        background-color: transparent;
+        border: none;
+        cursor: pointer;
+        font-size: 20px;
+        padding: 5px;
+        margin: 0 5px;
+      }
+
+      /* Light mode adjustments for login panel */
+      html.light-mode .login-panel {
+        background-color: #ffffff;
+        box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+        border-left: 1px solid rgba(0, 0, 0, 0.1);
+      }
+
+      html.light-mode .login-panel h2 {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        color: #333333;
+      }
+
+      html.light-mode .form-group label {
+        color: #333333;
+      }
+
+      html.light-mode .form-group input {
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        background-color: rgba(0, 0, 0, 0.03);
+        color: #333333;
+      }
+
+      /* Login status styles */
+      .login-status {
+        margin-bottom: 15px;
+      }
+
+      .login-status-message {
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+        font-size: 14px;
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+
+      .login-status-message.error {
+        background-color: rgba(255, 82, 82, 0.2);
+        color: #ff5252;
+      }
+
+      .login-status-message.success {
+        background-color: rgba(76, 175, 80, 0.2);
+        color: #4caf50;
+      }
+
+      .login-status-message p {
+        margin: 0 0 10px 0;
+      }
+
+      html.light-mode .login-status-message {
+        background-color: rgba(0, 0, 0, 0.03);
+      }
+
+      html.light-mode .login-status-message.error {
+        background-color: rgba(255, 82, 82, 0.1);
+        color: #d32f2f;
+      }
+
+      html.light-mode .login-status-message.success {
+        background-color: rgba(76, 175, 80, 0.1);
+        color: #388e3c;
+      }
+    </style>
+
+    <script type="module" src="/src/renderer.ts"></script>
+  </body>
 </html>
