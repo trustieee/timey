@@ -1055,6 +1055,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     const formGroup = signInButton.parentElement;
     formGroup.insertBefore(loginErrorMsg, signInButton);
 
+    // Add event listeners for Enter key in login inputs
+    emailInput.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            // If enter is pressed in the email field, move focus to password
+            // unless password already has a value, then submit the form
+            if (passwordInput.value.trim()) {
+                signInButton.click();
+            } else {
+                passwordInput.focus();
+            }
+        }
+    });
+
+    passwordInput.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            // If enter is pressed in the password field, submit the form
+            signInButton.click();
+        }
+    });
+
     signInButton.addEventListener('click', async () => {
         // Clear any previous error messages
         loginErrorMsg.style.display = 'none';
