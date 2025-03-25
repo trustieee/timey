@@ -2,30 +2,40 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  transform: {
-    '^.+\\.tsx?$': ['ts-jest', {
-      tsconfig: 'tsconfig.json',
-    }],
+  setupFilesAfterEnv: ['./jest.setup.js'],
+  globals: {
+    'ts-jest': {
+      isolatedModules: true,
+    }
+  },
+  moduleNameMapper: {
+    "^firebase/app$": "<rootDir>/src/__mocks__/firebase/app.ts",
+    "^firebase/auth$": "<rootDir>/src/__mocks__/firebase/auth.ts",
+    "^firebase/firestore$": "<rootDir>/src/__mocks__/firebase/firestore.ts"
   },
   testMatch: [
-    "**/*.test.ts"
+    "<rootDir>/src/tests/**/*.test.ts"
   ],
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
-  moduleNameMapper: {
-    // Handle module aliases (if needed in the future)
+  transform: {
+    '^.+\\.tsx?$': ['ts-jest', {
+      isolatedModules: true,
+    }],
   },
-  // Increase timeout for handling open resources
-  openHandlesTimeout: 5000,
-  // Explicitly identify mocks that should be restored
-  restoreMocks: true,
-  // Clear mock implementations between tests
-  clearMocks: true,
-  // Don't reset the modules between tests
-  resetModules: false,
-  // Use modern worker threads for better process handling
+  collectCoverageFrom: [
+    "src/**/*.ts",
+    "!src/**/*.d.ts",
+    "!src/__mocks__/**/*",
+    "!src/tests/**/*"
+  ],
   workerThreads: true,
-  // Suppress console.log during tests but keep console.error
-  silent: false,
-  // Custom silent logger to suppress console output in passing tests
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js']
+  // Force Jest to exit after all tests are complete
+  forceExit: true,
+  // Increase timeout for handling open resources
+  testTimeout: 10000,
+  // Clear mocks between each test
+  clearMocks: true,
+  // Restore mocks between tests
+  restoreMocks: true,
+  // Don't capture console output during tests, keep only console.error
+  silent: true
 }; 

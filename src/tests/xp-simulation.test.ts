@@ -51,7 +51,6 @@ describe('30-Day XP Simulation', () => {
         status
       })),
       playTime: {
-        totalMinutes: 60,
         sessions: [{
           start: `${date}T08:00:00`,
           end: `${date}T09:00:00`
@@ -113,7 +112,7 @@ describe('30-Day XP Simulation', () => {
   }
 
   describe('XP Calculation and Level Progression', () => {
-    test('Should correctly calculate XP and level through 30 day simulation', () => {
+    test('Should correctly calculate XP and level through 30 day simulation', async () => {
       // Create empty profile
       const profile: PlayerProfile = {
         history: {},
@@ -138,7 +137,7 @@ describe('30-Day XP Simulation', () => {
       }> = [];
       
       // Use fixed seed for deterministic randomness in tests
-      let randomSeed = 12345;
+      const randomSeed = 12345;
       
       // Generate data for 30 days
       for (let day = 1; day <= 30; day++) {
@@ -152,7 +151,7 @@ describe('30-Day XP Simulation', () => {
         const preFinalizeGained = profile.history[date].xp.gained;
         
         // Finalize day and apply penalties
-        const updatedProfile = finalizeDayProgress(profile, date);
+        const updatedProfile = await finalizeDayProgress(profile, date);
         Object.assign(profile, updatedProfile);
         
         // Calculate stats after finalization

@@ -1,13 +1,11 @@
 import { APP_CONFIG } from '../config';
-import { 
-  getXpRequiredForLevel, 
+import {
+  getXpRequiredForLevel,
   calculatePlayerStats,
   PlayerProfile,
   DayProgress,
   finalizeDayProgress,
-  ChoreStatus,
-  addXp,
-  removeXp
+  ChoreStatus
 } from '../playerProfile';
 
 describe('Comprehensive XP & Leveling Tests', () => {
@@ -27,7 +25,7 @@ describe('Comprehensive XP & Leveling Tests', () => {
       for (let level = 1; level <= 5; level++) {
         const xpRequired = getXpRequiredForLevel(level);
         const daysNeeded = xpRequired / (APP_CONFIG.PROFILE.XP_FOR_CHORE * 12);
-        
+
         // Check that lower levels have progressively less XP required
         if (level < 4) {
           expect(xpRequired).toBeLessThan(getXpRequiredForLevel(level + 1));
@@ -35,7 +33,7 @@ describe('Comprehensive XP & Leveling Tests', () => {
           // Levels 4 and above should have the same XP requirement
           expect(xpRequired).toBe(getXpRequiredForLevel(level + 1));
         }
-        
+
         // Check that XP required is in multiples of days (each day = 12 chores * XP per chore)
         expect(daysNeeded).toBeCloseTo(Math.floor(daysNeeded + 0.1), 1);
       }
@@ -51,7 +49,7 @@ describe('Comprehensive XP & Leveling Tests', () => {
           '2025-01-01': {
             date: '2025-01-01',
             chores: [],
-            playTime: { totalMinutes: 0, sessions: [] },
+            playTime: { sessions: [] },
             xp: {
               gained: totalXp,
               penalties: 0,
@@ -85,7 +83,7 @@ describe('Comprehensive XP & Leveling Tests', () => {
       testCases.forEach(({ xp, expectedLevel, expectedProgress }) => {
         const profile = testProfileWithXp(xp);
         const stats = calculatePlayerStats(profile);
-        
+
         expect(stats.level).toBe(expectedLevel);
         expect(stats.xp).toBe(expectedProgress);
       });
@@ -104,7 +102,6 @@ describe('Comprehensive XP & Leveling Tests', () => {
               { id: 1, text: 'Task 2', status: 'completed' as ChoreStatus, completedAt: '2025-01-01T09:00:00' }
             ],
             playTime: {
-              totalMinutes: 60,
               sessions: [{ start: '2025-01-01T08:00:00', end: '2025-01-01T09:00:00' }]
             },
             xp: {
@@ -117,7 +114,7 @@ describe('Comprehensive XP & Leveling Tests', () => {
           '2025-01-02': {
             date: '2025-01-02',
             chores: [],
-            playTime: { totalMinutes: 0, sessions: [] },
+            playTime: { sessions: [] },
             xp: {
               gained: 100,
               penalties: 20,
@@ -128,7 +125,7 @@ describe('Comprehensive XP & Leveling Tests', () => {
           '2025-01-03': {
             date: '2025-01-03',
             chores: [],
-            playTime: { totalMinutes: 0, sessions: [] },
+            playTime: { sessions: [] },
             xp: {
               gained: 90,
               penalties: 10,
@@ -144,8 +141,7 @@ describe('Comprehensive XP & Leveling Tests', () => {
       };
 
       const multiDayStats = calculatePlayerStats(multiDayProfile);
-      const expectedTotalXp = 120 + 80 + 80; // 280 XP total
-      
+
       // Check that level and XP progress are correct
       expect(multiDayStats.level).toBe(1);
       expect(multiDayStats.xp).toBe(280);
@@ -157,7 +153,7 @@ describe('Comprehensive XP & Leveling Tests', () => {
   describe('Day Simulation with Level Progression', () => {
     test('Should correctly level up after accumulating sufficient XP', () => {
       // Create a profile with empty history
-      let simulationProfile: PlayerProfile & {level: number, xp: number, xpToNextLevel: number} = {
+      const simulationProfile: PlayerProfile & { level: number, xp: number, xpToNextLevel: number } = {
         history: {},
         rewards: {
           available: 0,
@@ -171,16 +167,15 @@ describe('Comprehensive XP & Leveling Tests', () => {
       // Helper to create a day entry
       function createDay(date: string, completedChores: number): DayProgress {
         const xpGained = completedChores * APP_CONFIG.PROFILE.XP_FOR_CHORE;
-        
+
         return {
           date,
           chores: Array(12).fill(0).map((_, i) => ({
             id: i,
-            text: `Chore ${i+1}`,
+            text: `Chore ${i + 1}`,
             status: i < completedChores ? 'completed' : 'incomplete'
           })),
           playTime: {
-            totalMinutes: 60,
             sessions: [{
               start: `${date}T08:00:00`,
               end: `${date}T09:00:00`
@@ -202,22 +197,21 @@ describe('Comprehensive XP & Leveling Tests', () => {
       ];
 
       // Add days one by one and verify level progression
-      let currentLevel = 1;
       let day = 1;
-      
+
       for (const completedChores of completionPattern) {
         // Format date as YYYY-MM-DD
         const date = new Date(2025, 0, day).toISOString().split('T')[0];
-        
+
         // Add the day to history
         simulationProfile.history[date] = createDay(date, completedChores);
-        
+
         // Recalculate stats
         const stats = calculatePlayerStats(simulationProfile);
         simulationProfile.level = stats.level;
         simulationProfile.xp = stats.xp;
         simulationProfile.xpToNextLevel = stats.xpToNextLevel;
-        
+
         // Check for level ups at expected points
         if (day === 7) {
           expect(simulationProfile.level).toBe(2);
@@ -232,7 +226,7 @@ describe('Comprehensive XP & Leveling Tests', () => {
           expect(simulationProfile.level).toBe(3);
           expect(simulationProfile.xp).toBe(0);
         }
-        
+
         day++;
       }
     });
@@ -242,22 +236,21 @@ describe('Comprehensive XP & Leveling Tests', () => {
   describe('XP Penalties & Task Status Tests', () => {
     // Helper function to create a day with specific chore statuses
     function createDayWithChores(
-      date: string, 
+      date: string,
       choreStatuses: ChoreStatus[]
     ): DayProgress {
       // Count completed chores to calculate gained XP
       const completedCount = choreStatuses.filter(status => status === 'completed').length;
       const xpGained = completedCount * APP_CONFIG.PROFILE.XP_FOR_CHORE;
-      
+
       return {
         date,
         chores: choreStatuses.map((status, i) => ({
           id: i,
-          text: `Chore ${i+1}`,
+          text: `Chore ${i + 1}`,
           status
         })),
         playTime: {
-          totalMinutes: 60,
           sessions: [{
             start: `${date}T08:00:00`,
             end: `${date}T09:00:00`
@@ -289,15 +282,12 @@ describe('Comprehensive XP & Leveling Tests', () => {
         Array(12).fill('completed' as ChoreStatus)
       );
 
-      // Before finalization
-      const beforeXp = { ...penaltyProfile.history[allCompletedDay].xp };
-      
       // Finalize day
       penaltyProfile = finalizeDayProgress(penaltyProfile, allCompletedDay) as PlayerProfile;
-      
+
       // After finalization
       const afterXp = penaltyProfile.history[allCompletedDay].xp;
-      
+
       // Expectations
       expect(afterXp.gained).toBe(12 * APP_CONFIG.PROFILE.XP_FOR_CHORE);
       expect(afterXp.penalties).toBe(0);
@@ -328,10 +318,10 @@ describe('Comprehensive XP & Leveling Tests', () => {
 
       // Finalize day
       penaltyProfile = finalizeDayProgress(penaltyProfile, someIncompleteDay) as PlayerProfile;
-      
+
       // After finalization
       const afterXp = penaltyProfile.history[someIncompleteDay].xp;
-      
+
       // Expectations
       expect(afterXp.gained).toBe(8 * APP_CONFIG.PROFILE.XP_FOR_CHORE);
       expect(afterXp.penalties).toBe(4 * APP_CONFIG.PROFILE.XP_PENALTY_FOR_CHORE);
@@ -362,10 +352,10 @@ describe('Comprehensive XP & Leveling Tests', () => {
 
       // Finalize day
       penaltyProfile = finalizeDayProgress(penaltyProfile, naChoresday) as PlayerProfile;
-      
+
       // After finalization
       const afterXp = penaltyProfile.history[naChoresday].xp;
-      
+
       // Expectations
       expect(afterXp.gained).toBe(6 * APP_CONFIG.PROFILE.XP_FOR_CHORE);
       expect(afterXp.penalties).toBe(0); // No penalties for N/A
@@ -396,10 +386,10 @@ describe('Comprehensive XP & Leveling Tests', () => {
 
       // Finalize day
       penaltyProfile = finalizeDayProgress(penaltyProfile, mixedDay) as PlayerProfile;
-      
+
       // After finalization
       const afterXp = penaltyProfile.history[mixedDay].xp;
-      
+
       // Expectations
       expect(afterXp.gained).toBe(4 * APP_CONFIG.PROFILE.XP_FOR_CHORE);
       expect(afterXp.penalties).toBe(3 * APP_CONFIG.PROFILE.XP_PENALTY_FOR_CHORE);
@@ -415,7 +405,7 @@ describe('Comprehensive XP & Leveling Tests', () => {
           permanent: {}
         }
       };
-      
+
       // Day 1: 12 completed
       const day1 = '2025-01-01';
       penaltyProfile.history[day1] = createDayWithChores(
@@ -423,7 +413,7 @@ describe('Comprehensive XP & Leveling Tests', () => {
         Array(12).fill('completed' as ChoreStatus)
       );
       penaltyProfile = finalizeDayProgress(penaltyProfile, day1) as PlayerProfile;
-      
+
       // Day 2: 8 completed, 4 incomplete
       const day2 = '2025-01-02';
       penaltyProfile.history[day2] = createDayWithChores(
@@ -436,7 +426,7 @@ describe('Comprehensive XP & Leveling Tests', () => {
         ]
       );
       penaltyProfile = finalizeDayProgress(penaltyProfile, day2) as PlayerProfile;
-      
+
       // Day 3: 6 completed, 6 N/A
       const day3 = '2025-01-03';
       penaltyProfile.history[day3] = createDayWithChores(
@@ -449,7 +439,7 @@ describe('Comprehensive XP & Leveling Tests', () => {
         ]
       );
       penaltyProfile = finalizeDayProgress(penaltyProfile, day3) as PlayerProfile;
-      
+
       // Day 4: 4 completed, 3 incomplete, 5 N/A
       const day4 = '2025-01-04';
       penaltyProfile.history[day4] = createDayWithChores(
@@ -462,17 +452,17 @@ describe('Comprehensive XP & Leveling Tests', () => {
         ]
       );
       penaltyProfile = finalizeDayProgress(penaltyProfile, day4) as PlayerProfile;
-      
+
       // Calculate total stats
       const penaltyStats = calculatePlayerStats(penaltyProfile);
-      
+
       // Calculate expected total
-      const expectedTotal = 
+      const expectedTotal =
         (12 * APP_CONFIG.PROFILE.XP_FOR_CHORE) + // Day 1: 12 completed
         (8 * APP_CONFIG.PROFILE.XP_FOR_CHORE - 4 * APP_CONFIG.PROFILE.XP_PENALTY_FOR_CHORE) + // Day 2: 8 completed, 4 incomplete
         (6 * APP_CONFIG.PROFILE.XP_FOR_CHORE) + // Day 3: 6 completed, 6 NA
         (4 * APP_CONFIG.PROFILE.XP_FOR_CHORE - 3 * APP_CONFIG.PROFILE.XP_PENALTY_FOR_CHORE); // Day 4: 4 completed, 3 incomplete, 5 NA
-      
+
       // Check calculated XP matches expected
       expect(penaltyStats.level).toBe(1);
       expect(penaltyStats.xp).toBe(expectedTotal);
@@ -483,16 +473,16 @@ describe('Comprehensive XP & Leveling Tests', () => {
   describe('Level Threshold Crossing', () => {
     test('Should level up when crossing XP threshold', () => {
       // Create a profile with 839 XP (1 XP away from level 2)
-      let levelThresholdProfile: PlayerProfile = {
+      const levelThresholdProfile: PlayerProfile = {
         history: {
           '2025-01-01': {
             date: '2025-01-01',
             chores: Array(12).fill(0).map((_, i) => ({
               id: i,
-              text: `Chore ${i+1}`,
+              text: `Chore ${i + 1}`,
               status: 'completed' as ChoreStatus
             })),
-            playTime: { totalMinutes: 0, sessions: [] },
+            playTime: { sessions: [] },
             xp: {
               gained: 839,
               penalties: 0,
@@ -511,12 +501,12 @@ describe('Comprehensive XP & Leveling Tests', () => {
       let thresholdStats = calculatePlayerStats(levelThresholdProfile);
       expect(thresholdStats.level).toBe(1);
       expect(thresholdStats.xp).toBe(839);
-      
+
       // Add 1 XP to cross the threshold to level 2
       levelThresholdProfile.history['2025-01-02'] = {
         date: '2025-01-02',
         chores: [],
-        playTime: { totalMinutes: 0, sessions: [] },
+        playTime: { sessions: [] },
         xp: {
           gained: 1,
           penalties: 0,
@@ -532,12 +522,12 @@ describe('Comprehensive XP & Leveling Tests', () => {
 
     test('Should return to previous level when XP is reduced', () => {
       // Start with a profile that's just reached level 2
-      let levelThresholdProfile: PlayerProfile = {
+      const levelThresholdProfile: PlayerProfile = {
         history: {
           '2025-01-01': {
             date: '2025-01-01',
             chores: [],
-            playTime: { totalMinutes: 0, sessions: [] },
+            playTime: { sessions: [] },
             xp: {
               gained: 839,
               penalties: 0,
@@ -548,7 +538,7 @@ describe('Comprehensive XP & Leveling Tests', () => {
           '2025-01-02': {
             date: '2025-01-02',
             chores: [],
-            playTime: { totalMinutes: 0, sessions: [] },
+            playTime: { sessions: [] },
             xp: {
               gained: 1,
               penalties: 0,
@@ -562,15 +552,15 @@ describe('Comprehensive XP & Leveling Tests', () => {
           permanent: {}
         }
       };
-      
+
       // Verify we're at level 2 with 0 XP
       let stats = calculatePlayerStats(levelThresholdProfile);
       expect(stats.level).toBe(2);
       expect(stats.xp).toBe(0);
-      
+
       // Remove the second day's XP
       delete levelThresholdProfile.history['2025-01-02'];
-      
+
       // Verify we're back to level 1
       stats = calculatePlayerStats(levelThresholdProfile);
       expect(stats.level).toBe(1);
@@ -588,10 +578,10 @@ describe('Comprehensive XP & Leveling Tests', () => {
             date: '2025-01-01',
             chores: Array(12).fill(0).map((_, i) => ({
               id: i,
-              text: `Chore ${i+1}`,
+              text: `Chore ${i + 1}`,
               status: 'completed' as ChoreStatus
             })),
-            playTime: { totalMinutes: 0, sessions: [] },
+            playTime: { sessions: [] },
             xp: {
               gained: 840,
               penalties: 0,
@@ -610,7 +600,7 @@ describe('Comprehensive XP & Leveling Tests', () => {
       let dayEndStats = calculatePlayerStats(dayEndPenaltyProfile);
       expect(dayEndStats.level).toBe(2);
       expect(dayEndStats.xp).toBe(0);
-      
+
       // Create a day that will result in net positive but with penalties
       // 7 completed (70 XP), 5 incomplete (-50 XP) = +20 XP net
       const penaltyTestDay = '2025-01-02';
@@ -618,10 +608,10 @@ describe('Comprehensive XP & Leveling Tests', () => {
         date: penaltyTestDay,
         chores: Array(12).fill(0).map((_, i) => ({
           id: i,
-          text: `Chore ${i+1}`,
+          text: `Chore ${i + 1}`,
           status: i < 7 ? 'completed' : 'incomplete'
         })),
-        playTime: { totalMinutes: 0, sessions: [] },
+        playTime: { sessions: [] },
         xp: {
           gained: 70,
           penalties: 0,
@@ -629,15 +619,15 @@ describe('Comprehensive XP & Leveling Tests', () => {
         },
         completed: false
       };
-      
+
       // Finalize day to apply penalties
       dayEndPenaltyProfile = finalizeDayProgress(dayEndPenaltyProfile, penaltyTestDay) as PlayerProfile;
-      
+
       // Verify penalties were applied correctly
       expect(dayEndPenaltyProfile.history[penaltyTestDay].xp.gained).toBe(70);
       expect(dayEndPenaltyProfile.history[penaltyTestDay].xp.penalties).toBe(50);
       expect(dayEndPenaltyProfile.history[penaltyTestDay].xp.final).toBe(20);
-      
+
       // Verify level stayed the same with 20 XP added
       dayEndStats = calculatePlayerStats(dayEndPenaltyProfile);
       expect(dayEndStats.level).toBe(2);
@@ -655,10 +645,10 @@ describe('Comprehensive XP & Leveling Tests', () => {
             date: '2025-01-01',
             chores: Array(12).fill(0).map((_, i) => ({
               id: i,
-              text: `Chore ${i+1}`,
+              text: `Chore ${i + 1}`,
               status: 'completed' as ChoreStatus
             })),
-            playTime: { totalMinutes: 0, sessions: [] },
+            playTime: { sessions: [] },
             xp: {
               gained: 850,
               penalties: 0,
@@ -677,7 +667,7 @@ describe('Comprehensive XP & Leveling Tests', () => {
       let extremeStats = calculatePlayerStats(extremePenaltyProfile);
       expect(extremeStats.level).toBe(2);
       expect(extremeStats.xp).toBe(10);
-      
+
       // Create a day with extreme penalties
       // 1 completed (10 XP), 11 incomplete (-110 XP) = -100 XP net
       const extremePenaltyDay = '2025-01-02';
@@ -685,10 +675,10 @@ describe('Comprehensive XP & Leveling Tests', () => {
         date: extremePenaltyDay,
         chores: Array(12).fill(0).map((_, i) => ({
           id: i,
-          text: `Chore ${i+1}`,
+          text: `Chore ${i + 1}`,
           status: i === 0 ? 'completed' : 'incomplete'
         })),
-        playTime: { totalMinutes: 0, sessions: [] },
+        playTime: { sessions: [] },
         xp: {
           gained: 10,
           penalties: 0,
@@ -696,19 +686,19 @@ describe('Comprehensive XP & Leveling Tests', () => {
         },
         completed: false
       };
-      
+
       // Finalize day
       extremePenaltyProfile = finalizeDayProgress(extremePenaltyProfile, extremePenaltyDay) as PlayerProfile;
-      
+
       // Verify penalties were applied
       expect(extremePenaltyProfile.history[extremePenaltyDay].xp.gained).toBe(10);
       expect(extremePenaltyProfile.history[extremePenaltyDay].xp.penalties).toBe(110);
       expect(extremePenaltyProfile.history[extremePenaltyDay].xp.final).toBe(-100);
-      
+
       // Calculate total XP
       const totalXpAfterPenalty = Object.values(extremePenaltyProfile.history).reduce((sum, day) => sum + day.xp.final, 0);
       expect(totalXpAfterPenalty).toBe(750); // 850 - 100 = 750
-      
+
       // Verify level is still 2 since negative XP days don't reduce level
       extremeStats = calculatePlayerStats(extremePenaltyProfile);
       expect(extremeStats.level).toBe(2);
