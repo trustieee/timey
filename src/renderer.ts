@@ -280,13 +280,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Timer variables - use config values
     let timerInterval: number | null = null;
     let timeLeft = APP_CONFIG.TIMER.PLAY_TIME_MINUTES * 60; // in seconds (will be updated with permanent bonus after profile loads)
-    let chores: Chore[] = JSON.parse(JSON.stringify(APP_CONFIG.CHORES)); // Deep copy
+    let chores: Chore[] = []; // Will be populated from profile chores or defaults
     let currentState: AppState = AppState.READY;
     let isPaused = false;
 
     // Reset chores to uncompleted state - only used for new days
     function resetChores(): void {
-        chores = APP_CONFIG.CHORES.map(chore => ({
+        // Use custom chores from profile if available, otherwise fall back to default chores
+        const choreSource = playerProfile?.chores || APP_CONFIG.CHORES;
+        
+        chores = choreSource.map(chore => ({
             id: chore.id,
             text: chore.text,
             status: 'incomplete' as ChoreStatus
@@ -1161,40 +1164,43 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Use IPC to authenticate with Firebase
             const result = await window.electronAPI.authenticateWithFirebase(email, password);
-
-            if (result.success) {
-                console.log('Sign-in successful', result.user.email);
-                signInButton.textContent = 'Signed in';
-
-                // Update authentication state
-                isAuthenticated = true;
-
-                // Close the login panel
-                loginPanel.classList.remove('visible');
-
-                // Force a complete profile reload
-                try {
-                    // First reload the profile from server
-                    await reloadProfile();
-
-                    // Then redraw the UI components
-                    updateXpDisplay();
-                    loadTodayChores().then(() => {
-                        renderChores();
-                    });
-                    renderRewards();
-                } catch (err) {
-                    console.error('Error refreshing profile after login:', err);
-                }
-            } else {
+            if (result.error) {
                 throw new Error(result.error || 'Authentication failed');
             }
-        } catch (error: any) {
+
+            console.log('Sign-in successful', result.user.email);
+            signInButton.textContent = 'Signed in';
+
+            // Update authentication state
+            isAuthenticated = true;
+
+            // Close the login panel
+            loginPanel.classList.remove('visible');
+
+            // Force a complete profile reload
+            try {
+                // First reload the profile from server
+                await reloadProfile();
+
+                // Then redraw the UI components
+                updateXpDisplay();
+                loadTodayChores().then(() => {
+                    renderChores();
+                });
+                renderRewards();
+            } catch (err) {
+                console.error('Error refreshing profile after login:', err);
+            }
+        } catch (error: unknown) {
             // Handle authentication errors
             console.error('Authentication failed:', error);
-
-            // Display error in the custom error element (no alert)
-            loginErrorMsg.textContent = `Sign-in failed: ${error.message}`;
+            
+            // Set the error message
+            const errorMsg = error instanceof Error 
+                ? error.message 
+                : 'Authentication failed';
+            
+            loginErrorMsg.textContent = errorMsg;
             loginErrorMsg.style.display = 'block';
 
             // Re-enable inputs
