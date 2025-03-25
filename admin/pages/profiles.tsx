@@ -4,7 +4,7 @@ import Head from "next/head";
 import Layout from "../components/Layout";
 import { PlayerProfile, ChoreStatus } from "../../src/playerProfile";
 import { db, auth } from "../utils/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, onSnapshot } from "firebase/firestore";
 import {
   signInWithEmailAndPassword,
   onAuthStateChanged,
@@ -35,7 +35,6 @@ const ProfilesPage: NextPage = () => {
       if (user) {
         // User is signed in
         setIsAuthenticated(true);
-        fetchProfiles();
       } else {
         // User is signed out
         setIsAuthenticated(false);
@@ -236,30 +235,60 @@ const ProfilesPage: NextPage = () => {
     }
   };
 
-  const fetchProfiles = async () => {
+  // Use real-time listener instead of one-time fetch
+  const fetchProfilesRealtime = () => {
     try {
       const profilesCollection = collection(db, "playerProfiles");
-      const profilesSnapshot = await getDocs(profilesCollection);
 
-      const profilesData: AdminUserProfile[] = [];
+      // Set up real-time listener
+      const unsubscribe = onSnapshot(
+        profilesCollection,
+        (snapshot) => {
+          const profilesData: AdminUserProfile[] = [];
 
-      profilesSnapshot.forEach((doc) => {
-        const profileData = doc.data() as PlayerProfile;
+          snapshot.forEach((doc) => {
+            const profileData = doc.data() as PlayerProfile;
 
-        profilesData.push({
-          uid: doc.id,
-          ...profileData,
-        });
-      });
+            profilesData.push({
+              uid: doc.id,
+              ...profileData,
+            });
+          });
 
-      setProfiles(profilesData);
-      setLoading(false);
+          setProfiles(profilesData);
+          setLoading(false);
+        },
+        (error) => {
+          console.error("Error listening to profiles:", error);
+          setError("Failed to sync user profiles in real-time");
+          setLoading(false);
+        }
+      );
+
+      // Return unsubscribe function for cleanup
+      return unsubscribe;
     } catch (error) {
-      console.error("Error fetching profiles:", error);
-      setError("Failed to load user profiles");
+      console.error("Error setting up profiles listener:", error);
+      setError("Failed to set up real-time sync");
       setLoading(false);
+      return () => {}; // Return empty function as fallback
     }
   };
+
+  // Effect to clean up the listener when component unmounts
+  useEffect(() => {
+    let unsubscribeProfiles: () => void;
+
+    if (isAuthenticated) {
+      unsubscribeProfiles = fetchProfilesRealtime();
+    }
+
+    return () => {
+      if (unsubscribeProfiles) {
+        unsubscribeProfiles();
+      }
+    };
+  }, [isAuthenticated]);
 
   // Handle logout
   const handleLogout = async () => {
