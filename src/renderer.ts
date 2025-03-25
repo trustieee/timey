@@ -704,6 +704,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             rewardsPanel.classList.remove('visible');
         }
         
+        // Hide login panel if it's open
+        if (loginPanel.classList.contains('visible')) {
+            loginPanel.classList.remove('visible');
+        }
+        
         if (historyPanel.classList.contains('visible')) {
             // Refresh player profile before rendering history
             loadPlayerProfile().then(() => {
@@ -769,6 +774,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             rewardsPanel.classList.contains('visible')) {
             rewardsPanel.classList.remove('visible');
         }
+        
+        if (!loginPanel.contains(target) &&
+            !loginBtn.contains(target) &&
+            loginPanel.classList.contains('visible')) {
+            loginPanel.classList.remove('visible');
+        }
     });
 
     // Prevent clicks inside the history panel from closing it
@@ -784,6 +795,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Hide history panel if it's open
         if (historyPanel.classList.contains('visible')) {
             historyPanel.classList.remove('visible');
+        }
+        
+        // Hide login panel if it's open
+        if (loginPanel.classList.contains('visible')) {
+            loginPanel.classList.remove('visible');
         }
         
         if (rewardsPanel.classList.contains('visible')) {
@@ -939,6 +955,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Prevent clicks inside the rewards panel from closing it
     rewardsPanel.addEventListener('click', (e: MouseEvent) => {
+        e.stopPropagation();
+    });
+
+    // Login panel functionality
+    const loginBtn = document.getElementById('show-login') as HTMLButtonElement;
+    const loginPanel = document.getElementById('login-panel') as HTMLElement;
+    const loginContent = loginPanel.querySelector('.login-content') as HTMLElement;
+
+    function toggleLoginPanel(e: MouseEvent): void {
+        e.stopPropagation(); // Prevent event from bubbling up
+        loginPanel.classList.toggle('visible');
+        
+        // Hide other panels if they're open
+        if (historyPanel.classList.contains('visible')) {
+            historyPanel.classList.remove('visible');
+        }
+        
+        if (rewardsPanel.classList.contains('visible')) {
+            rewardsPanel.classList.remove('visible');
+        }
+    }
+
+    // Add event listener for login button
+    loginBtn.addEventListener('click', toggleLoginPanel);
+    
+    // Prevent clicks inside the login panel from closing it
+    loginPanel.addEventListener('click', (e: MouseEvent) => {
         e.stopPropagation();
     });
 

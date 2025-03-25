@@ -26,6 +26,7 @@
       <div class="window-controls">
         <button id="show-rewards">🎁</button>
         <button id="show-history">📋</button>
+        <button id="show-login">👤</button>
         <button id="toggle-dark-mode"></button>
       </div>
     </div>
@@ -35,6 +36,24 @@
       <h2>Daily Objectives History</h2>
       <div class="history-content">
         <!-- History items will be dynamically added here -->
+      </div>
+    </div>
+
+    <!-- Login panel (hidden by default) -->
+    <div id="login-panel" class="login-panel">
+      <h2>Login</h2>
+      <div class="login-content">
+        <div class="login-form">
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="Enter your email">
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="Enter your password">
+          </div>
+          <button id="sign-in-button" class="primary-button">Sign In</button>
+        </div>
       </div>
     </div>
 
@@ -926,6 +945,140 @@
       overflow-x: auto;
       white-space: pre-wrap;
       margin-bottom: 20px;
+    }
+
+    /* Login panel styles */
+    .login-panel {
+      position: fixed;
+      top: 50px;
+      right: 0;
+      width: 300px;
+      height: calc(100vh - 50px);
+      background-color: #222;
+      box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+      transition: transform 0.3s ease;
+      transform: translateX(100%);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .login-panel.visible {
+      transform: translateX(0);
+    }
+
+    .login-panel h2 {
+      padding: 15px;
+      margin: 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .login-content {
+      padding: 15px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .form-group label {
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .form-group input {
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background-color: rgba(255, 255, 255, 0.1);
+      color: white;
+      font-size: 14px;
+    }
+
+    #show-login {
+      -webkit-app-region: no-drag;
+      background-color: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 20px;
+      padding: 5px;
+      margin: 0 5px;
+    }
+
+    /* Light mode adjustments for login panel */
+    html.light-mode .login-panel {
+      background-color: #ffffff;
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+      border-left: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    html.light-mode .login-panel h2 {
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+      color: #333333;
+    }
+
+    html.light-mode .form-group label {
+      color: #333333;
+    }
+
+    html.light-mode .form-group input {
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      background-color: rgba(0, 0, 0, 0.03);
+      color: #333333;
+    }
+
+    /* Login status styles */
+    .login-status {
+      margin-bottom: 15px;
+    }
+
+    .login-status-message {
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 10px;
+      font-size: 14px;
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .login-status-message.error {
+      background-color: rgba(255, 82, 82, 0.2);
+      color: #FF5252;
+    }
+
+    .login-status-message.success {
+      background-color: rgba(76, 175, 80, 0.2);
+      color: #4CAF50;
+    }
+
+    .login-status-message p {
+      margin: 0 0 10px 0;
+    }
+
+    html.light-mode .login-status-message {
+      background-color: rgba(0, 0, 0, 0.03);
+    }
+
+    html.light-mode .login-status-message.error {
+      background-color: rgba(255, 82, 82, 0.1);
+      color: #d32f2f;
+    }
+
+    html.light-mode .login-status-message.success {
+      background-color: rgba(76, 175, 80, 0.1);
+      color: #388E3C;
     }
   </style>
 
