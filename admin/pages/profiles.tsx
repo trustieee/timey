@@ -5,6 +5,7 @@ import Layout from "../components/Layout";
 import { PlayerProfile, ChoreStatus } from "../../src/playerProfile";
 import { db, auth } from "../utils/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
+import { APP_CONFIG } from "../../src/config";
 import {
   signInWithEmailAndPassword,
   onAuthStateChanged,
@@ -90,25 +91,65 @@ const ProfilesPage: NextPage = () => {
       }
     });
 
-    // Calculate level (simplified version)
-    // This should match the game's level calculation logic
-    const xpPerLevel = [100, 200, 300, 400, 500]; // Example values
-    let level = 1;
-    let xp = totalXp;
+    // Get XP thresholds from app config
+    const xpPerLevel = APP_CONFIG.PROFILE.XP_PER_LEVEL;
+    const defaultXpPerLevel = APP_CONFIG.PROFILE.DEFAULT_XP_PER_LEVEL;
 
-    while (level <= xpPerLevel.length && xp >= xpPerLevel[level - 1]) {
-      xp -= xpPerLevel[level - 1];
-      level++;
+    // Calculate cumulative XP thresholds
+    const cumulativeThresholds: number[] = [];
+    let cumulativeXp = 0;
+
+    // Build cumulative thresholds (how much total XP is needed for each level)
+    for (let i = 0; i < xpPerLevel.length; i++) {
+      cumulativeXp += xpPerLevel[i];
+      cumulativeThresholds.push(cumulativeXp);
     }
 
-    const xpToNextLevel =
-      level <= xpPerLevel.length ? xpPerLevel[level - 1] : 1000;
+    // Find current level based on total XP
+    let level = 1;
+    for (let i = 0; i < cumulativeThresholds.length; i++) {
+      if (totalXp < cumulativeThresholds[i]) {
+        level = i + 1; // Level is 1-indexed
+        break;
+      }
+
+      // If we've passed all thresholds, calculate higher level
+      if (
+        i === cumulativeThresholds.length - 1 &&
+        totalXp >= cumulativeThresholds[i]
+      ) {
+        const extraXp = totalXp - cumulativeThresholds[i];
+        const additionalLevels = Math.floor(extraXp / defaultXpPerLevel);
+        level = xpPerLevel.length + 1 + additionalLevels;
+      }
+    }
+
+    // Calculate XP progress toward next level
+    let currentLevelThreshold = 0;
+    let nextLevelThreshold = cumulativeThresholds[0];
+
+    if (level > 1) {
+      if (level <= cumulativeThresholds.length) {
+        // For levels within the predefined thresholds
+        currentLevelThreshold = cumulativeThresholds[level - 2] || 0;
+        nextLevelThreshold = cumulativeThresholds[level - 1];
+      } else {
+        // For levels beyond the predefined thresholds
+        const baseXp = cumulativeThresholds[cumulativeThresholds.length - 1];
+        const levelsAboveMax = level - (cumulativeThresholds.length + 1);
+        currentLevelThreshold = baseXp + levelsAboveMax * defaultXpPerLevel;
+        nextLevelThreshold = currentLevelThreshold + defaultXpPerLevel;
+      }
+    }
+
+    const xpInCurrentLevel = totalXp - currentLevelThreshold;
+    const xpRequiredForNextLevel = nextLevelThreshold - currentLevelThreshold;
 
     return {
       level,
-      xp,
+      xp: xpInCurrentLevel,
       totalXp,
-      xpToNextLevel,
+      xpToNextLevel: xpRequiredForNextLevel,
     };
   };
 
