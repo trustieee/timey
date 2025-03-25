@@ -2,6 +2,7 @@ import { initializeApp, FirebaseApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, UserCredential, onAuthStateChanged, Auth } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, Firestore, DocumentReference } from 'firebase/firestore';
 import { PlayerProfile } from '../playerProfile';
+import { firebaseConfig as hardcodedConfig } from '../config';
 
 // Check if running in renderer process (no direct access to process.env)
 const isRenderer = (typeof window !== 'undefined' && window.process === undefined);
@@ -19,15 +20,15 @@ if (isRenderer) {
   // In renderer process, we'll load the config later from the main process
   firebaseConfig = {};
 } else {
-  // In main process, use environment variables
+  // In main process, try environment variables first, then fall back to hardcoded config
   firebaseConfig = {
-    apiKey: process.env.FIREBASE_API_KEY,
-    authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.FIREBASE_APP_ID,
-    measurementId: process.env.FIREBASE_MEASUREMENT_ID,
+    apiKey: process.env.FIREBASE_API_KEY || hardcodedConfig.apiKey,
+    authDomain: process.env.FIREBASE_AUTH_DOMAIN || hardcodedConfig.authDomain,
+    projectId: process.env.FIREBASE_PROJECT_ID || hardcodedConfig.projectId,
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET || hardcodedConfig.storageBucket,
+    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || hardcodedConfig.messagingSenderId,
+    appId: process.env.FIREBASE_APP_ID || hardcodedConfig.appId,
+    measurementId: process.env.FIREBASE_MEASUREMENT_ID || hardcodedConfig.measurementId,
   };
 }
 
@@ -134,7 +135,9 @@ const ensureInitialized = async (): Promise<void> => {
       const config = await window.electronAPI.getFirebaseConfig();
       setFirebaseConfig(config);
     } catch (error) {
-      console.error('Failed to get Firebase config:', error);
+      console.error('Failed to get Firebase config from main process:', error);
+      // Use hardcoded config directly in case of error
+      setFirebaseConfig(hardcodedConfig);
     }
   }
 };

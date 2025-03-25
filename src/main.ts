@@ -9,19 +9,21 @@ import { RewardType } from './rewards';
 import * as dotenv from 'dotenv';
 // Import Firebase authentication
 import { auth, initializeFirebase, authenticateWithFirebase } from './services/firebase';
+// Import hardcoded Firebase config
+import { firebaseConfig as hardcodedConfig } from './config';
 
 // Load environment variables from .env file
 dotenv.config();
 
-// Firebase configuration from environment variables
+// Firebase configuration from environment variables with fallback to hardcoded config
 const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY,
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.FIREBASE_APP_ID,
-  measurementId: process.env.FIREBASE_MEASUREMENT_ID,
+  apiKey: process.env.FIREBASE_API_KEY || hardcodedConfig.apiKey,
+  authDomain: process.env.FIREBASE_AUTH_DOMAIN || hardcodedConfig.authDomain,
+  projectId: process.env.FIREBASE_PROJECT_ID || hardcodedConfig.projectId,
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET || hardcodedConfig.storageBucket,
+  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || hardcodedConfig.messagingSenderId,
+  appId: process.env.FIREBASE_APP_ID || hardcodedConfig.appId,
+  measurementId: process.env.FIREBASE_MEASUREMENT_ID || hardcodedConfig.measurementId,
 };
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -105,7 +107,7 @@ const createWindow = async () => {
     });
   });
   
-  mainWindow.webContents.openDevTools();
+  // mainWindow.webContents.openDevTools();
 
   // Create application menu without update option
   const appMenu = Menu.buildFromTemplate([
