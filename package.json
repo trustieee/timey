@@ -11,7 +11,8 @@
     "publish": "electron-forge publish",
     "release": "electron-forge make && electron-forge publish",
     "lint": "eslint --ext .ts,.tsx .",
-    "test": "jest"
+    "test": "jest",
+    "admin": "cd admin && npm run dev"
   },
   "repository": {
     "type": "git",
