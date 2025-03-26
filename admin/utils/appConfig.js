@@ -1,5 +1,6 @@
+// JavaScript version of the central application configuration
+// This is a copy of src/config.ts without TypeScript annotations
 
-// Central application configuration
 export const APP_CONFIG = {
   // Player profile config
   PROFILE: {
@@ -21,7 +22,7 @@ export const APP_CONFIG = {
   },
 
   // Default chores (empty array)
-  CHORES: [] as { id: number; text: string; completed: boolean }[],
+  CHORES: [],
 
   // Profile refresh interval (in milliseconds)
   PROFILE_REFRESH_INTERVAL: 5 * 60 * 1000, // 5 minutes
