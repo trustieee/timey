@@ -1,4 +1,4 @@
-- when new chore added, keep status of previous chores
+- ~~when new chore added, keep status of previous chores~~
 - ~~don't cross out the check mark~~
 - add "day of the week" option per chore
 - add "one time only" chore option

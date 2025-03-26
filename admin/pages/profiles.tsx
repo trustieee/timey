@@ -376,19 +376,30 @@ const ProfilesPage: NextPage = () => {
   // Open chores modal for a specific profile
   const openChoresModal = (profile: AdminUserProfile) => {
     setSelectedProfileUid(profile.uid);
-    // Initialize with existing chores if available or empty array
-    // Make sure all chores have a status field
-    const choresWithStatus = (profile.chores || []).map((chore) => {
-      // Create a properly typed chore with status
-      const typedChore: ChoreItem = {
-        id: chore.id,
-        text: chore.text,
-        status: (chore as any).status || ("incomplete" as ChoreStatus),
-        completedAt: (chore as any).completedAt,
-      };
-      return typedChore;
-    });
-    setUserChores(choresWithStatus);
+
+    // Get today's date
+    const today = new Date().toISOString().split("T")[0];
+
+    // Try to get chores from today's history first to maintain statuses
+    const todayChores = profile.history?.[today]?.chores || [];
+
+    // If today has chores, use those (they have status)
+    if (todayChores.length > 0) {
+      setUserChores(todayChores);
+    } else {
+      // Otherwise initialize with profile's base chores and set default status
+      const choresWithStatus = (profile.chores || []).map((chore) => {
+        // Create a properly typed chore with status
+        const typedChore: ChoreItem = {
+          id: chore.id,
+          text: chore.text,
+          status: "incomplete" as ChoreStatus,
+        };
+        return typedChore;
+      });
+      setUserChores(choresWithStatus);
+    }
+
     setIsChoresModalOpen(true);
   };
 
@@ -406,6 +417,7 @@ const ProfilesPage: NextPage = () => {
   const handleAddChore = () => {
     if (!newChoreText.trim()) return;
 
+    // Find the next available ID by getting the max ID from existing chores and adding 1
     const newId =
       userChores.length > 0
         ? Math.max(...userChores.map((chore) => chore.id)) + 1
@@ -506,18 +518,24 @@ const ProfilesPage: NextPage = () => {
         // Add default values if they don't exist
         xp: history[currentDate]?.xp || { ...defaultXp },
         playTime: history[currentDate]?.playTime || { ...defaultPlayTime },
-        // Always update chores
+        // Always update chores while preserving their status
         chores: choresWithStatus,
         // Make sure completed field exists
         completed: history[currentDate]?.completed || false,
       };
 
+      // Update the base chores list in the profile for future days
+      const baseChores = choresWithStatus.map((chore) => ({
+        id: chore.id,
+        text: chore.text,
+      }));
+
       // Create a complete profile object with all necessary fields
       const completeProfile = {
         // Keep existing profile data
         ...selectedProfile,
-        // Always update chores
-        chores: choresWithStatus,
+        // Update base chores for future days (without status)
+        chores: baseChores,
         // Ensure all required fields exist
         xp: selectedProfile.xp || { ...defaultXp },
         playTime: selectedProfile.playTime || { ...defaultPlayTime },
