@@ -41,6 +41,7 @@ interface RendererPlayerProfile extends BasePlayerProfile {
     text: string;
     completedAt: string;
   }>;
+  lastUpdated?: string; // Add this field to track changes
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -74,6 +75,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Player profile data
   let playerProfile: RendererPlayerProfile;
 
+  // Store the unsubscribe function for profile updates
+  let profileUpdateUnsubscribe: (() => void) | null = null;
+
   // Load player profile
   async function loadPlayerProfile() {
     try {
@@ -87,6 +91,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         completedChores: getCompletedChores(baseProfile),
       };
       updateXpDisplay();
+
+      // Set up real-time profile update listener if not already set up
+      setupProfileUpdateListener();
     } catch (error) {
       console.error("Error loading player profile:", error);
       // Set default values if profile can't be loaded
@@ -172,6 +179,50 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Update level indicator
     levelIndicatorElement.textContent = `Level ${playerProfile.level}`;
+  }
+
+  // Set up real-time listener for profile updates
+  function setupProfileUpdateListener() {
+    // Clean up any existing listener first
+    if (profileUpdateUnsubscribe) {
+      profileUpdateUnsubscribe();
+      profileUpdateUnsubscribe = null;
+    }
+
+    // Set up a new listener
+    profileUpdateUnsubscribe = window.electronAPI.onProfileUpdate(
+      (updatedProfile) => {
+        console.log("Real-time profile update received");
+
+        // Update the renderer profile with the new data
+        const convertedProfile = {
+          ...updatedProfile,
+          level: calculateLevel(updatedProfile),
+          xp: calculateXp(updatedProfile),
+          xpToNextLevel: calculateXpToNextLevel(updatedProfile),
+          completedChores: getCompletedChores(updatedProfile),
+        };
+
+        // Store the updated profile
+        playerProfile = convertedProfile;
+
+        // Update UI elements
+        updateXpDisplay();
+
+        // Reload today's chores and re-render
+        loadTodayChores().then(() => {
+          renderChores();
+        });
+
+        // Update rewards display
+        renderRewards();
+
+        // Apply any permanent bonuses
+        applyPermanentBonuses();
+
+        console.log("Profile and UI updated from real-time update");
+      }
+    );
   }
 
   // Load player profile at startup

@@ -4,7 +4,13 @@ import Head from "next/head";
 import Layout from "../components/Layout";
 import { PlayerProfile, ChoreStatus } from "../../src/playerProfile";
 import { db, auth } from "../utils/firebase";
-import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import {
+  collection,
+  onSnapshot,
+  doc,
+  updateDoc,
+  setDoc,
+} from "firebase/firestore";
 import { APP_CONFIG } from "../utils/appConfig";
 import {
   signInWithEmailAndPassword,
@@ -18,6 +24,7 @@ interface AdminUserProfile extends PlayerProfile {
   uid: string;
   xp?: { final: number; base: number; bonus: number };
   playTime?: { sessions: any[] };
+  lastUpdated?: string; // Add this field to track changes
 }
 
 // Interface for a chore item
@@ -481,69 +488,46 @@ const ProfilesPage: NextPage = () => {
       const defaultPlayTime = { sessions: [] };
       const defaultRewards = { available: 0, permanent: {} };
 
-      // Create the update data with explicit property names and default values
-      const updateData: any = {
+      // Ensure history exists
+      const history = selectedProfile.history || {};
+
+      // Create or update today's history with default values
+      history[currentDate] = {
+        // Include existing day data if any
+        ...(history[currentDate] || {}),
+        // Add default values if they don't exist
+        xp: history[currentDate]?.xp || defaultXp,
+        playTime: history[currentDate]?.playTime || defaultPlayTime,
         // Always update chores
         chores: choresWithStatus,
+      };
 
-        // Add default values if they don't exist
-        // Use ternary operators to only set defaults for missing fields
+      // Create a complete profile object with all necessary fields
+      const completeProfile = {
+        // Keep existing profile data
+        ...selectedProfile,
+        // Always update chores
+        chores: choresWithStatus,
+        // Ensure all required fields exist
         xp: selectedProfile.xp || defaultXp,
         playTime: selectedProfile.playTime || defaultPlayTime,
         rewards: selectedProfile.rewards || defaultRewards,
-        history: selectedProfile.history || {},
+        // Use the updated history
+        history,
+        // Add a lastUpdated timestamp to trigger real-time updates
+        lastUpdated: new Date().toISOString(),
       };
 
-      // Create or ensure day history exists with default values
-      const dayHistory = selectedProfile.history?.[currentDate] || {};
-
-      // Update the history entry for today with defaults if they don't exist
-      updateData[`history.${currentDate}`] = {
-        // Include existing day data if any
-        ...dayHistory,
-        // Add default values if they don't exist
-        xp: dayHistory.xp || defaultXp,
-        playTime: dayHistory.playTime || defaultPlayTime,
-        // Always update chores
-        chores: choresWithStatus,
-      };
-
-      // Update both the main chores and the history
-      await updateDoc(profileRef, updateData);
+      // Use setDoc with merge option to ensure complete update with all fields
+      // This ensures the entire document is properly structured and avoids partial updates
+      await setDoc(profileRef, completeProfile, { merge: true });
 
       // Update the local profiles state to reflect changes
       setProfiles(
         profiles.map((profile) => {
           if (profile.uid === selectedProfileUid) {
-            // Deep clone the profile to avoid mutation
-            const updatedProfile = { ...profile };
-
-            // Update main chores
-            updatedProfile.chores = choresWithStatus;
-
-            // Ensure all default values exist
-            updatedProfile.xp = updatedProfile.xp || { ...defaultXp };
-            updatedProfile.playTime = updatedProfile.playTime || {
-              ...defaultPlayTime,
-            };
-            updatedProfile.rewards = updatedProfile.rewards || {
-              ...defaultRewards,
-            };
-
-            // Make sure history exists
-            updatedProfile.history = updatedProfile.history || {};
-
-            // Create or update today's history with defaults
-            updatedProfile.history[currentDate] = {
-              ...(updatedProfile.history[currentDate] || {}),
-              xp: updatedProfile.history[currentDate]?.xp || { ...defaultXp },
-              playTime: updatedProfile.history[currentDate]?.playTime || {
-                ...defaultPlayTime,
-              },
-              chores: choresWithStatus,
-            };
-
-            return updatedProfile;
+            // Return the complete profile we just saved to Firestore
+            return completeProfile as AdminUserProfile;
           }
           return profile;
         })
