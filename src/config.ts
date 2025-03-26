@@ -1,4 +1,3 @@
-
 // Central application configuration
 export const APP_CONFIG = {
   // Player profile config
@@ -21,7 +20,7 @@ export const APP_CONFIG = {
   },
 
   // Default chores (empty array)
-  CHORES: [] as { id: number; text: string; completed: boolean }[],
+  CHORES: [] as { id: number; text: string; daysOfWeek?: number[] }[],
 
   // Profile refresh interval (in milliseconds)
   PROFILE_REFRESH_INTERVAL: 5 * 60 * 1000, // 5 minutes

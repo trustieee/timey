@@ -33,6 +33,7 @@ interface ChoreItem {
   text: string;
   status?: ChoreStatus;
   completedAt?: string;
+  daysOfWeek?: number[]; // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
 }
 
 const ProfilesPage: NextPage = () => {
@@ -56,6 +57,10 @@ const ProfilesPage: NextPage = () => {
   const [newChoreText, setNewChoreText] = useState("");
   const [editingChoreId, setEditingChoreId] = useState<number | null>(null);
   const [editingChoreText, setEditingChoreText] = useState("");
+  const [selectedDaysOfWeek, setSelectedDaysOfWeek] = useState<number[]>([
+    0, 1, 2, 3, 4, 5, 6,
+  ]); // Default to all days
+  const [editingDaysOfWeek, setEditingDaysOfWeek] = useState<number[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
   // Check auth state on component mount
@@ -377,30 +382,56 @@ const ProfilesPage: NextPage = () => {
   const openChoresModal = (profile: AdminUserProfile) => {
     setSelectedProfileUid(profile.uid);
 
-    // Get today's date
-    const today = new Date().toISOString().split("T")[0];
-
-    // Try to get chores from today's history first to maintain statuses
-    const todayChores = profile.history?.[today]?.chores || [];
-
-    // If today has chores, use those (they have status)
-    if (todayChores.length > 0) {
-      setUserChores(todayChores);
-    } else {
-      // Otherwise initialize with profile's base chores and set default status
-      const choresWithStatus = (profile.chores || []).map((chore) => {
+    // ALWAYS use base chores from the profile first, not today's history
+    // This ensures we see ALL chores including those scheduled for other days
+    if (profile.chores && profile.chores.length > 0) {
+      // Initialize with profile's base chores and set default status
+      const choresWithStatus = profile.chores.map((chore) => {
         // Create a properly typed chore with status
         const typedChore: ChoreItem = {
           id: chore.id,
           text: chore.text,
           status: "incomplete" as ChoreStatus,
+          daysOfWeek: chore.daysOfWeek || [0, 1, 2, 3, 4, 5, 6], // Default to all days if not specified
         };
         return typedChore;
       });
       setUserChores(choresWithStatus);
+    } else {
+      // If no chores defined yet in the profile, start with empty array
+      setUserChores([]);
     }
 
     setIsChoresModalOpen(true);
+  };
+
+  // Reset days of week selection
+  const resetDaysOfWeek = () => {
+    setSelectedDaysOfWeek([0, 1, 2, 3, 4, 5, 6]); // Default to all days
+  };
+
+  // Toggle day of week selection
+  const toggleDaySelection = (day: number) => {
+    if (selectedDaysOfWeek.includes(day)) {
+      // Don't allow removing the last day
+      if (selectedDaysOfWeek.length > 1) {
+        setSelectedDaysOfWeek(selectedDaysOfWeek.filter((d) => d !== day));
+      }
+    } else {
+      setSelectedDaysOfWeek([...selectedDaysOfWeek, day].sort((a, b) => a - b));
+    }
+  };
+
+  // Toggle day of week selection during editing
+  const toggleEditDaySelection = (day: number) => {
+    if (editingDaysOfWeek.includes(day)) {
+      // Don't allow removing the last day
+      if (editingDaysOfWeek.length > 1) {
+        setEditingDaysOfWeek(editingDaysOfWeek.filter((d) => d !== day));
+      }
+    } else {
+      setEditingDaysOfWeek([...editingDaysOfWeek, day].sort((a, b) => a - b));
+    }
   };
 
   // Close chores modal and reset state
@@ -411,6 +442,8 @@ const ProfilesPage: NextPage = () => {
     setNewChoreText("");
     setEditingChoreId(null);
     setEditingChoreText("");
+    resetDaysOfWeek();
+    setEditingDaysOfWeek([]);
   };
 
   // Add a new chore
@@ -423,23 +456,26 @@ const ProfilesPage: NextPage = () => {
         ? Math.max(...userChores.map((chore) => chore.id)) + 1
         : 0;
 
-    // Add a new chore with default "incomplete" status
+    // Add a new chore with default "incomplete" status and selected days of week
     setUserChores([
       ...userChores,
       {
         id: newId,
         text: newChoreText.trim(),
         status: "incomplete" as ChoreStatus,
+        daysOfWeek: [...selectedDaysOfWeek], // Add selected days of week
       },
     ]);
 
     setNewChoreText("");
+    resetDaysOfWeek(); // Reset days selection after adding
   };
 
   // Start editing a chore
   const startEditChore = (chore: ChoreItem) => {
     setEditingChoreId(chore.id);
     setEditingChoreText(chore.text);
+    setEditingDaysOfWeek(chore.daysOfWeek || [0, 1, 2, 3, 4, 5, 6]);
   };
 
   // Save chore edit
@@ -449,18 +485,58 @@ const ProfilesPage: NextPage = () => {
     setUserChores(
       userChores.map((chore) =>
         chore.id === editingChoreId
-          ? { ...chore, text: editingChoreText.trim() }
+          ? {
+              ...chore,
+              text: editingChoreText.trim(),
+              daysOfWeek: [...editingDaysOfWeek],
+            }
           : chore
       )
     );
 
     setEditingChoreId(null);
     setEditingChoreText("");
+    setEditingDaysOfWeek([]);
   };
 
   // Delete a chore
   const deleteChore = (id: number) => {
     setUserChores(userChores.filter((chore) => chore.id !== id));
+  };
+
+  // Function to check if a chore should appear on a specific day
+  const shouldChoreAppearOnDay = (chore: ChoreItem, date: string): boolean => {
+    // If no days of week specified, show on all days
+    if (!chore.daysOfWeek || chore.daysOfWeek.length === 0) {
+      return true;
+    }
+
+    // Get day of week (0-6) from the date string
+    // Use local timezone to avoid date conversion issues
+    const dateParts = date.split("-").map((part) => parseInt(part, 10));
+    const dateObj = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]); // Month is 0-indexed
+    const dayOfWeek = dateObj.getDay();
+
+    // Check if the day of week is in the chore's daysOfWeek array
+    return chore.daysOfWeek.includes(dayOfWeek);
+  };
+
+  // Format day name helper
+  const getDayName = (day: number): string => {
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    return days[day];
+  };
+
+  // Get today's date and day of week in a reliable way
+  const getTodayInfo = (): { dateString: string; dayOfWeek: number } => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0"); // +1 because months are 0-indexed
+    const day = String(today.getDate()).padStart(2, "0");
+    const dateString = `${year}-${month}-${day}`;
+    const dayOfWeek = today.getDay();
+
+    return { dateString, dayOfWeek };
   };
 
   // Save chores to Firestore
@@ -469,8 +545,8 @@ const ProfilesPage: NextPage = () => {
 
     setIsSaving(true);
     try {
-      // Get current date as ISO string and extract the date part (YYYY-MM-DD)
-      const currentDate = new Date().toISOString().split("T")[0];
+      // Use our reliable date function instead of relying on Date().toISOString()
+      const { dateString: currentDate, dayOfWeek } = getTodayInfo();
 
       const profileRef = doc(db, "playerProfiles", selectedProfileUid);
 
@@ -483,8 +559,13 @@ const ProfilesPage: NextPage = () => {
         throw new Error("Profile not found");
       }
 
+      // Filter chores that should appear today based on daysOfWeek
+      const choresTodayFiltered = userChores.filter((chore) =>
+        shouldChoreAppearOnDay(chore, currentDate)
+      );
+
       // Make sure we create properly structured chore objects with no undefined values
-      const choresWithStatus = userChores.map((chore) => {
+      const choresWithStatus = choresTodayFiltered.map((chore) => {
         // Create a clean chore object with only the properties we need
         return {
           id: chore.id,
@@ -524,17 +605,20 @@ const ProfilesPage: NextPage = () => {
         completed: history[currentDate]?.completed || false,
       };
 
-      // Update the base chores list in the profile for future days
-      const baseChores = choresWithStatus.map((chore) => ({
+      // Update the base chores list in the profile for future days -
+      // IMPORTANT: We save ALL chores here, not just today's chores
+      // This is critical to preserve chores for other days of the week
+      const baseChores = userChores.map((chore) => ({
         id: chore.id,
         text: chore.text,
+        daysOfWeek: chore.daysOfWeek || [0, 1, 2, 3, 4, 5, 6], // Preserve days of week settings
       }));
 
       // Create a complete profile object with all necessary fields
       const completeProfile = {
         // Keep existing profile data
         ...selectedProfile,
-        // Update base chores for future days (without status)
+        // Update base chores for future days (without status but with daysOfWeek)
         chores: baseChores,
         // Ensure all required fields exist
         xp: selectedProfile.xp || { ...defaultXp },
@@ -1153,15 +1237,29 @@ const ProfilesPage: NextPage = () => {
 
       {/* Chores Management Modal */}
       {isChoresModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#333] rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-            <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-green-400">
+        <div className="fixed inset-0 bg-[#111]/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-hidden transition-all duration-200 ease-in-out">
+          <div className="bg-gradient-to-br from-[#2a2a2a] to-[#333] rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-700/50 animate-fadeIn">
+            <div className="p-5 border-b border-gray-700/50 flex justify-between items-center bg-[#222]/50">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6 mr-2 text-green-400"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                  <path
+                    fillRule="evenodd"
+                    d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
+                    clipRule="evenodd"
+                  />
+                </svg>
                 Manage Chores
               </h2>
               <button
                 onClick={closeChoresModal}
-                className="text-gray-400 hover:text-white"
+                className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-700/50 transition-all duration-200"
+                aria-label="Close modal"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -1180,70 +1278,150 @@ const ProfilesPage: NextPage = () => {
               </button>
             </div>
 
-            <div className="p-4 flex-1 overflow-y-auto">
-              <div className="mb-4">
-                <div className="flex">
-                  <input
-                    type="text"
-                    value={newChoreText}
-                    onChange={(e) => setNewChoreText(e.target.value)}
-                    placeholder="Enter new chore..."
-                    className="flex-1 px-3 py-2 bg-[#444] border border-gray-600 rounded-l-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 text-white"
-                    onKeyPress={(e) => e.key === "Enter" && handleAddChore()}
-                  />
-                  <button
-                    onClick={handleAddChore}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-r-md text-white transition-colors"
+            <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
+              <div className="mb-6">
+                <h3 className="text-base font-medium text-gray-300 mb-3 flex items-center">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 mr-2 text-blue-400"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
                   >
-                    Add
-                  </button>
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  Add New Chore
+                </h3>
+                <div className="flex flex-col shadow-lg rounded-xl overflow-hidden">
+                  <div className="flex flex-col md:flex-row">
+                    <input
+                      type="text"
+                      value={newChoreText}
+                      onChange={(e) => setNewChoreText(e.target.value)}
+                      placeholder="Enter new chore description..."
+                      className="w-full md:w-2/3 px-4 py-3 bg-[#333] border-b md:border-b-0 md:border-r border-gray-600 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent text-white placeholder-gray-400 text-base"
+                      onKeyPress={(e) => e.key === "Enter" && handleAddChore()}
+                    />
+
+                    <button
+                      onClick={handleAddChore}
+                      className="w-full md:w-1/3 px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-medium transition-all duration-200 flex items-center justify-center"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 mr-2"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      Add Chore
+                    </button>
+                  </div>
+
+                  {/* Days of week selector for new chores */}
+                  <div className="bg-[#2a2a2a] px-4 py-3 border-t border-gray-600/50">
+                    <p className="text-sm text-gray-300 mb-2 flex items-center">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4 mr-1 text-yellow-400"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      Schedule on specific days:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {[0, 1, 2, 3, 4, 5, 6].map((day) => (
+                        <button
+                          key={day}
+                          onClick={() => toggleDaySelection(day)}
+                          className={`px-3 py-1.5 text-sm rounded-md transition-all duration-200 font-medium ${
+                            selectedDaysOfWeek.includes(day)
+                              ? "bg-gradient-to-r from-green-600 to-green-700 text-white shadow-md"
+                              : "bg-[#444] text-gray-300 hover:bg-[#555]"
+                          }`}
+                          aria-pressed={selectedDaysOfWeek.includes(day)}
+                        >
+                          {getDayName(day)}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mt-2 flex justify-end">
+                      <button
+                        onClick={resetDaysOfWeek}
+                        className="text-xs text-gray-400 hover:text-blue-400 transition-colors flex items-center"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-3 w-3 mr-1"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        Reset to all days
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                {userChores.length === 0 ? (
-                  <p className="text-gray-400 text-center italic py-4">
-                    No chores added yet
-                  </p>
-                ) : (
-                  userChores.map((chore) => (
-                    <div
-                      key={chore.id}
-                      className="bg-[#444] rounded-md border border-gray-600 p-2 flex justify-between items-center"
-                    >
-                      {editingChoreId === chore.id ? (
-                        <div className="flex flex-1 mr-2">
-                          <input
-                            type="text"
-                            value={editingChoreText}
-                            onChange={(e) =>
-                              setEditingChoreText(e.target.value)
-                            }
-                            className="flex-1 px-2 py-1 bg-[#555] border border-gray-500 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 text-white"
-                            onKeyPress={(e) =>
-                              e.key === "Enter" && saveChoreEdit()
-                            }
-                          />
-                          <button
-                            onClick={saveChoreEdit}
-                            className="ml-2 px-2 py-1 bg-green-600 hover:bg-green-700 rounded-md text-white transition-colors text-sm"
-                          >
-                            Save
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-white flex-1">{chore.text}</span>
-                      )}
+              <div className="mb-4">
+                <h3 className="text-base font-medium text-gray-300 mb-3 flex items-center">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 mr-2 text-purple-400"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                    <path
+                      fillRule="evenodd"
+                      d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  Chores List
+                  <span className="ml-2 bg-gray-700 text-gray-300 text-xs font-medium px-2 py-0.5 rounded-full">
+                    {userChores.length}
+                  </span>
+                </h3>
 
-                      <div className="flex space-x-1">
-                        {editingChoreId !== chore.id && (
-                          <button
-                            onClick={() => startEditChore(chore)}
-                            className="p-1 text-blue-400 hover:text-blue-300 transition-colors"
-                          >
+                {/* Display a warning about chores that won't appear today */}
+                {(() => {
+                  const { dateString, dayOfWeek } = getTodayInfo();
+                  const choresTodayFiltered = userChores.filter((chore) =>
+                    shouldChoreAppearOnDay(chore, dateString)
+                  );
+
+                  const missingChores =
+                    userChores.length - choresTodayFiltered.length;
+
+                  if (missingChores > 0) {
+                    return (
+                      <div className="bg-gradient-to-r from-yellow-900/30 to-orange-900/20 border border-yellow-700/50 rounded-lg p-3 mb-4 text-sm shadow-md">
+                        <div className="flex items-start">
+                          <div className="bg-yellow-500/20 p-1.5 rounded-full mr-3">
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
-                              className="h-5 w-5"
+                              className="h-5 w-5 text-yellow-400"
                               fill="none"
                               viewBox="0 0 24 24"
                               stroke="currentColor"
@@ -1252,30 +1430,266 @@ const ProfilesPage: NextPage = () => {
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth={2}
-                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                               />
                             </svg>
-                          </button>
+                          </div>
+                          <div>
+                            <p className="text-yellow-300 font-medium mb-1">
+                              Some chores won't show today
+                            </p>
+                            <p className="text-gray-300">
+                              Today is{" "}
+                              <span className="font-medium text-white">
+                                {getDayName(dayOfWeek)}
+                              </span>
+                              . {missingChores} out of {userChores.length}{" "}
+                              {userChores.length === 1 ? "chore" : "chores"}{" "}
+                              won't appear today based on scheduling.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+
+              <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar chores-list">
+                {userChores.length === 0 ? (
+                  <div className="text-center py-10 bg-[#2a2a2a]/50 rounded-lg border border-dashed border-gray-600">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-12 w-12 mx-auto text-gray-500 mb-3"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1}
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                      />
+                    </svg>
+                    <p className="text-gray-400 text-center italic">
+                      No chores added yet
+                    </p>
+                    <p className="text-gray-500 text-sm mt-1">
+                      Add your first chore using the form above
+                    </p>
+                  </div>
+                ) : (
+                  userChores.map((chore) => (
+                    <div
+                      key={chore.id}
+                      className={`bg-gradient-to-r ${
+                        !shouldChoreAppearOnDay(
+                          chore,
+                          getTodayInfo().dateString
+                        )
+                          ? "from-[#333]/90 to-[#383838]/90 border-gray-700/30"
+                          : "from-[#3a3a3a] to-[#444] border-gray-600/70"
+                      } rounded-lg border shadow-md transition-all hover:shadow-lg p-0.5`}
+                    >
+                      <div
+                        className={`rounded-md p-4 ${
+                          !shouldChoreAppearOnDay(
+                            chore,
+                            getTodayInfo().dateString
+                          )
+                            ? "opacity-70"
+                            : ""
+                        }`}
+                      >
+                        {editingChoreId === chore.id ? (
+                          <div className="flex flex-col space-y-3">
+                            <div className="flex flex-1">
+                              <input
+                                type="text"
+                                value={editingChoreText}
+                                onChange={(e) =>
+                                  setEditingChoreText(e.target.value)
+                                }
+                                className="flex-1 px-3 py-2 bg-[#222] border border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent text-white"
+                                onKeyPress={(e) =>
+                                  e.key === "Enter" && saveChoreEdit()
+                                }
+                                autoFocus
+                              />
+                            </div>
+
+                            {/* Days of week selector for editing */}
+                            <div className="bg-[#333] p-3 rounded-md border border-gray-700/50">
+                              <p className="text-xs text-gray-300 mb-2 flex items-center">
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-3 w-3 mr-1 text-yellow-400"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                                Schedule on:
+                              </p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {[0, 1, 2, 3, 4, 5, 6].map((day) => (
+                                  <button
+                                    key={day}
+                                    onClick={() => toggleEditDaySelection(day)}
+                                    className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                                      editingDaysOfWeek.includes(day)
+                                        ? "bg-blue-700 text-white shadow-sm"
+                                        : "bg-[#444] text-gray-300 hover:bg-[#555]"
+                                    }`}
+                                    aria-pressed={editingDaysOfWeek.includes(
+                                      day
+                                    )}
+                                  >
+                                    {getDayName(day)}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="flex justify-end gap-2">
+                              <button
+                                onClick={() => {
+                                  setEditingChoreId(null);
+                                  setEditingChoreText("");
+                                }}
+                                className="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 rounded-md text-gray-200 transition-colors text-sm flex items-center"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-4 w-4 mr-1"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                                Cancel
+                              </button>
+                              <button
+                                onClick={saveChoreEdit}
+                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-md text-white transition-colors text-sm flex items-center"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-4 w-4 mr-1"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                                Save Changes
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex justify-between items-center mb-3">
+                              <span className="text-white text-lg font-medium">
+                                {chore.text}
+                              </span>
+                              <div className="flex">
+                                {!shouldChoreAppearOnDay(
+                                  chore,
+                                  getTodayInfo().dateString
+                                ) && (
+                                  <span className="mr-2 px-2 py-1 bg-yellow-700/30 text-yellow-300 text-xs rounded-md border border-yellow-700/50 flex items-center">
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      className="h-3 w-3 mr-1"
+                                      viewBox="0 0 20 20"
+                                      fill="currentColor"
+                                    >
+                                      <path
+                                        fillRule="evenodd"
+                                        d="M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm11 1H6v8l4-2 4 2V6z"
+                                        clipRule="evenodd"
+                                      />
+                                    </svg>
+                                    Not today
+                                  </span>
+                                )}
+                                <button
+                                  onClick={() => startEditChore(chore)}
+                                  className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20 rounded-md transition-all"
+                                  title="Edit chore"
+                                  aria-label="Edit chore"
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                    />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => deleteChore(chore.id)}
+                                  className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded-md transition-all ml-1"
+                                  title="Delete chore"
+                                  aria-label="Delete chore"
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                    />
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Display days of week as pills */}
+                            <div className="flex flex-wrap gap-1.5">
+                              {(chore.daysOfWeek || [0, 1, 2, 3, 4, 5, 6]).map(
+                                (day) => (
+                                  <span
+                                    key={day}
+                                    className={`text-xs px-2 py-1 rounded-md ${
+                                      day === getTodayInfo().dayOfWeek
+                                        ? "bg-gradient-to-r from-green-700 to-green-800 text-white"
+                                        : "bg-[#333] text-gray-400 border border-gray-700/30"
+                                    }`}
+                                  >
+                                    {getDayName(day)}
+                                  </span>
+                                )
+                              )}
+                            </div>
+                          </>
                         )}
-                        <button
-                          onClick={() => deleteChore(chore.id)}
-                          className="p-1 text-red-400 hover:text-red-300 transition-colors"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                            />
-                          </svg>
-                        </button>
                       </div>
                     </div>
                   ))
@@ -1283,24 +1697,84 @@ const ProfilesPage: NextPage = () => {
               </div>
             </div>
 
-            <div className="p-4 border-t border-gray-700 flex justify-end">
-              <button
-                onClick={closeChoresModal}
-                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded mr-2 text-white transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveChores}
-                disabled={isSaving}
-                className={`px-4 py-2 rounded text-white transition-colors ${
-                  isSaving
-                    ? "bg-blue-800 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700"
-                }`}
-              >
-                {isSaving ? "Saving..." : "Save Changes"}
-              </button>
+            <div className="p-5 border-t border-gray-700/50 flex justify-between items-center bg-[#222]/70">
+              <div className="text-sm text-gray-400">
+                <span className="text-blue-400 font-medium">
+                  {userChores.length}
+                </span>{" "}
+                {userChores.length === 1 ? "chore" : "chores"} configured
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={closeChoresModal}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-md text-white transition-all flex items-center shadow-sm"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 mr-1.5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  Cancel
+                </button>
+                <button
+                  onClick={saveChores}
+                  disabled={isSaving}
+                  className={`px-4 py-2 rounded-md text-white transition-all flex items-center shadow-md ${
+                    isSaving
+                      ? "bg-blue-700/70 cursor-not-allowed"
+                      : "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 active:from-blue-700 active:to-blue-800"
+                  }`}
+                >
+                  {isSaving ? (
+                    <>
+                      <svg
+                        className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4 mr-1.5"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      Save Changes
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1311,15 +1785,32 @@ const ProfilesPage: NextPage = () => {
           width: 8px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
-          background: #333;
+          background: rgba(51, 51, 51, 0.5);
           border-radius: 10px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #555;
+          background: rgba(85, 85, 85, 0.7);
           border-radius: 10px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #666;
+          background: rgba(102, 102, 102, 0.8);
+        }
+        .chores-list {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(85, 85, 85, 0.7) rgba(51, 51, 51, 0.5);
+        }
+        @keyframes fadeIn {
+          0% {
+            opacity: 0;
+            transform: scale(0.98);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-out forwards;
         }
       `}</style>
     </Layout>
