@@ -5,7 +5,7 @@ import Layout from "../components/Layout";
 import { PlayerProfile, ChoreStatus } from "../../src/playerProfile";
 import { db, auth } from "../utils/firebase";
 import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
-import { APP_CONFIG } from "../../src/config";
+import { APP_CONFIG } from "../utils/appConfig";
 import {
   signInWithEmailAndPassword,
   onAuthStateChanged,
@@ -16,6 +16,8 @@ import { FirebaseError } from "firebase/app";
 // Interface for admin view (only adding what we need on top of PlayerProfile)
 interface AdminUserProfile extends PlayerProfile {
   uid: string;
+  xp?: { final: number; base: number; bonus: number };
+  playTime?: { sessions: any[] };
 }
 
 // Interface for a chore item
@@ -462,10 +464,6 @@ const ProfilesPage: NextPage = () => {
         throw new Error("Profile not found");
       }
 
-      // Create or update the history for the current day
-      const currentHistory = selectedProfile.history || {};
-      const dayHistory = currentHistory[currentDate] || {};
-
       // Make sure we create properly structured chore objects with no undefined values
       const choresWithStatus = userChores.map((chore) => {
         // Create a clean chore object with only the properties we need
@@ -478,13 +476,37 @@ const ProfilesPage: NextPage = () => {
         };
       });
 
-      // Create the update data with explicit property names
+      // Create default profile values if they don't exist
+      const defaultXp = { final: 0, base: 0, bonus: 0 };
+      const defaultPlayTime = { sessions: [] };
+      const defaultRewards = { available: 0, permanent: {} };
+
+      // Create the update data with explicit property names and default values
       const updateData: any = {
+        // Always update chores
         chores: choresWithStatus,
+
+        // Add default values if they don't exist
+        // Use ternary operators to only set defaults for missing fields
+        xp: selectedProfile.xp || defaultXp,
+        playTime: selectedProfile.playTime || defaultPlayTime,
+        rewards: selectedProfile.rewards || defaultRewards,
+        history: selectedProfile.history || {},
       };
 
-      // Update the history entry for today with the same clean data
-      updateData[`history.${currentDate}.chores`] = choresWithStatus;
+      // Create or ensure day history exists with default values
+      const dayHistory = selectedProfile.history?.[currentDate] || {};
+
+      // Update the history entry for today with defaults if they don't exist
+      updateData[`history.${currentDate}`] = {
+        // Include existing day data if any
+        ...dayHistory,
+        // Add default values if they don't exist
+        xp: dayHistory.xp || defaultXp,
+        playTime: dayHistory.playTime || defaultPlayTime,
+        // Always update chores
+        chores: choresWithStatus,
+      };
 
       // Update both the main chores and the history
       await updateDoc(profileRef, updateData);
@@ -499,12 +521,25 @@ const ProfilesPage: NextPage = () => {
             // Update main chores
             updatedProfile.chores = choresWithStatus;
 
+            // Ensure all default values exist
+            updatedProfile.xp = updatedProfile.xp || { ...defaultXp };
+            updatedProfile.playTime = updatedProfile.playTime || {
+              ...defaultPlayTime,
+            };
+            updatedProfile.rewards = updatedProfile.rewards || {
+              ...defaultRewards,
+            };
+
             // Make sure history exists
             updatedProfile.history = updatedProfile.history || {};
 
-            // Create or update today's history
+            // Create or update today's history with defaults
             updatedProfile.history[currentDate] = {
               ...(updatedProfile.history[currentDate] || {}),
+              xp: updatedProfile.history[currentDate]?.xp || { ...defaultXp },
+              playTime: updatedProfile.history[currentDate]?.playTime || {
+                ...defaultPlayTime,
+              },
               chores: choresWithStatus,
             };
 
