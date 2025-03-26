@@ -60,6 +60,7 @@ export interface PlayerProfile {
   chores?: {
     id: number;
     text: string;
+    daysOfWeek?: number[]; // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
   }[];
   // Level and XP will be calculated from history
 }
@@ -102,9 +103,23 @@ export function createDayProgress(
   // Use chores from profile if available, otherwise fall back to default chores
   const choreSource = profile?.chores || APP_CONFIG.CHORES;
 
+  // Get the day of week for the requested date (0-6, where 0 is Sunday)
+  const dayOfWeek = new Date(date).getDay();
+
+  // Filter chores that should appear on this day of week
+  const filteredChores = choreSource.filter((chore) => {
+    // If no daysOfWeek specified or empty array, show on all days
+    if (!chore.daysOfWeek || chore.daysOfWeek.length === 0) {
+      return true;
+    }
+
+    // Only include chores scheduled for this day of week
+    return chore.daysOfWeek.includes(dayOfWeek);
+  });
+
   return {
     date,
-    chores: choreSource.map((chore) => ({
+    chores: filteredChores.map((chore) => ({
       id: chore.id,
       text: chore.text,
       status: "incomplete" as ChoreStatus,

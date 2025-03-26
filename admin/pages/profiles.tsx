@@ -33,6 +33,7 @@ interface ChoreItem {
   text: string;
   status?: ChoreStatus;
   completedAt?: string;
+  daysOfWeek?: number[]; // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
 }
 
 const ProfilesPage: NextPage = () => {
@@ -56,6 +57,10 @@ const ProfilesPage: NextPage = () => {
   const [newChoreText, setNewChoreText] = useState("");
   const [editingChoreId, setEditingChoreId] = useState<number | null>(null);
   const [editingChoreText, setEditingChoreText] = useState("");
+  const [selectedDaysOfWeek, setSelectedDaysOfWeek] = useState<number[]>([
+    0, 1, 2, 3, 4, 5, 6,
+  ]); // Default to all days
+  const [editingDaysOfWeek, setEditingDaysOfWeek] = useState<number[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
   // Check auth state on component mount
@@ -377,30 +382,56 @@ const ProfilesPage: NextPage = () => {
   const openChoresModal = (profile: AdminUserProfile) => {
     setSelectedProfileUid(profile.uid);
 
-    // Get today's date
-    const today = new Date().toISOString().split("T")[0];
-
-    // Try to get chores from today's history first to maintain statuses
-    const todayChores = profile.history?.[today]?.chores || [];
-
-    // If today has chores, use those (they have status)
-    if (todayChores.length > 0) {
-      setUserChores(todayChores);
-    } else {
-      // Otherwise initialize with profile's base chores and set default status
-      const choresWithStatus = (profile.chores || []).map((chore) => {
+    // ALWAYS use base chores from the profile first, not today's history
+    // This ensures we see ALL chores including those scheduled for other days
+    if (profile.chores && profile.chores.length > 0) {
+      // Initialize with profile's base chores and set default status
+      const choresWithStatus = profile.chores.map((chore) => {
         // Create a properly typed chore with status
         const typedChore: ChoreItem = {
           id: chore.id,
           text: chore.text,
           status: "incomplete" as ChoreStatus,
+          daysOfWeek: chore.daysOfWeek || [0, 1, 2, 3, 4, 5, 6], // Default to all days if not specified
         };
         return typedChore;
       });
       setUserChores(choresWithStatus);
+    } else {
+      // If no chores defined yet in the profile, start with empty array
+      setUserChores([]);
     }
 
     setIsChoresModalOpen(true);
+  };
+
+  // Reset days of week selection
+  const resetDaysOfWeek = () => {
+    setSelectedDaysOfWeek([0, 1, 2, 3, 4, 5, 6]); // Default to all days
+  };
+
+  // Toggle day of week selection
+  const toggleDaySelection = (day: number) => {
+    if (selectedDaysOfWeek.includes(day)) {
+      // Don't allow removing the last day
+      if (selectedDaysOfWeek.length > 1) {
+        setSelectedDaysOfWeek(selectedDaysOfWeek.filter((d) => d !== day));
+      }
+    } else {
+      setSelectedDaysOfWeek([...selectedDaysOfWeek, day].sort((a, b) => a - b));
+    }
+  };
+
+  // Toggle day of week selection during editing
+  const toggleEditDaySelection = (day: number) => {
+    if (editingDaysOfWeek.includes(day)) {
+      // Don't allow removing the last day
+      if (editingDaysOfWeek.length > 1) {
+        setEditingDaysOfWeek(editingDaysOfWeek.filter((d) => d !== day));
+      }
+    } else {
+      setEditingDaysOfWeek([...editingDaysOfWeek, day].sort((a, b) => a - b));
+    }
   };
 
   // Close chores modal and reset state
@@ -411,6 +442,8 @@ const ProfilesPage: NextPage = () => {
     setNewChoreText("");
     setEditingChoreId(null);
     setEditingChoreText("");
+    resetDaysOfWeek();
+    setEditingDaysOfWeek([]);
   };
 
   // Add a new chore
@@ -423,23 +456,26 @@ const ProfilesPage: NextPage = () => {
         ? Math.max(...userChores.map((chore) => chore.id)) + 1
         : 0;
 
-    // Add a new chore with default "incomplete" status
+    // Add a new chore with default "incomplete" status and selected days of week
     setUserChores([
       ...userChores,
       {
         id: newId,
         text: newChoreText.trim(),
         status: "incomplete" as ChoreStatus,
+        daysOfWeek: [...selectedDaysOfWeek], // Add selected days of week
       },
     ]);
 
     setNewChoreText("");
+    resetDaysOfWeek(); // Reset days selection after adding
   };
 
   // Start editing a chore
   const startEditChore = (chore: ChoreItem) => {
     setEditingChoreId(chore.id);
     setEditingChoreText(chore.text);
+    setEditingDaysOfWeek(chore.daysOfWeek || [0, 1, 2, 3, 4, 5, 6]);
   };
 
   // Save chore edit
@@ -449,18 +485,58 @@ const ProfilesPage: NextPage = () => {
     setUserChores(
       userChores.map((chore) =>
         chore.id === editingChoreId
-          ? { ...chore, text: editingChoreText.trim() }
+          ? {
+              ...chore,
+              text: editingChoreText.trim(),
+              daysOfWeek: [...editingDaysOfWeek],
+            }
           : chore
       )
     );
 
     setEditingChoreId(null);
     setEditingChoreText("");
+    setEditingDaysOfWeek([]);
   };
 
   // Delete a chore
   const deleteChore = (id: number) => {
     setUserChores(userChores.filter((chore) => chore.id !== id));
+  };
+
+  // Function to check if a chore should appear on a specific day
+  const shouldChoreAppearOnDay = (chore: ChoreItem, date: string): boolean => {
+    // If no days of week specified, show on all days
+    if (!chore.daysOfWeek || chore.daysOfWeek.length === 0) {
+      return true;
+    }
+
+    // Get day of week (0-6) from the date string
+    // Use local timezone to avoid date conversion issues
+    const dateParts = date.split("-").map((part) => parseInt(part, 10));
+    const dateObj = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]); // Month is 0-indexed
+    const dayOfWeek = dateObj.getDay();
+
+    // Check if the day of week is in the chore's daysOfWeek array
+    return chore.daysOfWeek.includes(dayOfWeek);
+  };
+
+  // Format day name helper
+  const getDayName = (day: number): string => {
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    return days[day];
+  };
+
+  // Get today's date and day of week in a reliable way
+  const getTodayInfo = (): { dateString: string; dayOfWeek: number } => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0"); // +1 because months are 0-indexed
+    const day = String(today.getDate()).padStart(2, "0");
+    const dateString = `${year}-${month}-${day}`;
+    const dayOfWeek = today.getDay();
+
+    return { dateString, dayOfWeek };
   };
 
   // Save chores to Firestore
@@ -469,8 +545,8 @@ const ProfilesPage: NextPage = () => {
 
     setIsSaving(true);
     try {
-      // Get current date as ISO string and extract the date part (YYYY-MM-DD)
-      const currentDate = new Date().toISOString().split("T")[0];
+      // Use our reliable date function instead of relying on Date().toISOString()
+      const { dateString: currentDate, dayOfWeek } = getTodayInfo();
 
       const profileRef = doc(db, "playerProfiles", selectedProfileUid);
 
@@ -483,8 +559,13 @@ const ProfilesPage: NextPage = () => {
         throw new Error("Profile not found");
       }
 
+      // Filter chores that should appear today based on daysOfWeek
+      const choresTodayFiltered = userChores.filter((chore) =>
+        shouldChoreAppearOnDay(chore, currentDate)
+      );
+
       // Make sure we create properly structured chore objects with no undefined values
-      const choresWithStatus = userChores.map((chore) => {
+      const choresWithStatus = choresTodayFiltered.map((chore) => {
         // Create a clean chore object with only the properties we need
         return {
           id: chore.id,
@@ -524,17 +605,20 @@ const ProfilesPage: NextPage = () => {
         completed: history[currentDate]?.completed || false,
       };
 
-      // Update the base chores list in the profile for future days
-      const baseChores = choresWithStatus.map((chore) => ({
+      // Update the base chores list in the profile for future days -
+      // IMPORTANT: We save ALL chores here, not just today's chores
+      // This is critical to preserve chores for other days of the week
+      const baseChores = userChores.map((chore) => ({
         id: chore.id,
         text: chore.text,
+        daysOfWeek: chore.daysOfWeek || [0, 1, 2, 3, 4, 5, 6], // Preserve days of week settings
       }));
 
       // Create a complete profile object with all necessary fields
       const completeProfile = {
         // Keep existing profile data
         ...selectedProfile,
-        // Update base chores for future days (without status)
+        // Update base chores for future days (without status but with daysOfWeek)
         chores: baseChores,
         // Ensure all required fields exist
         xp: selectedProfile.xp || { ...defaultXp },
@@ -1182,21 +1266,46 @@ const ProfilesPage: NextPage = () => {
 
             <div className="p-4 flex-1 overflow-y-auto">
               <div className="mb-4">
-                <div className="flex">
+                <div className="flex flex-col">
                   <input
                     type="text"
                     value={newChoreText}
                     onChange={(e) => setNewChoreText(e.target.value)}
                     placeholder="Enter new chore..."
-                    className="flex-1 px-3 py-2 bg-[#444] border border-gray-600 rounded-l-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 text-white"
+                    className="w-full px-3 py-2 bg-[#444] border border-gray-600 rounded-t-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 text-white"
                     onKeyPress={(e) => e.key === "Enter" && handleAddChore()}
                   />
-                  <button
-                    onClick={handleAddChore}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-r-md text-white transition-colors"
-                  >
-                    Add
-                  </button>
+
+                  {/* Days of week selector for new chores */}
+                  <div className="bg-[#444] px-3 py-2 border-x border-gray-600">
+                    <p className="text-xs text-gray-300 mb-2">
+                      On which days of the week should this chore appear?
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {[0, 1, 2, 3, 4, 5, 6].map((day) => (
+                        <button
+                          key={day}
+                          onClick={() => toggleDaySelection(day)}
+                          className={`px-2 py-1 text-xs rounded transition-colors ${
+                            selectedDaysOfWeek.includes(day)
+                              ? "bg-green-700 text-white"
+                              : "bg-[#555] text-gray-300"
+                          }`}
+                        >
+                          {getDayName(day)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex">
+                    <button
+                      onClick={handleAddChore}
+                      className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 rounded-b-md text-white transition-colors"
+                    >
+                      Add Chore
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1206,79 +1315,190 @@ const ProfilesPage: NextPage = () => {
                     No chores added yet
                   </p>
                 ) : (
-                  userChores.map((chore) => (
-                    <div
-                      key={chore.id}
-                      className="bg-[#444] rounded-md border border-gray-600 p-2 flex justify-between items-center"
-                    >
-                      {editingChoreId === chore.id ? (
-                        <div className="flex flex-1 mr-2">
-                          <input
-                            type="text"
-                            value={editingChoreText}
-                            onChange={(e) =>
-                              setEditingChoreText(e.target.value)
-                            }
-                            className="flex-1 px-2 py-1 bg-[#555] border border-gray-500 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 text-white"
-                            onKeyPress={(e) =>
-                              e.key === "Enter" && saveChoreEdit()
-                            }
-                          />
-                          <button
-                            onClick={saveChoreEdit}
-                            className="ml-2 px-2 py-1 bg-green-600 hover:bg-green-700 rounded-md text-white transition-colors text-sm"
-                          >
-                            Save
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-white flex-1">{chore.text}</span>
-                      )}
+                  <>
+                    {/* Display a warning about chores that won't appear today */}
+                    {(() => {
+                      const { dateString, dayOfWeek } = getTodayInfo();
+                      const choresTodayFiltered = userChores.filter((chore) =>
+                        shouldChoreAppearOnDay(chore, dateString)
+                      );
 
-                      <div className="flex space-x-1">
-                        {editingChoreId !== chore.id && (
-                          <button
-                            onClick={() => startEditChore(chore)}
-                            className="p-1 text-blue-400 hover:text-blue-300 transition-colors"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="h-5 w-5"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                      const missingChores =
+                        userChores.length - choresTodayFiltered.length;
+
+                      if (missingChores > 0) {
+                        return (
+                          <div className="bg-[rgba(255,152,0,0.2)] border border-yellow-900 rounded-md p-3 mb-3 text-sm">
+                            <div className="flex items-start">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5 text-yellow-400 mr-2 mt-0.5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                                />
+                              </svg>
+                              <div>
+                                <p className="text-yellow-400 font-medium">
+                                  Today is {getDayName(dayOfWeek)}
+                                </p>
+                                <p className="text-gray-300">
+                                  {missingChores}{" "}
+                                  {missingChores === 1 ? "chore" : "chores"}{" "}
+                                  won't appear today based on day of week
+                                  settings.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    {userChores.map((chore) => (
+                      <div
+                        key={chore.id}
+                        className={`bg-[#444] rounded-md border border-gray-600 p-3 flex flex-col justify-between ${
+                          !shouldChoreAppearOnDay(
+                            chore,
+                            getTodayInfo().dateString
+                          )
+                            ? "opacity-60"
+                            : ""
+                        }`}
+                      >
+                        {editingChoreId === chore.id ? (
+                          <div className="flex flex-col space-y-2">
+                            <div className="flex flex-1">
+                              <input
+                                type="text"
+                                value={editingChoreText}
+                                onChange={(e) =>
+                                  setEditingChoreText(e.target.value)
+                                }
+                                className="flex-1 px-2 py-1 bg-[#555] border border-gray-500 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 text-white"
+                                onKeyPress={(e) =>
+                                  e.key === "Enter" && saveChoreEdit()
+                                }
                               />
-                            </svg>
-                          </button>
+                            </div>
+
+                            {/* Days of week selector for editing */}
+                            <div className="bg-[#555] p-2 rounded-md">
+                              <p className="text-xs text-gray-300 mb-1">
+                                Appears on:
+                              </p>
+                              <div className="flex flex-wrap gap-1">
+                                {[0, 1, 2, 3, 4, 5, 6].map((day) => (
+                                  <button
+                                    key={day}
+                                    onClick={() => toggleEditDaySelection(day)}
+                                    className={`px-2 py-1 text-xs rounded transition-colors ${
+                                      editingDaysOfWeek.includes(day)
+                                        ? "bg-green-700 text-white"
+                                        : "bg-[#666] text-gray-300"
+                                    }`}
+                                  >
+                                    {getDayName(day)}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="flex justify-end">
+                              <button
+                                onClick={saveChoreEdit}
+                                className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded-md text-white transition-colors text-sm"
+                              >
+                                Save Changes
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-white flex items-center">
+                                {chore.text}
+                                {!shouldChoreAppearOnDay(
+                                  chore,
+                                  getTodayInfo().dateString
+                                ) && (
+                                  <span className="ml-2 bg-yellow-800 text-yellow-300 text-xs px-2 py-0.5 rounded-full">
+                                    Not today
+                                  </span>
+                                )}
+                              </span>
+                              <div className="flex space-x-1">
+                                <button
+                                  onClick={() => startEditChore(chore)}
+                                  className="p-1 text-blue-400 hover:text-blue-300 transition-colors"
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                    />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => deleteChore(chore.id)}
+                                  className="p-1 text-red-400 hover:text-red-300 transition-colors"
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                    />
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Display days of week */}
+                            <div className="flex flex-wrap gap-1">
+                              {(chore.daysOfWeek || [0, 1, 2, 3, 4, 5, 6]).map(
+                                (day) => (
+                                  <span
+                                    key={day}
+                                    className={`text-xs px-2 py-1 rounded ${
+                                      day === getTodayInfo().dayOfWeek
+                                        ? "bg-green-700 text-white"
+                                        : "bg-[#555] text-gray-300"
+                                    }`}
+                                  >
+                                    {getDayName(day)}
+                                  </span>
+                                )
+                              )}
+                            </div>
+                          </>
                         )}
-                        <button
-                          onClick={() => deleteChore(chore.id)}
-                          className="p-1 text-red-400 hover:text-red-300 transition-colors"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                            />
-                          </svg>
-                        </button>
                       </div>
-                    </div>
-                  ))
+                    ))}
+                  </>
                 )}
               </div>
             </div>
