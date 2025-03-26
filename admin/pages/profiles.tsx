@@ -484,7 +484,13 @@ const ProfilesPage: NextPage = () => {
       });
 
       // Create default profile values if they don't exist
-      const defaultXp = { final: 0, base: 0, bonus: 0 };
+      const defaultXp = {
+        final: 0,
+        base: 0,
+        bonus: 0,
+        gained: 0,
+        penalties: 0,
+      };
       const defaultPlayTime = { sessions: [] };
       const defaultRewards = { available: 0, permanent: {} };
 
@@ -495,11 +501,15 @@ const ProfilesPage: NextPage = () => {
       history[currentDate] = {
         // Include existing day data if any
         ...(history[currentDate] || {}),
+        // Make sure date field exists
+        date: currentDate,
         // Add default values if they don't exist
-        xp: history[currentDate]?.xp || defaultXp,
-        playTime: history[currentDate]?.playTime || defaultPlayTime,
+        xp: history[currentDate]?.xp || { ...defaultXp },
+        playTime: history[currentDate]?.playTime || { ...defaultPlayTime },
         // Always update chores
         chores: choresWithStatus,
+        // Make sure completed field exists
+        completed: history[currentDate]?.completed || false,
       };
 
       // Create a complete profile object with all necessary fields
@@ -509,9 +519,9 @@ const ProfilesPage: NextPage = () => {
         // Always update chores
         chores: choresWithStatus,
         // Ensure all required fields exist
-        xp: selectedProfile.xp || defaultXp,
-        playTime: selectedProfile.playTime || defaultPlayTime,
-        rewards: selectedProfile.rewards || defaultRewards,
+        xp: selectedProfile.xp || { ...defaultXp },
+        playTime: selectedProfile.playTime || { ...defaultPlayTime },
+        rewards: selectedProfile.rewards || { ...defaultRewards },
         // Use the updated history
         history,
         // Add a lastUpdated timestamp to trigger real-time updates

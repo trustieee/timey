@@ -177,6 +177,30 @@ export const onProfileUpdate = (
  * @param profile The updated profile
  */
 const notifyProfileUpdate = (profile: PlayerProfile): void => {
+  // Perform basic validations before notifying listeners
+  if (!profile) {
+    console.warn("Cannot notify about null or undefined profile");
+    return;
+  }
+
+  // Make sure history exists
+  if (!profile.history) {
+    console.warn("Cannot notify about profile with missing history");
+    return;
+  }
+
+  // Ensure the profile has required fields
+  // This is critical to prevent NaN issues in the renderer
+  const hasRequiredFields = Object.values(profile.history).every((day) => {
+    return day && day.xp && typeof day.xp.final === "number";
+  });
+
+  if (!hasRequiredFields) {
+    console.warn("Profile is missing critical fields (xp.final) in some days");
+    return;
+  }
+
+  // Notify all listeners with the validated profile
   profileUpdateListeners.forEach((listener) => {
     try {
       listener(profile);

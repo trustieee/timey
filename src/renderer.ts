@@ -129,7 +129,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   function calculateXp(profile: BasePlayerProfile): number {
     let totalXp = 0;
     for (const date in profile.history) {
-      totalXp += profile.history[date].xp.final;
+      // Add null/undefined checks to avoid NaN
+      if (profile.history[date]?.xp?.final !== undefined) {
+        totalXp += profile.history[date].xp.final;
+      }
     }
     return totalXp;
   }
@@ -739,8 +742,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (timeLeft > 0) {
       messageElement.textContent = `Cooldown time remaining. Complete your daily objectives while you wait!`;
     } else if (allChoresCompleted) {
-      messageElement.textContent =
-        "Great job completing your daily objectives! You can start play time now.";
+      messageElement.textContent = `Great job completing your daily objectives! You can start play time now.`;
     } else {
       const incompleteCount = chores.filter(
         (chore) => chore.status === "incomplete"
@@ -915,7 +917,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Create status element
         const statusElement = document.createElement("div");
         statusElement.className = `status ${chore.status}`;
-        statusElement.innerHTML = statusIcon;
+
+        // Set text content instead of innerHTML for better display control
+        statusElement.textContent = statusIcon;
 
         // Add a cursor and hover effect for today's chores to indicate they're clickable
         if (isCurrentDay) {
@@ -930,7 +934,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const textElement = document.createElement("span");
         textElement.textContent = chore.text;
 
-        // Append child elements instead of using innerHTML
+        // Append child elements
         choreElement.appendChild(statusElement);
         choreElement.appendChild(textElement);
 
@@ -1491,44 +1495,49 @@ document.addEventListener("DOMContentLoaded", async () => {
             flex: 1;
             overflow-y: auto;
             overflow-x: hidden;
-            margin-bottom: 80px;
-            border-radius: 10px;
-            background-color: rgba(255, 255, 255, 0.05);
+            margin-bottom: 60px;
+            border-radius: 12px;
+            background-color: rgba(255, 255, 255, 0.07);
             width: 100%;
-            max-width: 800px; /* Increased from 600px */
+            max-width: 800px;
             align-self: center;
             display: flex;
             flex-direction: column;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
         .chores-section h2 {
             text-align: center;
-            padding: 20px;
+            padding: 16px;
             margin: 0;
             font-size: 18px;
-            color: rgba(255, 255, 255, 0.9);
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.95);
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .chores-list {
-            padding: 20px;
+            padding: 5px;
             width: 100%;
             box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
         }
 
         /* Custom scrollbar styling */
         .chores-section::-webkit-scrollbar {
-            width: 10px;
+            width: 6px;
         }
 
         .chores-section::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
         }
 
         .chores-section::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.2);
-            border-radius: 5px;
+            border-radius: 3px;
         }
 
         .chores-section::-webkit-scrollbar-thumb:hover {
@@ -1546,43 +1555,44 @@ document.addEventListener("DOMContentLoaded", async () => {
             padding: 10px;
             border-radius: 10px;
             z-index: 100;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
         }
 
         .chore-item {
             display: flex;
-            align-items: flex-start;
-            padding: 15px;
-            margin-bottom: 10px;
-            background-color: rgba(255, 255, 255, 0.1);
-            border-radius: 5px;
-            transition: all 0.3s ease;
+            align-items: center;
+            padding: 5px;
+            background-color: rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            transition: all 0.2s ease;
             width: 100%;
             box-sizing: border-box;
-            min-width: 0; /* Prevent flex items from overflowing */
+            min-width: 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .chore-status-btn {
-            width: 40px;
-            height: 40px;
-            min-width: 40px;
-            margin-right: 15px;
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+            margin-right: 14px;
             border-radius: 50%;
             border: 2px solid currentColor;
             background: transparent;
             color: inherit;
-            font-size: 16px;
+            font-size: 14px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             flex-shrink: 0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
         .chore-item.completed {
-            background-color: rgba(76, 175, 80, 0.1);
+            background-color: rgba(76, 175, 80, 0.15);
         }
 
         .chore-item.completed .chore-status-btn {
@@ -1592,7 +1602,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         .chore-item.na {
-            background-color: rgba(158, 158, 158, 0.1);
+            background-color: rgba(158, 158, 158, 0.15);
         }
 
         .chore-item.na .chore-status-btn {
@@ -1604,7 +1614,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         .chore-item.incomplete {
-            background-color: rgba(255, 82, 82, 0.1);
+            background-color: rgba(255, 82, 82, 0.15);
         }
 
         .chore-item.incomplete .chore-status-btn {
@@ -1625,14 +1635,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         .chore-item span {
             flex: 1;
-            font-size: 14px;
+            font-size: 15px;
             line-height: 1.4;
-            padding: 2px 0;
+            padding: 0;
             overflow-wrap: break-word;
             word-wrap: break-word;
             word-break: break-word;
             hyphens: auto;
-            min-width: 0; /* Allow text to shrink below its minimum content size */
+            min-width: 0;
+            color: rgba(255, 255, 255, 0.9);
         }
 
         /* Ensure completion message stays fixed at the bottom while scrolling */
@@ -1647,13 +1658,15 @@ document.addEventListener("DOMContentLoaded", async () => {
             border-bottom-right-radius: 10px;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(5px);
-            margin: 0 -20px -20px -20px; /* Compensate for parent padding */
+            margin: 0 -16px -16px -16px;
             box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.1);
+            padding: 12px 16px;
         }
 
         .completion-message p {
             margin: 0 0 10px 0;
             color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
         }
 
         .completion-message button {

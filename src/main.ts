@@ -91,8 +91,14 @@ function setupProfileChangeListener(mainWindow: BrowserWindow) {
       xpToNextLevel: calculateXpToNextLevel(updatedProfile),
     };
 
-    // Forward the update to the renderer process
-    mainWindow.webContents.send("profile-update", playerProfileData);
+    // Only forward the update if the window still exists and isn't destroyed
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents) {
+      try {
+        mainWindow.webContents.send("profile-update", playerProfileData);
+      } catch (error) {
+        console.error("Error sending profile update to renderer:", error);
+      }
+    }
   });
 }
 
@@ -126,7 +132,8 @@ function calculateXp(profile: BasePlayerProfile): number {
 
   let totalXp = 0;
   for (const date in profile.history) {
-    if (profile.history[date].xp && profile.history[date].xp.final) {
+    // Add null/undefined checks to avoid NaN
+    if (profile.history[date]?.xp?.final !== undefined) {
       totalXp += profile.history[date].xp.final;
     }
   }
@@ -431,6 +438,15 @@ const createWindow = async () => {
       mainWindow.webContents.toggleDevTools();
     }
   });
+
+  // Handle window close event to clean up listeners specific to this window
+  mainWindow.on("closed", () => {
+    // Clean up profile listeners when the window closes
+    if (profileUpdateUnsubscribe) {
+      profileUpdateUnsubscribe();
+      profileUpdateUnsubscribe = null;
+    }
+  });
 };
 
 // This method will be called when Electron has finished
@@ -461,16 +477,20 @@ app.on("activate", () => {
 
 // Clean up listeners when app is quitting
 app.on("before-quit", async () => {
-  // Make sure we have the latest profile data
-  await refreshPlayerProfileData();
-
-  // Save the profile
-  await playerProfile.savePlayerProfile(playerProfileData);
-
-  // Clean up listeners
+  // Unsubscribe from all Firebase listeners first to prevent updates during shutdown
   if (profileUpdateUnsubscribe) {
     profileUpdateUnsubscribe();
     profileUpdateUnsubscribe = null;
+  }
+
+  try {
+    // Make sure we have the latest profile data
+    await refreshPlayerProfileData();
+
+    // Save the profile
+    await playerProfile.savePlayerProfile(playerProfileData);
+  } catch (error) {
+    console.error("Error saving profile during app shutdown:", error);
   }
 });
 
