@@ -22,6 +22,8 @@ interface AdminUserProfile extends PlayerProfile {
 interface ChoreItem {
   id: number;
   text: string;
+  status?: ChoreStatus;
+  completedAt?: string;
 }
 
 const ProfilesPage: NextPage = () => {
@@ -329,7 +331,11 @@ const ProfilesPage: NextPage = () => {
       console.error("Error setting up profiles listener:", error);
       setError("Failed to set up real-time sync");
       setLoading(false);
-      return () => {}; // Return empty function as fallback
+      // Return a no-op function that satisfies the type requirement
+      return () => {
+        // No operation needed in the fallback case
+        console.log("No Firebase listener to unsubscribe from");
+      };
     }
   };
 
@@ -362,7 +368,18 @@ const ProfilesPage: NextPage = () => {
   const openChoresModal = (profile: AdminUserProfile) => {
     setSelectedProfileUid(profile.uid);
     // Initialize with existing chores if available or empty array
-    setUserChores(profile.chores || []);
+    // Make sure all chores have a status field
+    const choresWithStatus = (profile.chores || []).map((chore) => {
+      // Create a properly typed chore with status
+      const typedChore: ChoreItem = {
+        id: chore.id,
+        text: chore.text,
+        status: (chore as any).status || ("incomplete" as ChoreStatus),
+        completedAt: (chore as any).completedAt,
+      };
+      return typedChore;
+    });
+    setUserChores(choresWithStatus);
     setIsChoresModalOpen(true);
   };
 
@@ -385,7 +402,15 @@ const ProfilesPage: NextPage = () => {
         ? Math.max(...userChores.map((chore) => chore.id)) + 1
         : 0;
 
-    setUserChores([...userChores, { id: newId, text: newChoreText.trim() }]);
+    // Add a new chore with default "incomplete" status
+    setUserChores([
+      ...userChores,
+      {
+        id: newId,
+        text: newChoreText.trim(),
+        status: "incomplete" as ChoreStatus,
+      },
+    ]);
 
     setNewChoreText("");
   };
@@ -423,18 +448,70 @@ const ProfilesPage: NextPage = () => {
 
     setIsSaving(true);
     try {
+      // Get current date as ISO string and extract the date part (YYYY-MM-DD)
+      const currentDate = new Date().toISOString().split("T")[0];
+
       const profileRef = doc(db, "playerProfiles", selectedProfileUid);
-      await updateDoc(profileRef, {
-        chores: userChores,
+
+      // Find the profile we're updating
+      const selectedProfile = profiles.find(
+        (p) => p.uid === selectedProfileUid
+      );
+
+      if (!selectedProfile) {
+        throw new Error("Profile not found");
+      }
+
+      // Create or update the history for the current day
+      const currentHistory = selectedProfile.history || {};
+      const dayHistory = currentHistory[currentDate] || {};
+
+      // Make sure we create properly structured chore objects with no undefined values
+      const choresWithStatus = userChores.map((chore) => {
+        // Create a clean chore object with only the properties we need
+        return {
+          id: chore.id,
+          text: chore.text,
+          status: chore.status || ("incomplete" as ChoreStatus),
+          // Only include completedAt if it exists, otherwise omit it
+          ...(chore.completedAt ? { completedAt: chore.completedAt } : {}),
+        };
       });
 
-      // Update the local profiles state
+      // Create the update data with explicit property names
+      const updateData: any = {
+        chores: choresWithStatus,
+      };
+
+      // Update the history entry for today with the same clean data
+      updateData[`history.${currentDate}.chores`] = choresWithStatus;
+
+      // Update both the main chores and the history
+      await updateDoc(profileRef, updateData);
+
+      // Update the local profiles state to reflect changes
       setProfiles(
-        profiles.map((profile) =>
-          profile.uid === selectedProfileUid
-            ? { ...profile, chores: userChores }
-            : profile
-        )
+        profiles.map((profile) => {
+          if (profile.uid === selectedProfileUid) {
+            // Deep clone the profile to avoid mutation
+            const updatedProfile = { ...profile };
+
+            // Update main chores
+            updatedProfile.chores = choresWithStatus;
+
+            // Make sure history exists
+            updatedProfile.history = updatedProfile.history || {};
+
+            // Create or update today's history
+            updatedProfile.history[currentDate] = {
+              ...(updatedProfile.history[currentDate] || {}),
+              chores: choresWithStatus,
+            };
+
+            return updatedProfile;
+          }
+          return profile;
+        })
       );
 
       closeChoresModal();
