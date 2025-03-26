@@ -128,8 +128,6 @@ export function initializeDay(profile: PlayerProfile): PlayerProfile {
 
   // If we don't have today's progress, create it
   if (!profile.history[today]) {
-    console.log(`Initializing new day: ${today}`);
-
     // First, check if we need to finalize yesterday's progress
     const yesterdayString = getPreviousDateString(today);
 
