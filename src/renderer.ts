@@ -1483,10 +1483,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   style.textContent = `
         .app-content {
             position: relative;
-            height: 100vh;
+            height: calc(100vh - 72px); /* Adjust for top bar (50px) and status bar (22px) */
             display: flex;
             flex-direction: column;
-            padding: 20px 20px 100px;
+            padding: 20px 20px 0px;
             box-sizing: border-box;
             align-items: center;
         }
@@ -1495,7 +1495,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             flex: 1;
             overflow-y: auto;
             overflow-x: hidden;
-            margin-bottom: 60px;
+            margin-bottom: 10px;
             border-radius: 12px;
             background-color: rgba(255, 255, 255, 0.07);
             width: 100%;
@@ -1542,20 +1542,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         .chores-section::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.3);
-        }
-
-        .xp-section {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: calc(100% - 40px);
-            max-width: 800px; /* Match chores section width */
-            background-color: rgba(51, 51, 51, 0.95);
-            padding: 10px;
-            border-radius: 10px;
-            z-index: 100;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
         }
 
         .chore-item {
