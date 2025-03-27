@@ -266,10 +266,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       isDarkMode ? "dark-mode" : "light-mode"
     );
 
-    const toggleBtn = document.getElementById("toggle-dark-mode");
-    if (toggleBtn) {
-      toggleBtn.innerHTML = isDarkMode ? "💡" : "🌑";
-    }
+    // No need to change the dark mode toggle button content anymore
+    // as we're using CSS to show/hide the appropriate SVG icon
   };
 
   // Get initial dark mode status from Electron
@@ -285,12 +283,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Set up dark mode toggle functionality
   const toggleBtn = document.getElementById("toggle-dark-mode");
   if (toggleBtn) {
-    // Initialize button text based on current HTML class
-    toggleBtn.innerHTML = document.documentElement.classList.contains(
-      "dark-mode"
-    )
-      ? "💡"
-      : "🌑";
+    // No need to set initial button text anymore
 
     toggleBtn.addEventListener("click", async () => {
       try {
