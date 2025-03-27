@@ -266,10 +266,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       isDarkMode ? "dark-mode" : "light-mode"
     );
 
-    const toggleBtn = document.getElementById("toggle-dark-mode");
-    if (toggleBtn) {
-      toggleBtn.innerHTML = isDarkMode ? "💡" : "🌑";
-    }
+    // No longer need to update the button HTML as we're using SVG icons
+    // that show/hide based on CSS classes
   };
 
   // Get initial dark mode status from Electron
@@ -285,13 +283,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Set up dark mode toggle functionality
   const toggleBtn = document.getElementById("toggle-dark-mode");
   if (toggleBtn) {
-    // Initialize button text based on current HTML class
-    toggleBtn.innerHTML = document.documentElement.classList.contains(
-      "dark-mode"
-    )
-      ? "💡"
-      : "🌑";
-
+    // No need to initialize button text, as it's now controlled by CSS
     toggleBtn.addEventListener("click", async () => {
       try {
         const isDarkMode = await window.electronAPI.toggleDarkMode();
@@ -333,12 +325,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       reloadProfile();
     }
 
-    // Format using utility functions to ensure consistency
-    const dateStr = formatClockDate(now);
-    const timeStr = formatClockTime(now);
+    // Format date in a cleaner way for the new design
+    const options: Intl.DateTimeFormatOptions = {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    };
+    const formattedDateTime = now.toLocaleString("en-US", options);
 
-    // Combine date and time
-    topDateTimeElement.textContent = `${dateStr} ${timeStr}`;
+    // Set the formatted date and time
+    topDateTimeElement.textContent = formattedDateTime;
   }
 
   // Update the clock immediately
@@ -838,8 +835,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     // Hide login panel if it's open and user is authenticated
-    if (isAuthenticated && loginPanel.classList.contains("visible")) {
-      loginPanel.classList.remove("visible");
+    if (isAuthenticated && loginOverlay.classList.contains("visible")) {
+      loginOverlay.classList.remove("visible");
     }
 
     if (historyPanel.classList.contains("visible")) {
@@ -857,6 +854,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     const dates = Object.keys(playerProfile.history).sort().reverse();
     const today = getLocalDateString(); // Get today's date to identify current day's chores
 
+    if (
+      dates.length === 0 ||
+      !dates.some((date) => playerProfile.history[date]?.chores?.length > 0)
+    ) {
+      // Show empty state when no history is available
+      const emptyState = document.createElement("div");
+      emptyState.className = "history-empty";
+      emptyState.innerHTML = `
+        <div class="icon">📅</div>
+        <p>No history available yet.</p>
+        <p>Complete daily objectives to see them here.</p>
+      `;
+      historyContent.appendChild(emptyState);
+      return;
+    }
+
     dates.forEach((date) => {
       const dayHistory = playerProfile.history[date];
       if (!dayHistory || !dayHistory.chores || dayHistory.chores.length === 0)
@@ -870,12 +883,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // Create heading element with date
       const headingEl = document.createElement("h3");
-      headingEl.textContent = formattedDate;
+
+      const dateText = document.createElement("span");
+      dateText.textContent = formattedDate;
+      headingEl.appendChild(dateText);
+
+      // Create XP summary container
+      const xpContainer = document.createElement("span");
+      xpContainer.className = "xp-summary";
 
       // Add XP gains and penalties if they exist
       if (dayHistory.xp) {
-        const xpContainer = document.createElement("span");
-        xpContainer.className = "xp-summary";
+        let hasXpInfo = false;
 
         // Show positive XP if any was gained
         if (dayHistory.xp.gained > 0) {
@@ -883,28 +902,29 @@ document.addEventListener("DOMContentLoaded", async () => {
           xpGained.className = "xp-gained";
           xpGained.textContent = `+${dayHistory.xp.gained}`;
           xpContainer.appendChild(xpGained);
+          hasXpInfo = true;
         }
 
         // Show negative XP if any penalties were applied
         if (dayHistory.xp.penalties > 0) {
-          // Add a space if we already added the gained XP
-          if (dayHistory.xp.gained > 0) {
-            xpContainer.appendChild(document.createTextNode(" "));
-          }
-
           const xpPenalty = document.createElement("span");
           xpPenalty.className = "xp-penalty";
           xpPenalty.textContent = `-${dayHistory.xp.penalties}`;
           xpContainer.appendChild(xpPenalty);
+          hasXpInfo = true;
         }
 
         // If we added any XP information, append it to the heading
-        if (dayHistory.xp.gained > 0 || dayHistory.xp.penalties > 0) {
+        if (hasXpInfo) {
           headingEl.appendChild(xpContainer);
         }
       }
 
       dateSection.appendChild(headingEl);
+
+      // Create a container for chores
+      const choresContainer = document.createElement("div");
+      choresContainer.className = "history-chores-container";
 
       // Add chores for this date
       dayHistory.chores.forEach((chore) => {
@@ -938,16 +958,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         choreElement.appendChild(statusElement);
         choreElement.appendChild(textElement);
 
-        dateSection.appendChild(choreElement);
+        choresContainer.appendChild(choreElement);
       });
 
+      dateSection.appendChild(choresContainer);
       historyContent.appendChild(dateSection);
     });
-
-    if (dates.length === 0) {
-      historyContent.innerHTML =
-        '<p style="text-align: center; padding: 20px;">No history available yet.</p>';
-    }
   }
 
   // Add event listener for history button
@@ -975,11 +991,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Only close the login panel if user is authenticated
     if (
       isAuthenticated &&
-      !loginPanel.contains(target) &&
+      !loginOverlay.contains(target) &&
       !loginBtn.contains(target) &&
-      loginPanel.classList.contains("visible")
+      loginOverlay.classList.contains("visible")
     ) {
-      loginPanel.classList.remove("visible");
+      loginOverlay.classList.remove("visible");
     }
   });
 
@@ -1002,8 +1018,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       // Hide login panel if it's open and user is authenticated
-      if (loginPanel.classList.contains("visible")) {
-        loginPanel.classList.remove("visible");
+      if (loginOverlay.classList.contains("visible")) {
+        loginOverlay.classList.remove("visible");
       }
 
       if (rewardsPanel.classList.contains("visible")) {
@@ -1014,7 +1030,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     } else {
       // If not authenticated, ensure login panel is visible
-      loginPanel.classList.add("visible");
+      loginOverlay.classList.add("visible");
     }
   }
 
@@ -1192,7 +1208,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Login panel functionality
   const loginBtn = document.getElementById("show-login") as HTMLButtonElement;
-  const loginPanel = document.getElementById("login-panel") as HTMLElement;
+  const loginOverlay = document.getElementById("login-overlay") as HTMLElement;
+  const loginStatus = document.getElementById("login-status") as HTMLElement;
+  const loginCloseBtn = document.getElementById(
+    "login-close-btn"
+  ) as HTMLButtonElement;
 
   // Track authentication status
   let isAuthenticated = false;
@@ -1205,7 +1225,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       // First check if they're authenticated at all
       if (!status.isAuthenticated) {
         isAuthenticated = false;
-        loginPanel.classList.add("visible");
+        showLoginOverlay();
+        updateLoginCloseButton();
         return false;
       }
 
@@ -1219,24 +1240,28 @@ document.addEventListener("DOMContentLoaded", async () => {
         // No chores found - user is not fully authenticated
         isAuthenticated = false;
 
-        // Display login panel with error message
-        loginPanel.classList.add("visible");
+        // Display login overlay with error message
+        showLoginOverlay();
+        updateLoginCloseButton();
 
         // Show error message
-        loginErrorMsg.textContent =
-          "You cannot use the app until chores are set up for your profile. Please contact your administrator to set up chores and then restart the app.";
-        loginErrorMsg.style.display = "block";
+        showLoginError(
+          "You cannot use the app until chores are set up for your profile. Please contact your administrator to set up chores and then restart the app."
+        );
 
         return false;
       }
 
       // If we get here, user is authenticated and has chores
       isAuthenticated = true;
+      hideLoginOverlay();
+      updateLoginCloseButton();
       return true;
     } catch (error) {
       console.error("Failed to check auth status:", error);
       isAuthenticated = false;
-      loginPanel.classList.add("visible");
+      showLoginOverlay();
+      updateLoginCloseButton();
       return false;
     }
   }
@@ -1244,18 +1269,48 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Check auth status when page loads
   checkAuthStatus();
 
-  function toggleLoginPanel(e: MouseEvent): void {
+  function showLoginOverlay() {
+    loginOverlay.classList.add("visible");
+    updateLoginCloseButton();
+  }
+
+  function hideLoginOverlay() {
+    loginOverlay.classList.remove("visible");
+  }
+
+  // Update close button visibility based on authentication status
+  function updateLoginCloseButton() {
+    if (isAuthenticated) {
+      loginCloseBtn.classList.add("visible");
+    } else {
+      loginCloseBtn.classList.remove("visible");
+    }
+  }
+
+  function showLoginError(message: string) {
+    loginStatus.innerHTML = message;
+    loginStatus.className = "login-status error";
+  }
+
+  function showLoginSuccess(message: string) {
+    loginStatus.innerHTML = message;
+    loginStatus.className = "login-status success";
+  }
+
+  function clearLoginStatus() {
+    loginStatus.innerHTML = "";
+    loginStatus.className = "login-status";
+  }
+
+  function toggleLoginOverlay(e: MouseEvent): void {
     e.stopPropagation(); // Prevent event from bubbling up
 
     // Clear any previous error messages when toggling
-    if (!loginPanel.classList.contains("visible")) {
-      loginErrorMsg.style.display = "none";
-      loginErrorMsg.textContent = "";
-    }
+    clearLoginStatus();
 
-    // If authenticated, toggle panel normally
+    // If authenticated, toggle overlay normally
     if (isAuthenticated) {
-      loginPanel.classList.toggle("visible");
+      loginOverlay.classList.toggle("visible");
 
       // Hide other panels if they're open
       if (historyPanel.classList.contains("visible")) {
@@ -1266,53 +1321,31 @@ document.addEventListener("DOMContentLoaded", async () => {
         rewardsPanel.classList.remove("visible");
       }
     } else {
-      // If not authenticated, force panel to stay open
-      loginPanel.classList.add("visible");
+      // If not authenticated, force login overlay to stay open
+      showLoginOverlay();
     }
+
+    // Always update close button visibility when toggling
+    updateLoginCloseButton();
   }
 
   // Add event listener for login button
-  loginBtn.addEventListener("click", toggleLoginPanel);
+  loginBtn.addEventListener("click", toggleLoginOverlay);
 
-  // Prevent clicks inside the login panel from closing it
-  loginPanel.addEventListener("click", (e: MouseEvent) => {
+  // Add event listener for close button
+  loginCloseBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-  });
-
-  // Modify the document click event to respect authentication state
-  document.addEventListener("click", (e: MouseEvent) => {
-    const target = e.target as HTMLElement;
-    // Only close the login panel on outside click if user is authenticated
-    if (
-      isAuthenticated &&
-      !loginPanel.contains(target) &&
-      !loginBtn.contains(target) &&
-      loginPanel.classList.contains("visible")
-    ) {
-      loginPanel.classList.remove("visible");
+    if (isAuthenticated) {
+      hideLoginOverlay();
     }
   });
 
-  // Modify sign-in button click handler to update authentication state
+  // Setup sign-in functionality
   const signInButton = document.getElementById(
     "sign-in-button"
   ) as HTMLButtonElement;
   const emailInput = document.getElementById("email") as HTMLInputElement;
   const passwordInput = document.getElementById("password") as HTMLInputElement;
-
-  // Add error message element for login form
-  const loginErrorMsg = document.createElement("div");
-  loginErrorMsg.className = "login-error-message";
-  loginErrorMsg.style.color = "#FF5252";
-  loginErrorMsg.style.margin = "10px 0";
-  loginErrorMsg.style.padding = "8px";
-  loginErrorMsg.style.borderRadius = "4px";
-  loginErrorMsg.style.backgroundColor = "rgba(255, 82, 82, 0.1)";
-  loginErrorMsg.style.display = "none";
-
-  // Insert error message before the sign-in button
-  const formGroup = signInButton.parentElement;
-  formGroup.insertBefore(loginErrorMsg, signInButton);
 
   // Add event listeners for Enter key in login inputs
   emailInput.addEventListener("keydown", (e: KeyboardEvent) => {
@@ -1336,8 +1369,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   signInButton.addEventListener("click", async () => {
     // Clear any previous error messages
-    loginErrorMsg.style.display = "none";
-    loginErrorMsg.textContent = "";
+    clearLoginStatus();
 
     // Get the email and password values
     const email = emailInput.value.trim();
@@ -1345,8 +1377,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Validate inputs
     if (!email || !password) {
-      loginErrorMsg.textContent = "Please enter both email and password.";
-      loginErrorMsg.style.display = "block";
+      showLoginError("Please enter both email and password.");
       emailInput.focus();
       return;
     }
@@ -1367,6 +1398,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       console.log("Sign-in successful", result.user.email);
       signInButton.textContent = "Signed in";
+      showLoginSuccess("Sign-in successful!");
 
       // Update authentication state - temporarily mark as authenticated
       isAuthenticated = true;
@@ -1381,16 +1413,17 @@ document.addEventListener("DOMContentLoaded", async () => {
           playerProfile.chores && playerProfile.chores.length > 0;
 
         if (!hasChores) {
-          // No chores found - show error and prevent leaving login panel
-          loginErrorMsg.textContent =
-            "You cannot use the app until chores are set up for your profile. Please contact your administrator to set up chores and then restart the app.";
-          loginErrorMsg.style.display = "block";
+          // No chores found - show error and prevent leaving login overlay
+          showLoginError(
+            "You cannot use the app until chores are set up for your profile. Please contact your administrator to set up chores and then restart the app."
+          );
 
-          // Mark as not authenticated to keep them on the login panel
+          // Mark as not authenticated to keep them on the login overlay
           isAuthenticated = false;
 
-          // Keep login panel visible
-          loginPanel.classList.add("visible");
+          // Keep login overlay visible
+          showLoginOverlay();
+          updateLoginCloseButton();
 
           // Reset button state
           signInButton.textContent = "Sign In";
@@ -1400,8 +1433,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         // If we get here, user has chores, so proceed normally
-        // Close the login panel
-        loginPanel.classList.remove("visible");
+        // Close the login overlay
+        hideLoginOverlay();
+
+        // Update close button visibility
+        updateLoginCloseButton();
 
         // Then redraw the UI components
         updateXpDisplay();
@@ -1416,15 +1452,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         isAuthenticated = false;
 
         // Show an error message
-        loginErrorMsg.textContent =
-          "Error loading your profile. Please try again.";
-        loginErrorMsg.style.display = "block";
+        showLoginError("Error loading your profile. Please try again.");
 
         // Reset button state
         signInButton.textContent = "Sign In";
         signInButton.disabled = false;
       }
-    } catch (error: unknown) {
+    } catch (error) {
       // Handle authentication errors
       console.error("Authentication failed:", error);
 
@@ -1432,8 +1466,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const errorMsg =
         error instanceof Error ? error.message : "Authentication failed";
 
-      loginErrorMsg.textContent = errorMsg;
-      loginErrorMsg.style.display = "block";
+      showLoginError(errorMsg);
 
       // Re-enable inputs
       signInButton.textContent = "Sign In";
