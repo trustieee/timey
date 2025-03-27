@@ -259,41 +259,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  // Function to apply the correct theme to the html element
-  const applyTheme = (isDarkMode: boolean) => {
-    document.documentElement.classList.remove("dark-mode", "light-mode");
-    document.documentElement.classList.add(
-      isDarkMode ? "dark-mode" : "light-mode"
-    );
-
-    // No need to change the dark mode toggle button content anymore
-    // as we're using CSS to show/hide the appropriate SVG icon
-  };
-
-  // Get initial dark mode status from Electron
-  const syncThemeWithElectron = async () => {
-    try {
-      const isDarkMode = await window.electronAPI.getDarkMode();
-      applyTheme(isDarkMode);
-    } catch (err) {
-      console.error("Error syncing theme with Electron:", err);
-    }
-  };
-
-  // Set up dark mode toggle functionality
-  const toggleBtn = document.getElementById("toggle-dark-mode");
-  if (toggleBtn) {
-    // No need to set initial button text anymore
-
-    toggleBtn.addEventListener("click", async () => {
-      try {
-        const isDarkMode = await window.electronAPI.toggleDarkMode();
-        applyTheme(isDarkMode);
-      } catch (err) {
-        console.error("Error toggling dark mode:", err);
-      }
-    });
-  }
+  // Always use dark mode
+  document.documentElement.classList.add("dark-mode");
 
   // Display app version
   if (appVersionElement) {
@@ -305,9 +272,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       appVersionElement.textContent = "v?.?.?";
     }
   }
-
-  // Sync theme with Electron's native theme setting
-  syncThemeWithElectron();
 
   // Track the current day to detect date changes
   let currentDay = new Date().getDate();

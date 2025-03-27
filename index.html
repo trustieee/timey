@@ -3,18 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <title>Timey</title>
-
-    <!-- This script runs before any rendering to prevent flash -->
+    <!-- Dark theme is applied by default -->
     <script>
-      // Check system preference synchronously before page loads
-      const prefersDarkMode = window.matchMedia(
-        "(prefers-color-scheme: dark)"
-      ).matches;
-
-      // Apply theme class immediately to prevent flash
-      document.documentElement.classList.add(
-        prefersDarkMode ? "dark-mode" : "light-mode"
-      );
+      // Set dark theme by default
+      document.documentElement.classList.add("dark-mode");
     </script>
   </head>
 
@@ -81,48 +73,6 @@
             >
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
               <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-          </button>
-          <button
-            id="toggle-dark-mode"
-            class="icon-button"
-            title="Toggle theme"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              class="dark-icon"
-            >
-              <circle cx="12" cy="12" r="5"></circle>
-              <line x1="12" y1="1" x2="12" y2="3"></line>
-              <line x1="12" y1="21" x2="12" y2="23"></line>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-              <line x1="1" y1="12" x2="3" y2="12"></line>
-              <line x1="21" y1="12" x2="23" y2="12"></line>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-            </svg>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              class="light-icon"
-            >
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
             </svg>
           </button>
         </div>
@@ -228,14 +178,13 @@
     </div>
 
     <style>
-      /* Default styles - Dark mode first */
+      /* Dark mode styles */
       body {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
           Helvetica, Arial, sans-serif;
         margin: 0;
         padding: 0;
         overflow: hidden;
-        transition: background-color 0.3s, color 0.3s;
         background: #333;
         color: white;
       }
@@ -255,7 +204,6 @@
         padding: 0 15px;
         -webkit-app-region: drag;
         cursor: move;
-        transition: background-color 0.3s;
         background-color: #222;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
       }
@@ -283,7 +231,7 @@
         text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
       }
 
-      /* New icon button styles */
+      /* Icon button styles */
       .window-controls {
         display: flex;
         gap: 12px;
@@ -314,33 +262,6 @@
         width: 20px;
         height: 20px;
         transition: all 0.2s ease;
-      }
-
-      /* Toggle dark mode button specific styles */
-      #toggle-dark-mode .dark-icon {
-        display: none;
-      }
-
-      #toggle-dark-mode .light-icon {
-        display: block;
-      }
-
-      html.light-mode #toggle-dark-mode .dark-icon {
-        display: block;
-      }
-
-      html.light-mode #toggle-dark-mode .light-icon {
-        display: none;
-      }
-
-      #toggle-dark-mode {
-        -webkit-app-region: no-drag;
-        background-color: transparent;
-        border: none;
-        cursor: pointer;
-        font-size: 20px;
-        padding: 8px;
-        margin: 0;
       }
 
       .app-content {
@@ -529,84 +450,6 @@
         display: none;
       }
 
-      /* Light mode styles */
-      html.light-mode body {
-        background: #f8f9fa;
-        color: #333333;
-      }
-
-      html.light-mode .top-bar {
-        background-color: #ffffff;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      }
-
-      html.light-mode .title {
-        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
-      }
-
-      html.light-mode #top-date-time {
-        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
-      }
-
-      html.light-mode .icon-button {
-        color: rgba(0, 0, 0, 0.7);
-      }
-
-      html.light-mode .icon-button:hover {
-        background-color: rgba(0, 0, 0, 0.05);
-        color: rgba(0, 0, 0, 0.9);
-      }
-
-      html.light-mode .chore-item {
-        background-color: rgba(0, 0, 0, 0.03);
-        border: 1px solid rgba(0, 0, 0, 0.08);
-      }
-
-      html.light-mode .completion-message {
-        background-color: rgba(76, 175, 80, 0.2);
-        border: 1px solid rgba(76, 175, 80, 0.3);
-        color: #333333;
-      }
-
-      html.light-mode .completion-message p {
-        color: #333333;
-        font-weight: bold;
-        text-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
-      }
-
-      html.light-mode .xp-bar-container {
-        background-color: rgba(0, 0, 0, 0.1);
-        border: 1px solid rgba(0, 0, 0, 0.15);
-      }
-
-      html.light-mode .primary-button {
-        background-color: #4285f4;
-      }
-
-      html.light-mode .primary-button:hover {
-        background-color: #3367d6;
-      }
-
-      html.light-mode .secondary-button {
-        background-color: #ea4335;
-      }
-
-      html.light-mode .secondary-button:hover {
-        background-color: #d33828;
-      }
-
-      html.light-mode .primary-button:disabled {
-        background-color: #cccccc;
-        color: #777777;
-        cursor: not-allowed;
-      }
-
-      html.light-mode .secondary-button:disabled {
-        background-color: #cccccc;
-        color: #777777;
-        cursor: not-allowed;
-      }
-
       /* History panel styles */
       .history-panel {
         position: fixed;
@@ -652,14 +495,6 @@
       .xp-penalty {
         color: #ff5252;
         font-weight: bold;
-      }
-
-      html.light-mode .xp-gained {
-        color: #2e7d32;
-      }
-
-      html.light-mode .xp-penalty {
-        color: #d32f2f;
       }
 
       .history-content {
@@ -738,10 +573,6 @@
         transform: scale(1.1);
       }
 
-      html.light-mode .history-chore .status.clickable:hover {
-        box-shadow: 0 0 5px 2px rgba(0, 0, 0, 0.2);
-      }
-
       /* History navigation */
       #show-history {
         -webkit-app-region: no-drag;
@@ -751,31 +582,6 @@
         font-size: 20px;
         padding: 5px;
         margin: 0 5px;
-      }
-
-      /* Light mode adjustments for history panel */
-      html.light-mode .history-panel {
-        background-color: #ffffff;
-        box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
-        border-left: 1px solid rgba(0, 0, 0, 0.1);
-      }
-
-      html.light-mode .history-panel h2 {
-        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-        color: #333333;
-      }
-
-      html.light-mode .history-date {
-        background-color: rgba(0, 0, 0, 0.03);
-        border: 1px solid rgba(0, 0, 0, 0.05);
-      }
-
-      html.light-mode .history-date h3 {
-        color: #333333;
-      }
-
-      html.light-mode .history-chore {
-        color: #555555;
       }
 
       /* Rewards panel styles */
@@ -884,68 +690,6 @@
         margin: 0 5px;
       }
 
-      /* Light mode adjustments for rewards panel */
-      html.light-mode .rewards-panel {
-        background-color: #ffffff;
-        box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
-        border-left: 1px solid rgba(0, 0, 0, 0.1);
-      }
-
-      html.light-mode .rewards-panel h2 {
-        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-        color: #333333;
-      }
-
-      html.light-mode .rewards-available {
-        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-        color: #333333;
-      }
-
-      html.light-mode .reward-item {
-        background-color: rgba(0, 0, 0, 0.03);
-        border: 1px solid rgba(0, 0, 0, 0.05);
-      }
-
-      html.light-mode .reward-item:hover {
-        background-color: rgba(0, 0, 0, 0.07);
-      }
-
-      html.light-mode .reward-item h3 {
-        color: #333333;
-      }
-
-      html.light-mode .reward-item p {
-        color: #555555;
-      }
-
-      html.light-mode .reward-history {
-        border-top: 1px solid rgba(0, 0, 0, 0.1);
-      }
-
-      html.light-mode .reward-history h3 {
-        color: #333333;
-      }
-
-      html.light-mode .reward-history-item {
-        background-color: rgba(0, 0, 0, 0.02);
-        border: 1px solid rgba(0, 0, 0, 0.04);
-      }
-
-      html.light-mode .reward-history-item .date {
-        color: #777777;
-      }
-
-      html.light-mode .state-badge {
-        color: white;
-      }
-
-      html.light-mode .xp-section {
-        background-color: transparent;
-        border-radius: 0;
-        padding: 0;
-        border: none;
-      }
-
       /* Improve cooldown message/completion message readability */
       .completion-message {
         text-align: center;
@@ -955,22 +699,9 @@
         color: white;
       }
 
-      html.light-mode .completion-message {
-        background-color: rgba(76, 175, 80, 0.2);
-        border: 1px solid rgba(76, 175, 80, 0.3);
-        color: #333333;
-      }
-
       /* Target specifically the objectives info message */
       .completion-message p {
         font-weight: bold;
-      }
-
-      /* Additional styles for the chores section in light mode */
-      html.light-mode #chores-section .completion-message {
-        background-color: rgba(76, 175, 80, 0.3);
-        border: 1px solid rgba(76, 175, 80, 0.4);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
       }
 
       /* Additional styles for the error dialog */
@@ -1030,31 +761,6 @@
         background-color: #ff7575;
       }
 
-      /* Light mode styles for the error dialog */
-      html.light-mode .error-dialog-content {
-        background-color: #f8f9fa;
-        color: #333;
-        box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-      }
-
-      html.light-mode .error-dialog h3 {
-        color: #d32f2f;
-      }
-
-      html.light-mode .error-dialog pre {
-        background-color: #f1f1f1;
-        color: #333;
-        border: 1px solid #ddd;
-      }
-
-      html.light-mode .error-dialog .close-btn {
-        background-color: #d32f2f;
-      }
-
-      html.light-mode .error-dialog .close-btn:hover {
-        background-color: #e57373;
-      }
-
       #check-updates {
         background: none;
         border: none;
@@ -1086,8 +792,8 @@
       }
 
       .update-dialog-content {
-        background-color: var(--bg-color);
-        color: var(--text-color);
+        background-color: #333;
+        color: white;
         padding: 20px;
         border-radius: 8px;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
@@ -1097,13 +803,13 @@
 
       .update-dialog h3 {
         margin-top: 0;
-        color: var(--accent-color);
+        color: #4caf50;
       }
 
       .release-notes {
         margin: 15px 0;
         padding: 10px;
-        background-color: var(--secondary-bg-color);
+        background-color: #222;
         border-radius: 4px;
         max-height: 200px;
         overflow-y: auto;
@@ -1111,7 +817,7 @@
 
       .release-notes h4 {
         margin-top: 0;
-        color: var(--accent-color);
+        color: #4caf50;
       }
 
       .dialog-buttons {
@@ -1131,13 +837,13 @@
       }
 
       .download-btn {
-        background-color: var(--accent-color);
+        background-color: #4caf50;
         color: white;
       }
 
       .close-btn {
-        background-color: var(--secondary-bg-color);
-        color: var(--text-color);
+        background-color: #222;
+        color: white;
       }
 
       /* Error Dialog - same styling as update dialog */
@@ -1155,8 +861,8 @@
       }
 
       .error-dialog-content {
-        background-color: var(--bg-color);
-        color: var(--text-color);
+        background-color: #333;
+        color: white;
         padding: 20px;
         border-radius: 8px;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
@@ -1165,7 +871,7 @@
       }
 
       .error-dialog pre {
-        background-color: var(--secondary-bg-color);
+        background-color: #222;
         padding: 10px;
         border-radius: 4px;
         overflow-x: auto;
@@ -1244,28 +950,6 @@
         margin: 0 5px;
       }
 
-      /* Light mode adjustments for login panel */
-      html.light-mode .login-panel {
-        background-color: #ffffff;
-        box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
-        border-left: 1px solid rgba(0, 0, 0, 0.1);
-      }
-
-      html.light-mode .login-panel h2 {
-        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-        color: #333333;
-      }
-
-      html.light-mode .form-group label {
-        color: #333333;
-      }
-
-      html.light-mode .form-group input {
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        background-color: rgba(0, 0, 0, 0.03);
-        color: #333333;
-      }
-
       /* Login status styles */
       .login-status {
         margin-bottom: 15px;
@@ -1291,20 +975,6 @@
 
       .login-status-message p {
         margin: 0 0 10px 0;
-      }
-
-      html.light-mode .login-status-message {
-        background-color: rgba(0, 0, 0, 0.03);
-      }
-
-      html.light-mode .login-status-message.error {
-        background-color: rgba(255, 82, 82, 0.1);
-        color: #d32f2f;
-      }
-
-      html.light-mode .login-status-message.success {
-        background-color: rgba(76, 175, 80, 0.1);
-        color: #388e3c;
       }
 
       /* XP Status Bar styles */
@@ -1366,33 +1036,6 @@
         font-size: 12px;
         font-weight: bold;
         opacity: 0.9;
-      }
-
-      /* Light mode adjustments for status bar */
-      html.light-mode .status-bar {
-        background-color: #f8f8f8;
-        border-top: 1px solid rgba(0, 0, 0, 0.1);
-      }
-
-      html.light-mode .xp-bar-container {
-        background-color: rgba(0, 0, 0, 0.1);
-      }
-
-      html.light-mode .xp-bar {
-        background-color: #4285f4;
-      }
-
-      html.light-mode .xp-text,
-      html.light-mode .level-indicator {
-        color: #333;
-      }
-
-      /* Remove the old XP section styles */
-      html.light-mode .xp-section {
-        background-color: transparent;
-        border-radius: 0;
-        padding: 0;
-        border: none;
       }
     </style>
 

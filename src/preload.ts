@@ -2,71 +2,56 @@ import { contextBridge, ipcRenderer } from "electron";
 import { RewardType } from "./rewards";
 import { PlayerProfile as BasePlayerProfile } from "./playerProfile";
 
+// Define the electronAPI type to ensure consistency
+type ElectronAPI = {
+  windowMove: (mouseX: number, mouseY: number) => void;
+  getAppVersion: () => Promise<string>;
+  loadPlayerProfile: () => Promise<BasePlayerProfile>;
+  savePlayerProfile: (profile: BasePlayerProfile) => Promise<void>;
+  addXp: (amount: number) => Promise<BasePlayerProfile>;
+  removeXp: (amount: number) => Promise<BasePlayerProfile>;
+  addCompletedChore: (
+    choreId: number,
+    choreText: string
+  ) => Promise<BasePlayerProfile>;
+  removeCompletedChore: (choreId: number) => Promise<BasePlayerProfile>;
+  updateChoreStatus: (
+    choreId: number,
+    status: string
+  ) => Promise<BasePlayerProfile>;
+  startPlaySession: () => Promise<BasePlayerProfile>;
+  endPlaySession: () => Promise<BasePlayerProfile>;
+  getAvailableRewards: () => Promise<number>;
+  useReward: (
+    rewardType: RewardType,
+    rewardValue: number
+  ) => Promise<BasePlayerProfile>;
+  getAuthStatus: () => Promise<{
+    isAuthenticated: boolean;
+    email: string | null;
+  }>;
+  getFirebaseConfig: () => Promise<any>;
+  authenticateWithFirebase: (email: string, password: string) => Promise<any>;
+  onProfileUpdate: (
+    callback: (profile: BasePlayerProfile) => void
+  ) => () => void;
+};
+
 // Define global Window interface extension for TypeScript
 declare global {
   interface Window {
-    electronAPI: {
-      toggleDarkMode: () => Promise<boolean>;
-      getDarkMode: () => Promise<boolean>;
-      windowMove: (mouseX: number, mouseY: number) => void;
-      // App version
-      getAppVersion: () => Promise<string>;
-      // New player profile methods
-      loadPlayerProfile: () => Promise<BasePlayerProfile>;
-      savePlayerProfile: (profile: BasePlayerProfile) => Promise<void>;
-      addXp: (amount: number) => Promise<BasePlayerProfile>;
-      removeXp: (amount: number) => Promise<BasePlayerProfile>;
-      addCompletedChore: (
-        choreId: number,
-        choreText: string
-      ) => Promise<BasePlayerProfile>;
-      removeCompletedChore: (choreId: number) => Promise<BasePlayerProfile>;
-      updateChoreStatus: (
-        choreId: number,
-        status: string
-      ) => Promise<BasePlayerProfile>;
-      // Play session tracking
-      startPlaySession: () => Promise<BasePlayerProfile>;
-      endPlaySession: () => Promise<BasePlayerProfile>;
-      // New rewards methods
-      getAvailableRewards: () => Promise<number>;
-      useReward: (
-        rewardType: RewardType,
-        rewardValue: number
-      ) => Promise<BasePlayerProfile>;
-      // Firebase authentication
-      getAuthStatus: () => Promise<{
-        isAuthenticated: boolean;
-        email: string | null;
-      }>;
-      // Firebase configuration
-      getFirebaseConfig: () => Promise<any>;
-      // Firebase authentication
-      authenticateWithFirebase: (
-        email: string,
-        password: string
-      ) => Promise<any>;
-      // Real-time profile updates
-      onProfileUpdate: (
-        callback: (profile: BasePlayerProfile) => void
-      ) => () => void;
-    };
+    electronAPI: ElectronAPI;
   }
 }
 
-contextBridge.exposeInMainWorld("electronAPI", {
-  // Expose existing API for dark mode toggle
-  toggleDarkMode: () => ipcRenderer.invoke("toggle-dark-mode"),
-
-  // Add new API to get the current dark mode state
-  getDarkMode: () => ipcRenderer.invoke("get-dark-mode"),
-
-  // Add API to get app version
-  getAppVersion: () => ipcRenderer.invoke("get-app-version"),
-
-  // Add new API for window movement
+// Create the API implementation
+const api: ElectronAPI = {
+  // Window movement
   windowMove: (mouseX: number, mouseY: number) =>
     ipcRenderer.send("window:move", { mouseX, mouseY }),
+
+  // App version
+  getAppVersion: () => ipcRenderer.invoke("get-app-version"),
 
   // Player profile APIs
   loadPlayerProfile: () => ipcRenderer.invoke("load-player-profile"),
@@ -103,15 +88,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Real-time profile updates
   onProfileUpdate: (callback: (profile: BasePlayerProfile) => void) => {
     const channel = "profile-update";
-
-    // Create listener for the channel
     const listener = (_event: any, profile: BasePlayerProfile) =>
       callback(profile);
     ipcRenderer.on(channel, listener);
-
-    // Return a cleanup function
     return () => {
       ipcRenderer.removeListener(channel, listener);
     };
   },
-});
+};
+
+// Expose the API to the renderer process
+contextBridge.exposeInMainWorld("electronAPI", api);

@@ -198,7 +198,7 @@ const createWindow = async () => {
       nodeIntegration: false,
       sandbox: true,
     },
-    backgroundColor: nativeTheme.shouldUseDarkColors ? "#333333" : "#f8f9fa", // Match theme background color
+    backgroundColor: "#333333", // Dark theme background color
     alwaysOnTop: false,
     roundedCorners: true,
     frame: false,
@@ -275,20 +275,6 @@ const createWindow = async () => {
   // Add IPC handler to get the app version
   ipcMain.handle("get-app-version", () => {
     return app.getVersion();
-  });
-
-  // Also need to expose a way to get initial theme state
-  ipcMain.handle("get-dark-mode", () => {
-    return nativeTheme.shouldUseDarkColors;
-  });
-
-  ipcMain.handle("toggle-dark-mode", () => {
-    if (nativeTheme.shouldUseDarkColors) {
-      nativeTheme.themeSource = "light";
-    } else {
-      nativeTheme.themeSource = "dark";
-    }
-    return nativeTheme.shouldUseDarkColors;
   });
 
   // Player profile IPC handlers
