@@ -4,13 +4,7 @@ import Head from "next/head";
 import Layout from "../components/Layout";
 import { PlayerProfile, ChoreStatus } from "../../src/playerProfile";
 import { db, auth } from "../utils/firebase";
-import {
-  collection,
-  onSnapshot,
-  doc,
-  updateDoc,
-  setDoc,
-} from "firebase/firestore";
+import { collection, onSnapshot, doc, setDoc } from "firebase/firestore";
 import { APP_CONFIG } from "../utils/appConfig";
 import {
   signInWithEmailAndPassword,
@@ -23,7 +17,7 @@ import { FirebaseError } from "firebase/app";
 interface AdminUserProfile extends PlayerProfile {
   uid: string;
   xp?: { final: number; base: number; bonus: number };
-  playTime?: { sessions: any[] };
+  playTime?: { sessions: { start: string; end: string }[] };
   lastUpdated?: string; // Add this field to track changes
 }
 
@@ -546,7 +540,7 @@ const ProfilesPage: NextPage = () => {
     setIsSaving(true);
     try {
       // Use our reliable date function instead of relying on Date().toISOString()
-      const { dateString: currentDate, dayOfWeek } = getTodayInfo();
+      const { dateString: currentDate } = getTodayInfo();
 
       // Validate date format
       if (!/^\d{4}-\d{2}-\d{2}$/.test(currentDate)) {
