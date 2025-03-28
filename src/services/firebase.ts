@@ -354,8 +354,8 @@ export const authenticateWithFirebase = async (
 
     // After successful authentication, we need to verify Firestore access
     try {
-      // Create a Firestore user ID from email
-      const userId = email.replace(/[@.]/g, "_");
+      // Use the user's UID for the document ID
+      const userId = result.user.uid;
 
       // Check if the user's profile document can be accessed
       const docRef = doc(db, "playerProfiles", userId);
@@ -430,8 +430,8 @@ export const loadPlayerProfileFromFirestore =
         return null;
       }
 
-      // Create a Firestore user ID from email
-      const userId = user.email.replace(/[@.]/g, "_");
+      // Use the user's UID as the document ID
+      const userId = user.uid;
 
       // Get a reference to the user's profile document
       const docRef = doc(db, "playerProfiles", userId);
@@ -464,7 +464,7 @@ export const loadPlayerProfileFromFirestore =
 
 /**
  * Set up a real-time listener for profile updates
- * @param userId The user's ID (email with @ and . replaced by _)
+ * @param userId The user's ID (Firebase Auth UID)
  */
 const setupProfileListener = (userId: string): void => {
   // Clean up any existing listener
@@ -536,15 +536,15 @@ export const savePlayerProfileToFirestore = async (
       return;
     }
 
-    // Get the current user's email
+    // Get the current user's UID
     const currentUser = auth.currentUser;
-    if (!currentUser || !currentUser.email) {
+    if (!currentUser) {
       console.log("No authenticated user found, cannot save profile");
       return;
     }
 
-    // Create user ID from email
-    const userId = currentUser.email.replace(/[@.]/g, "_");
+    // Use the user's UID directly
+    const userId = currentUser.uid;
 
     console.log(`Saving player profile to Firestore for user: ${userId}`);
     const docRef = doc(db, "playerProfiles", userId);

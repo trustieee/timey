@@ -11,7 +11,7 @@ let firestoreAvailable = false;
 let authInitialized = false;
 
 // Mock user ID for consistency
-export const USER_ID = "mariocatch_gmail_com";
+export const USER_ID = "foo_bar_com";
 
 /**
  * Mock implementation of initializeFirebase
