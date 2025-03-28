@@ -6,7 +6,7 @@ import path from "path";
 // Parse command line arguments
 const serviceAccountPath = process.argv[2];
 const outputPath = process.argv[3] || "./downloadedProfile.json";
-const userEmail = process.argv[4] || "holdencatchkid@gmail.com";
+const userEmail = process.argv[4] || "foo@bar.com";
 
 // Check required arguments
 if (!serviceAccountPath) {

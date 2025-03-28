@@ -22,7 +22,7 @@ The migration tool requires a Firebase service account key for authentication:
 
 - `path-to-json-file`: Path to the local JSON profile data file
 - `path-to-service-account-key`: Path to the Firebase service account key JSON file
-- `user-email` (optional): Email of the user to migrate (default: holdencatchkid@gmail.com)
+- `user-email` (optional): Email of the user to migrate (default: foo@bar.com)
 - `user-id` (optional): Firebase UID of the user (default: 5FvI71bjL8QSNV4UTY4SR5lUaih2)
 
 ### Example
@@ -73,4 +73,4 @@ To download a user profile from Firebase to a local JSON file:
    ./tools/downloadProfile.sh path/to/serviceAccount.json [output-path] [user-email]
    ```
    - Default output path: `./downloadedProfile.json`
-   - Default user email: `holdencatchkid@gmail.com`
+   - Default user email: `foo@bar.com`

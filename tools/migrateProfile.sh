@@ -5,7 +5,7 @@
 # Check if the required arguments were provided
 if [ -z "$1" ] || [ -z "$2" ]; then
   echo "Usage: ./tools/migrateProfile.sh <path-to-json-file> <path-to-service-account-key> [user-email] [user-id]"
-  echo "Default user-email: holdencatchkid@gmail.com"
+  echo "Default user-email: foo@bar.com"
   echo "Default user-id: 5FvI71bjL8QSNV4UTY4SR5lUaih2"
   exit 1
 fi
@@ -13,7 +13,7 @@ fi
 # Convert to absolute paths if relative
 JSON_FILE=$(realpath "$1")
 SERVICE_ACCOUNT_KEY=$(realpath "$2")
-USER_EMAIL="${3:-holdencatchkid@gmail.com}"
+USER_EMAIL="${3:-foo@bar.com}"
 USER_ID="${4:-5FvI71bjL8QSNV4UTY4SR5lUaih2}"
 
 # Check if firebase-admin is installed

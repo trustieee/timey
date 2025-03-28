@@ -14,7 +14,7 @@ interface Chore {
 // Parse command line arguments
 const jsonFilePath = process.argv[2];
 const serviceAccountPath = process.argv[3];
-const userEmail = process.argv[4] || "holdencatchkid@gmail.com";
+const userEmail = process.argv[4] || "foo@bar.com";
 const userId = process.argv[5] || "5FvI71bjL8QSNV4UTY4SR5lUaih2";
 
 // Check required arguments

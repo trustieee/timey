@@ -6,14 +6,14 @@
 if [ -z "$1" ]; then
   echo "Usage: ./tools/downloadProfile.sh <path-to-service-account-key> [output-path] [user-email]"
   echo "Default output-path: ./downloadedProfile.json"
-  echo "Default user-email: holdencatchkid@gmail.com"
+  echo "Default user-email: foo@bar.com"
   exit 1
 fi
 
 # Convert to absolute paths if relative
 SERVICE_ACCOUNT_KEY=$(realpath "$1")
 OUTPUT_PATH="${2:-./downloadedProfile.json}"
-USER_EMAIL="${3:-holdencatchkid@gmail.com}"
+USER_EMAIL="${3:-foo@bar.com}"
 
 # Check if firebase-admin is installed
 if ! npm list firebase-admin > /dev/null 2>&1; then
