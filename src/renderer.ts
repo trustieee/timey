@@ -113,14 +113,28 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Helper functions to calculate profile properties
   function calculateLevel(profile: BasePlayerProfile): number {
-    // Implementation from playerProfile.ts
-    let totalXp = 0;
-    for (const date in profile.history) {
-      totalXp += profile.history[date].xp.final;
-    }
+    // Start at level 1 with 0 XP
     let level = 1;
-    while (totalXp >= APP_CONFIG.PROFILE.XP_PER_LEVEL[level - 1]) {
-      totalXp -= APP_CONFIG.PROFILE.XP_PER_LEVEL[level - 1];
+    let totalXp = 0;
+
+    // Sum up the final XP from all days in history
+    Object.values(profile.history || {}).forEach((day) => {
+      if (day.xp && day.xp.final > 0) {
+        totalXp += day.xp.final;
+      }
+    });
+
+    // Calculate level based on XP
+    while (
+      totalXp >=
+      APP_CONFIG.PROFILE.XP_PER_LEVEL[
+        Math.min(level - 1, APP_CONFIG.PROFILE.XP_PER_LEVEL.length - 1)
+      ]
+    ) {
+      totalXp -=
+        APP_CONFIG.PROFILE.XP_PER_LEVEL[
+          Math.min(level - 1, APP_CONFIG.PROFILE.XP_PER_LEVEL.length - 1)
+        ];
       level++;
     }
     return level;
@@ -128,18 +142,39 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function calculateXp(profile: BasePlayerProfile): number {
     let totalXp = 0;
-    for (const date in profile.history) {
-      // Add null/undefined checks to avoid NaN
-      if (profile.history[date]?.xp?.final !== undefined) {
-        totalXp += profile.history[date].xp.final;
+    let level = 1;
+
+    // Sum up the final XP from all days in history
+    Object.values(profile.history || {}).forEach((day) => {
+      if (day.xp && day.xp.final > 0) {
+        totalXp += day.xp.final;
       }
+    });
+
+    // Subtract XP used for previous levels
+    while (
+      totalXp >=
+      APP_CONFIG.PROFILE.XP_PER_LEVEL[
+        Math.min(level - 1, APP_CONFIG.PROFILE.XP_PER_LEVEL.length - 1)
+      ]
+    ) {
+      totalXp -=
+        APP_CONFIG.PROFILE.XP_PER_LEVEL[
+          Math.min(level - 1, APP_CONFIG.PROFILE.XP_PER_LEVEL.length - 1)
+        ];
+      level++;
     }
+
     return totalXp;
   }
 
   function calculateXpToNextLevel(profile: BasePlayerProfile): number {
     const level = calculateLevel(profile);
-    return APP_CONFIG.PROFILE.XP_PER_LEVEL[level - 1];
+    // Use the correct index from XP_PER_LEVEL array, or default if beyond array size
+    if (level <= APP_CONFIG.PROFILE.XP_PER_LEVEL.length) {
+      return APP_CONFIG.PROFILE.XP_PER_LEVEL[level - 1];
+    }
+    return APP_CONFIG.PROFILE.DEFAULT_XP_PER_LEVEL;
   }
 
   function getCompletedChores(

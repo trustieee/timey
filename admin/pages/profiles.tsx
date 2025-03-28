@@ -548,6 +548,14 @@ const ProfilesPage: NextPage = () => {
       // Use our reliable date function instead of relying on Date().toISOString()
       const { dateString: currentDate, dayOfWeek } = getTodayInfo();
 
+      // Validate date format
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(currentDate)) {
+        console.error("Invalid date format:", currentDate);
+        throw new Error(
+          `Invalid date format: ${currentDate}, expected YYYY-MM-DD`
+        );
+      }
+
       const profileRef = doc(db, "playerProfiles", selectedProfileUid);
 
       // Find the profile we're updating
@@ -559,20 +567,40 @@ const ProfilesPage: NextPage = () => {
         throw new Error("Profile not found");
       }
 
+      console.log("Selected profile:", selectedProfile); // Add logging to check profile
+      console.log("Current date:", currentDate);
+
       // Filter chores that should appear today based on daysOfWeek
       const choresTodayFiltered = userChores.filter((chore) =>
         shouldChoreAppearOnDay(chore, currentDate)
       );
 
+      // Get existing chores for today to preserve their status
+      const existingChores =
+        (selectedProfile.history &&
+          selectedProfile.history[currentDate]?.chores) ||
+        [];
+
       // Make sure we create properly structured chore objects with no undefined values
       const choresWithStatus = choresTodayFiltered.map((chore) => {
+        // Find existing chore with same id to preserve its status
+        const existingChore = existingChores.find((c) => c.id === chore.id);
+
         // Create a clean chore object with only the properties we need
         return {
           id: chore.id,
           text: chore.text,
-          status: chore.status || ("incomplete" as ChoreStatus),
-          // Only include completedAt if it exists, otherwise omit it
-          ...(chore.completedAt ? { completedAt: chore.completedAt } : {}),
+          // Keep existing status if available, otherwise use default
+          status:
+            existingChore?.status ||
+            chore.status ||
+            ("incomplete" as ChoreStatus),
+          // Keep existing completedAt if available
+          ...(existingChore?.completedAt
+            ? { completedAt: existingChore.completedAt }
+            : chore.completedAt
+            ? { completedAt: chore.completedAt }
+            : {}),
         };
       });
 
@@ -589,6 +617,12 @@ const ProfilesPage: NextPage = () => {
 
       // Ensure history exists
       const history = selectedProfile.history || {};
+
+      console.log("History object:", history);
+      console.log(
+        "Checking if history[currentDate] exists:",
+        history[currentDate]
+      );
 
       // Create or update today's history with default values
       history[currentDate] = {
@@ -629,6 +663,8 @@ const ProfilesPage: NextPage = () => {
         // Add a lastUpdated timestamp to trigger real-time updates
         lastUpdated: new Date().toISOString(),
       };
+
+      console.log("Complete profile to save:", completeProfile);
 
       // Use setDoc with merge option to ensure complete update with all fields
       // This ensures the entire document is properly structured and avoids partial updates
@@ -1436,7 +1472,7 @@ const ProfilesPage: NextPage = () => {
                           </div>
                           <div>
                             <p className="text-yellow-300 font-medium mb-1">
-                              Some chores won't show today
+                              Some chores won&apos;t show today
                             </p>
                             <p className="text-gray-300">
                               Today is{" "}
@@ -1445,7 +1481,7 @@ const ProfilesPage: NextPage = () => {
                               </span>
                               . {missingChores} out of {userChores.length}{" "}
                               {userChores.length === 1 ? "chore" : "chores"}{" "}
-                              won't appear today based on scheduling.
+                              won&apos;t appear today based on scheduling.
                             </p>
                           </div>
                         </div>

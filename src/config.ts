@@ -4,7 +4,7 @@ export const APP_CONFIG = {
   PROFILE: {
     XP_PER_LEVEL: [840, 960, 1080, 1200], // XP needed for levels 1-5 (7, 8, 9, 10 days worth of tasks)
     DEFAULT_XP_PER_LEVEL: 1200, // XP needed for levels 5+ (10 days worth of tasks)
-    XP_FOR_CHORE: 10, // XP gained for completing a chore
+    XP_FOR_CHORE: 500, // XP gained for completing a chore
     XP_PENALTY_FOR_CHORE: 10, // XP penalty for incomplete chore at day end
   },
 
