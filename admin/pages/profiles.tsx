@@ -1345,7 +1345,7 @@ const ProfilesPage: NextPage = () => {
                           }`}
                           title={`Toggle ${getDayName(day)}`}
                         >
-                          {getDayName(day).charAt(0)}
+                          {day === 4 ? "Th" : getDayName(day).charAt(0)}
                           {day === getTodayInfo().dayOfWeek && (
                             <span className="absolute -bottom-1 w-4 h-0.5 bg-green-400 rounded-full"></span>
                           )}
@@ -1353,13 +1353,6 @@ const ProfilesPage: NextPage = () => {
                       ))}
                     </div>
                     <div className="flex space-x-2">
-                      <button
-                        onClick={resetDaysOfWeek}
-                        disabled={!newChoreText.trim()}
-                        className="text-xs text-blue-400 hover:text-blue-300 px-2 py-1 rounded hover:bg-blue-900/20"
-                      >
-                        All days
-                      </button>
                       <button
                         onClick={handleAddChore}
                         disabled={!newChoreText.trim()}
@@ -1441,7 +1434,7 @@ const ProfilesPage: NextPage = () => {
                                       : "bg-[#333] text-gray-400 hover:bg-[#555]"
                                   }`}
                                 >
-                                  {getDayName(day).charAt(0)}
+                                  {day === 4 ? "Th" : getDayName(day).charAt(0)}
                                   {day === getTodayInfo().dayOfWeek && (
                                     <span className="absolute -bottom-1 w-4 h-0.5 bg-green-400 rounded-full"></span>
                                   )}
@@ -1489,7 +1482,9 @@ const ProfilesPage: NextPage = () => {
                                           : "bg-[#333] text-gray-400"
                                       }`}
                                     >
-                                      {getDayName(day).charAt(0)}
+                                      {day === 4
+                                        ? "Th"
+                                        : getDayName(day).charAt(0)}
                                       {isToday && (
                                         <span className="absolute -bottom-1 w-4 h-0.5 bg-green-400 rounded-full"></span>
                                       )}
