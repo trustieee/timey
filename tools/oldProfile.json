@@ -1,0 +1,431 @@
+{
+  "history": {
+    "2025-03-24": {
+      "date": "2025-03-24",
+      "chores": [
+        {
+          "id": 0,
+          "text": "Morning: brush teeth, brush hair, deodorant",
+          "status": "completed",
+          "completedAt": "2025-03-24T18:16:38.637"
+        },
+        {
+          "id": 1,
+          "text": "Take medicine",
+          "status": "completed",
+          "completedAt": "2025-03-24T18:16:39.979"
+        },
+        {
+          "id": 2,
+          "text": "Math homework",
+          "status": "completed",
+          "completedAt": "2025-03-24T18:16:41.609"
+        },
+        {
+          "id": 3,
+          "text": "Reading (20 minutes)",
+          "status": "completed",
+          "completedAt": "2025-03-24T20:29:35.463"
+        },
+        {
+          "id": 4,
+          "text": "Additional homework ",
+          "status": "na"
+        },
+        {
+          "id": 5,
+          "text": "Practice piano (10 minutes)",
+          "status": "completed",
+          "completedAt": "2025-03-24T18:16:51.461"
+        },
+        {
+          "id": 6,
+          "text": "Take a shower",
+          "status": "completed",
+          "completedAt": "2025-03-24T20:49:02.963"
+        },
+        {
+          "id": 7,
+          "text": "Clean room",
+          "status": "completed",
+          "completedAt": "2025-03-24T18:17:15.255"
+        },
+        {
+          "id": 8,
+          "text": "Load or rotate laundry",
+          "status": "completed",
+          "completedAt": "2025-03-24T18:17:58.975"
+        },
+        {
+          "id": 9,
+          "text": "Take out recyclables",
+          "status": "completed",
+          "completedAt": "2025-03-24T18:23:25.242"
+        },
+        {
+          "id": 10,
+          "text": "Outside time (20 minutes)",
+          "status": "completed",
+          "completedAt": "2025-03-24T19:02:14.282"
+        },
+        {
+          "id": 11,
+          "text": "Bed: brush teeth, use bathroom",
+          "status": "completed",
+          "completedAt": "2025-03-24T21:30:05.773"
+        }
+      ],
+      "playTime": {
+        "totalMinutes": 0,
+        "sessions": []
+      },
+      "xp": {
+        "gained": 110,
+        "penalties": 0,
+        "final": 110
+      },
+      "rewardsUsed": [],
+      "completed": true
+    },
+    "2025-03-25": {
+      "date": "2025-03-25",
+      "chores": [
+        {
+          "id": 0,
+          "text": "Morning: brush teeth, brush hair, deodorant",
+          "status": "completed",
+          "completedAt": "2025-03-25T07:50:38.976"
+        },
+        {
+          "id": 1,
+          "text": "Take medicine",
+          "status": "completed",
+          "completedAt": "2025-03-25T07:52:22.550"
+        },
+        {
+          "id": 2,
+          "text": "Math homework",
+          "status": "completed",
+          "completedAt": "2025-03-25T22:08:19.999"
+        },
+        {
+          "id": 3,
+          "text": "Reading (20 minutes)",
+          "status": "completed",
+          "completedAt": "2025-03-25T22:08:20.576"
+        },
+        {
+          "id": 4,
+          "text": "Additional homework ",
+          "status": "na"
+        },
+        {
+          "id": 5,
+          "text": "Practice piano (10 minutes)",
+          "status": "completed",
+          "completedAt": "2025-03-25T22:08:26.307"
+        },
+        {
+          "id": 6,
+          "text": "Take a shower",
+          "status": "completed",
+          "completedAt": "2025-03-25T22:08:27.803"
+        },
+        {
+          "id": 7,
+          "text": "Clean room",
+          "status": "completed",
+          "completedAt": "2025-03-25T22:08:28.299"
+        },
+        {
+          "id": 8,
+          "text": "Load or rotate laundry",
+          "status": "completed",
+          "completedAt": "2025-03-25T22:08:33.613"
+        },
+        {
+          "id": 9,
+          "text": "Take out recyclables",
+          "status": "na"
+        },
+        {
+          "id": 10,
+          "text": "Outside time (20 minutes)",
+          "status": "completed",
+          "completedAt": "2025-03-25T22:08:36.093"
+        },
+        {
+          "id": 11,
+          "text": "Bed: brush teeth, use bathroom",
+          "status": "completed",
+          "completedAt": "2025-03-25T22:08:36.995"
+        }
+      ],
+      "playTime": {
+        "totalMinutes": 0,
+        "sessions": []
+      },
+      "xp": {
+        "gained": 100,
+        "penalties": 0,
+        "final": 100
+      },
+      "rewardsUsed": [],
+      "completed": true
+    },
+    "2025-03-26": {
+      "date": "2025-03-26",
+      "chores": [
+        {
+          "id": 0,
+          "text": "Morning: brush teeth, brush hair, deodorant",
+          "status": "completed",
+          "completedAt": "2025-03-26T17:39:27.245"
+        },
+        {
+          "id": 1,
+          "text": "Take medicine",
+          "status": "completed",
+          "completedAt": "2025-03-26T17:39:28.705"
+        },
+        {
+          "id": 2,
+          "text": "Math homework",
+          "status": "completed",
+          "completedAt": "2025-03-26T23:08:53.770"
+        },
+        {
+          "id": 3,
+          "text": "Reading (20 minutes)",
+          "status": "completed",
+          "completedAt": "2025-03-26T23:08:54.020"
+        },
+        {
+          "id": 4,
+          "text": "Additional homework ",
+          "status": "na"
+        },
+        {
+          "id": 5,
+          "text": "Practice piano (10 minutes)",
+          "status": "completed",
+          "completedAt": "2025-03-26T23:08:57.422"
+        },
+        {
+          "id": 6,
+          "text": "Take a shower",
+          "status": "incomplete"
+        },
+        {
+          "id": 7,
+          "text": "Clean room",
+          "status": "completed",
+          "completedAt": "2025-03-26T23:09:02.601"
+        },
+        {
+          "id": 8,
+          "text": "Load or rotate laundry",
+          "status": "completed",
+          "completedAt": "2025-03-26T23:09:03.681"
+        },
+        {
+          "id": 9,
+          "text": "Take out recyclables",
+          "status": "completed",
+          "completedAt": "2025-03-26T23:09:06.602"
+        },
+        {
+          "id": 10,
+          "text": "Outside time (20 minutes)",
+          "status": "completed",
+          "completedAt": "2025-03-26T17:39:32.946"
+        },
+        {
+          "id": 11,
+          "text": "Bed: brush teeth, use bathroom",
+          "status": "completed",
+          "completedAt": "2025-03-26T23:09:07.356"
+        }
+      ],
+      "playTime": {
+        "totalMinutes": 0,
+        "sessions": []
+      },
+      "xp": {
+        "gained": 100,
+        "penalties": 10,
+        "final": 90
+      },
+      "rewardsUsed": [],
+      "completed": true
+    },
+    "2025-03-27": {
+      "date": "2025-03-27",
+      "chores": [
+        {
+          "id": 0,
+          "text": "Morning: brush teeth, brush hair, deodorant",
+          "status": "completed",
+          "completedAt": "2025-03-27T15:28:49.524"
+        },
+        {
+          "id": 1,
+          "text": "Take medicine",
+          "status": "completed",
+          "completedAt": "2025-03-27T15:28:49.748"
+        },
+        {
+          "id": 2,
+          "text": "Math homework",
+          "status": "na"
+        },
+        {
+          "id": 3,
+          "text": "Reading (20 minutes)",
+          "status": "completed",
+          "completedAt": "2025-03-27T20:51:49.445"
+        },
+        {
+          "id": 4,
+          "text": "Additional homework ",
+          "status": "na"
+        },
+        {
+          "id": 5,
+          "text": "Practice piano (10 minutes)",
+          "status": "completed",
+          "completedAt": "2025-03-27T16:50:39.815"
+        },
+        {
+          "id": 6,
+          "text": "Take a shower",
+          "status": "completed",
+          "completedAt": "2025-03-27T20:30:04.194"
+        },
+        {
+          "id": 7,
+          "text": "Clean room",
+          "status": "completed",
+          "completedAt": "2025-03-27T16:52:47.211"
+        },
+        {
+          "id": 8,
+          "text": "Load or rotate laundry",
+          "status": "completed",
+          "completedAt": "2025-03-27T16:54:03.430"
+        },
+        {
+          "id": 9,
+          "text": "Take out recyclables",
+          "status": "completed",
+          "completedAt": "2025-03-27T16:55:42.411"
+        },
+        {
+          "id": 10,
+          "text": "Outside time (20 minutes)",
+          "status": "completed",
+          "completedAt": "2025-03-27T16:52:50.111"
+        },
+        {
+          "id": 11,
+          "text": "Bed: brush teeth, use bathroom",
+          "status": "completed",
+          "completedAt": "2025-03-27T21:08:21.499"
+        }
+      ],
+      "playTime": {
+        "totalMinutes": 0,
+        "sessions": []
+      },
+      "xp": {
+        "gained": 100,
+        "penalties": 0,
+        "final": 100
+      },
+      "rewardsUsed": [],
+      "completed": true
+    },
+    "2025-03-28": {
+      "date": "2025-03-28",
+      "chores": [
+        {
+          "id": 0,
+          "text": "Morning: brush teeth, brush hair, deodorant",
+          "status": "completed",
+          "completedAt": "2025-03-28T08:00:02.935"
+        },
+        {
+          "id": 1,
+          "text": "Take medicine",
+          "status": "completed",
+          "completedAt": "2025-03-28T08:00:03.651"
+        },
+        {
+          "id": 2,
+          "text": "Math homework",
+          "status": "na"
+        },
+        {
+          "id": 3,
+          "text": "Reading (20 minutes)",
+          "status": "incomplete"
+        },
+        {
+          "id": 4,
+          "text": "Additional homework ",
+          "status": "na"
+        },
+        {
+          "id": 5,
+          "text": "Practice piano (10 minutes)",
+          "status": "incomplete"
+        },
+        {
+          "id": 6,
+          "text": "Take a shower",
+          "status": "incomplete"
+        },
+        {
+          "id": 7,
+          "text": "Clean room",
+          "status": "incomplete"
+        },
+        {
+          "id": 8,
+          "text": "Load or rotate laundry",
+          "status": "incomplete"
+        },
+        {
+          "id": 9,
+          "text": "Take out recyclables",
+          "status": "incomplete"
+        },
+        {
+          "id": 10,
+          "text": "Outside time (20 minutes)",
+          "status": "incomplete"
+        },
+        {
+          "id": 11,
+          "text": "Bed: brush teeth, use bathroom",
+          "status": "incomplete"
+        }
+      ],
+      "playTime": {
+        "totalMinutes": 0,
+        "sessions": []
+      },
+      "xp": {
+        "gained": 20,
+        "penalties": 0,
+        "final": 20
+      },
+      "rewardsUsed": [],
+      "completed": false
+    }
+  },
+  "rewards": {
+    "available": 0,
+    "permanent": {}
+  }
+}
