@@ -1104,7 +1104,7 @@ const ProfilesPage: NextPage = () => {
                                                       key={chore.id}
                                                       className="flex items-center justify-between bg-[#333] p-2 rounded border border-gray-700"
                                                     >
-                                                      <span className="text-gray-200">
+                                                      <span className="text-gray-200 break-words mr-2">
                                                         {chore.text}
                                                       </span>
                                                       <div
@@ -1268,12 +1268,12 @@ const ProfilesPage: NextPage = () => {
       {/* Chores Management Modal */}
       {isChoresModalOpen && (
         <div className="fixed inset-0 bg-[#111]/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-hidden transition-all duration-200 ease-in-out">
-          <div className="bg-gradient-to-br from-[#2a2a2a] to-[#333] rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-700/50 animate-fadeIn">
-            <div className="p-5 border-b border-gray-700/50 flex justify-between items-center bg-[#222]/50">
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent flex items-center">
+          <div className="bg-gradient-to-br from-[#2a2a2a] to-[#333] rounded-xl shadow-2xl w-full max-w-5xl h-[75vh] max-h-[95vh] flex flex-col overflow-hidden border border-gray-700/50 animate-fadeIn">
+            <div className="p-4 border-b border-gray-700/50 flex justify-between items-center bg-[#222]/50">
+              <h2 className="text-xl font-bold text-white flex items-center">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6 mr-2 text-green-400"
+                  className="h-5 w-5 mr-2 text-green-400"
                   viewBox="0 0 20 20"
                   fill="currentColor"
                 >
@@ -1293,7 +1293,7 @@ const ProfilesPage: NextPage = () => {
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
+                  className="h-5 w-5"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -1308,283 +1308,145 @@ const ProfilesPage: NextPage = () => {
               </button>
             </div>
 
-            <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
-              <div className="mb-6">
-                <h3 className="text-base font-medium text-gray-300 mb-3 flex items-center">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5 mr-2 text-blue-400"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+            <div className="p-4 flex-1 overflow-y-auto custom-scrollbar grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Left Column - Add New Chore */}
+              <div className="bg-[#333] rounded-lg p-4 shadow-md flex flex-col">
+                <h3 className="text-base font-medium text-gray-300 mb-3">
                   Add New Chore
                 </h3>
-                <div className="flex flex-col shadow-lg rounded-xl overflow-hidden">
-                  <div className="flex flex-col md:flex-row">
-                    <input
-                      type="text"
-                      value={newChoreText}
-                      onChange={(e) => setNewChoreText(e.target.value)}
-                      placeholder="Enter new chore description..."
-                      className="w-full md:w-2/3 px-4 py-3 bg-[#333] border-b md:border-b-0 md:border-r border-gray-600 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent text-white placeholder-gray-400 text-base"
-                      onKeyPress={(e) => e.key === "Enter" && handleAddChore()}
-                    />
 
-                    <button
-                      onClick={handleAddChore}
-                      className="w-full md:w-1/3 px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-medium transition-all duration-200 flex items-center justify-center"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 mr-2"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      Add Chore
-                    </button>
-                  </div>
+                {/* Chore input with integrated day selection */}
+                <div className="mb-4 bg-[#444] rounded-md border border-gray-600 focus-within:ring-2 focus-within:ring-blue-500/40">
+                  <textarea
+                    id="choreText"
+                    value={newChoreText}
+                    onChange={(e) => setNewChoreText(e.target.value)}
+                    placeholder="What needs to be done?"
+                    className="w-full px-3 py-2 bg-transparent border-0 focus:outline-none text-white resize-none min-h-[40px]"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleAddChore();
+                      }
+                    }}
+                    rows={2}
+                  />
 
-                  {/* Days of week selector for new chores */}
-                  <div className="bg-[#2a2a2a] px-4 py-3 border-t border-gray-600/50">
-                    <p className="text-sm text-gray-300 mb-2 flex items-center">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 mr-1 text-yellow-400"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      Schedule on specific days:
-                    </p>
-                    <div className="flex flex-wrap gap-2">
+                  <div className="flex items-center justify-between px-3 py-2 border-t border-gray-600">
+                    <div className="flex items-center space-x-1">
                       {[0, 1, 2, 3, 4, 5, 6].map((day) => (
                         <button
                           key={day}
                           onClick={() => toggleDaySelection(day)}
-                          className={`px-3 py-1.5 text-sm rounded-md transition-all duration-200 font-medium ${
+                          className={`w-7 h-7 flex items-center justify-center rounded-full text-xs transition-colors relative ${
                             selectedDaysOfWeek.includes(day)
-                              ? "bg-gradient-to-r from-green-600 to-green-700 text-white shadow-md"
-                              : "bg-[#444] text-gray-300 hover:bg-[#555]"
+                              ? "bg-blue-600 text-white"
+                              : "bg-[#333] text-gray-400 hover:bg-[#555]"
                           }`}
-                          aria-pressed={selectedDaysOfWeek.includes(day)}
+                          title={`Toggle ${getDayName(day)}`}
                         >
-                          {getDayName(day)}
+                          {getDayName(day).charAt(0)}
+                          {day === getTodayInfo().dayOfWeek && (
+                            <span className="absolute -bottom-1 w-4 h-0.5 bg-green-400 rounded-full"></span>
+                          )}
                         </button>
                       ))}
                     </div>
-                    <div className="mt-2 flex justify-end">
+                    <div className="flex space-x-2">
                       <button
                         onClick={resetDaysOfWeek}
-                        className="text-xs text-gray-400 hover:text-blue-400 transition-colors flex items-center"
+                        disabled={!newChoreText.trim()}
+                        className="text-xs text-blue-400 hover:text-blue-300 px-2 py-1 rounded hover:bg-blue-900/20"
                       >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-3 w-3 mr-1"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                        Reset to all days
+                        All days
+                      </button>
+                      <button
+                        onClick={handleAddChore}
+                        disabled={!newChoreText.trim()}
+                        className={`px-3 py-1 rounded-md text-white text-sm transition-colors ${
+                          newChoreText.trim()
+                            ? "bg-green-600 hover:bg-green-700"
+                            : "bg-gray-600 cursor-not-allowed"
+                        }`}
+                      >
+                        Add
                       </button>
                     </div>
                   </div>
                 </div>
+
+                {/* Quick tips section to fill some space */}
+                <div className="mt-auto">
+                  <h4 className="text-sm font-medium text-gray-400 mb-2">
+                    Tips:
+                  </h4>
+                  <ul className="text-xs text-gray-500 space-y-1 list-disc pl-4">
+                    <li>
+                      Create chores for regular tasks that need to be completed
+                    </li>
+                    <li>Schedule chores on specific days of the week</li>
+                    <li>Completed chores will earn XP rewards</li>
+                  </ul>
+                </div>
               </div>
 
-              <div className="mb-4">
+              {/* Right Column - Chores List */}
+              <div className="bg-[#333] rounded-lg p-4 shadow-md flex flex-col">
                 <h3 className="text-base font-medium text-gray-300 mb-3 flex items-center">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5 mr-2 text-purple-400"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                    <path
-                      fillRule="evenodd"
-                      d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
                   Chores List
-                  <span className="ml-2 bg-gray-700 text-gray-300 text-xs font-medium px-2 py-0.5 rounded-full">
+                  <span className="ml-2 bg-gray-600 text-gray-300 text-xs px-2 py-0.5 rounded-full">
                     {userChores.length}
                   </span>
                 </h3>
 
-                {/* Display a warning about chores that won't appear today */}
-                {(() => {
-                  const { dateString, dayOfWeek } = getTodayInfo();
-                  const choresTodayFiltered = userChores.filter((chore) =>
-                    shouldChoreAppearOnDay(chore, dateString)
-                  );
-
-                  const missingChores =
-                    userChores.length - choresTodayFiltered.length;
-
-                  if (missingChores > 0) {
-                    return (
-                      <div className="bg-gradient-to-r from-yellow-900/30 to-orange-900/20 border border-yellow-700/50 rounded-lg p-3 mb-4 text-sm shadow-md">
-                        <div className="flex items-start">
-                          <div className="bg-yellow-500/20 p-1.5 rounded-full mr-3">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="h-5 w-5 text-yellow-400"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                              />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="text-yellow-300 font-medium mb-1">
-                              Some chores won&apos;t show today
-                            </p>
-                            <p className="text-gray-300">
-                              Today is{" "}
-                              <span className="font-medium text-white">
-                                {getDayName(dayOfWeek)}
-                              </span>
-                              . {missingChores} out of {userChores.length}{" "}
-                              {userChores.length === 1 ? "chore" : "chores"}{" "}
-                              won&apos;t appear today based on scheduling.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-              </div>
-
-              <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar chores-list">
-                {userChores.length === 0 ? (
-                  <div className="text-center py-10 bg-[#2a2a2a]/50 rounded-lg border border-dashed border-gray-600">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-12 w-12 mx-auto text-gray-500 mb-3"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1}
-                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                      />
-                    </svg>
-                    <p className="text-gray-400 text-center italic">
-                      No chores added yet
-                    </p>
-                    <p className="text-gray-500 text-sm mt-1">
-                      Add your first chore using the form above
-                    </p>
-                  </div>
-                ) : (
-                  userChores.map((chore) => (
-                    <div
-                      key={chore.id}
-                      className={`bg-gradient-to-r ${
-                        !shouldChoreAppearOnDay(
-                          chore,
-                          getTodayInfo().dateString
-                        )
-                          ? "from-[#333]/90 to-[#383838]/90 border-gray-700/30"
-                          : "from-[#3a3a3a] to-[#444] border-gray-600/70"
-                      } rounded-lg border shadow-md transition-all hover:shadow-lg p-0.5`}
-                    >
+                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-2">
+                  {userChores.length === 0 ? (
+                    <div className="text-center py-5 bg-[#3a3a3a] rounded-lg border border-dashed border-gray-600">
+                      <p className="text-gray-400 italic">
+                        No chores added yet
+                      </p>
+                    </div>
+                  ) : (
+                    userChores.map((chore) => (
                       <div
-                        className={`rounded-md p-4 ${
-                          !shouldChoreAppearOnDay(
-                            chore,
-                            getTodayInfo().dateString
-                          )
-                            ? "opacity-70"
-                            : ""
-                        }`}
+                        key={chore.id}
+                        className="bg-[#444] rounded-lg p-3 shadow-sm"
                       >
                         {editingChoreId === chore.id ? (
-                          <div className="flex flex-col space-y-3">
-                            <div className="flex flex-1">
-                              <input
-                                type="text"
-                                value={editingChoreText}
-                                onChange={(e) =>
-                                  setEditingChoreText(e.target.value)
+                          <div className="space-y-2">
+                            <textarea
+                              value={editingChoreText}
+                              onChange={(e) =>
+                                setEditingChoreText(e.target.value)
+                              }
+                              className="w-full px-3 py-2 bg-[#333] border border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-white resize-none"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                  e.preventDefault();
+                                  saveChoreEdit();
                                 }
-                                className="flex-1 px-3 py-2 bg-[#222] border border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent text-white"
-                                onKeyPress={(e) =>
-                                  e.key === "Enter" && saveChoreEdit()
-                                }
-                                autoFocus
-                              />
-                            </div>
+                              }}
+                              rows={2}
+                              autoFocus
+                            />
 
-                            {/* Days of week selector for editing */}
-                            <div className="bg-[#333] p-3 rounded-md border border-gray-700/50">
-                              <p className="text-xs text-gray-300 mb-2 flex items-center">
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  className="h-3 w-3 mr-1 text-yellow-400"
-                                  viewBox="0 0 20 20"
-                                  fill="currentColor"
+                            <div className="flex flex-wrap gap-1 mb-2">
+                              {[0, 1, 2, 3, 4, 5, 6].map((day) => (
+                                <button
+                                  key={day}
+                                  onClick={() => toggleEditDaySelection(day)}
+                                  className={`w-7 h-7 flex items-center justify-center rounded-full text-xs transition-colors relative ${
+                                    editingDaysOfWeek.includes(day)
+                                      ? "bg-blue-600 text-white"
+                                      : "bg-[#333] text-gray-400 hover:bg-[#555]"
+                                  }`}
                                 >
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
-                                    clipRule="evenodd"
-                                  />
-                                </svg>
-                                Schedule on:
-                              </p>
-                              <div className="flex flex-wrap gap-1.5">
-                                {[0, 1, 2, 3, 4, 5, 6].map((day) => (
-                                  <button
-                                    key={day}
-                                    onClick={() => toggleEditDaySelection(day)}
-                                    className={`px-2 py-1 text-xs rounded-md transition-colors ${
-                                      editingDaysOfWeek.includes(day)
-                                        ? "bg-blue-700 text-white shadow-sm"
-                                        : "bg-[#444] text-gray-300 hover:bg-[#555]"
-                                    }`}
-                                    aria-pressed={editingDaysOfWeek.includes(
-                                      day
-                                    )}
-                                  >
-                                    {getDayName(day)}
-                                  </button>
-                                ))}
-                              </div>
+                                  {getDayName(day).charAt(0)}
+                                  {day === getTodayInfo().dayOfWeek && (
+                                    <span className="absolute -bottom-1 w-4 h-0.5 bg-green-400 rounded-full"></span>
+                                  )}
+                                </button>
+                              ))}
                             </div>
 
                             <div className="flex justify-end gap-2">
@@ -1593,216 +1455,118 @@ const ProfilesPage: NextPage = () => {
                                   setEditingChoreId(null);
                                   setEditingChoreText("");
                                 }}
-                                className="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 rounded-md text-gray-200 transition-colors text-sm flex items-center"
+                                className="px-2 py-1 bg-gray-600 rounded-md text-white text-sm"
                               >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  className="h-4 w-4 mr-1"
-                                  viewBox="0 0 20 20"
-                                  fill="currentColor"
-                                >
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                    clipRule="evenodd"
-                                  />
-                                </svg>
                                 Cancel
                               </button>
                               <button
                                 onClick={saveChoreEdit}
-                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-md text-white transition-colors text-sm flex items-center"
+                                className="px-2 py-1 bg-blue-600 rounded-md text-white text-sm"
                               >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  className="h-4 w-4 mr-1"
-                                  viewBox="0 0 20 20"
-                                  fill="currentColor"
-                                >
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                    clipRule="evenodd"
-                                  />
-                                </svg>
-                                Save Changes
+                                Save
                               </button>
                             </div>
                           </div>
                         ) : (
-                          <>
-                            <div className="flex justify-between items-center mb-3">
-                              <span className="text-white text-lg font-medium">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1 mr-2">
+                              <p className="text-white font-medium break-words">
                                 {chore.text}
-                              </span>
-                              <div className="flex">
-                                {!shouldChoreAppearOnDay(
-                                  chore,
-                                  getTodayInfo().dateString
-                                ) && (
-                                  <span className="mr-2 px-2 py-1 bg-yellow-700/30 text-yellow-300 text-xs rounded-md border border-yellow-700/50 flex items-center">
-                                    <svg
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      className="h-3 w-3 mr-1"
-                                      viewBox="0 0 20 20"
-                                      fill="currentColor"
+                              </p>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {[0, 1, 2, 3, 4, 5, 6].map((day) => {
+                                  const isEnabled = (
+                                    chore.daysOfWeek || [0, 1, 2, 3, 4, 5, 6]
+                                  ).includes(day);
+                                  const isToday =
+                                    day === getTodayInfo().dayOfWeek;
+                                  return (
+                                    <span
+                                      key={day}
+                                      className={`w-7 h-7 flex items-center justify-center rounded-full text-xs transition-colors relative ${
+                                        isEnabled
+                                          ? "bg-blue-600 text-white"
+                                          : "bg-[#333] text-gray-400"
+                                      }`}
                                     >
-                                      <path
-                                        fillRule="evenodd"
-                                        d="M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm11 1H6v8l4-2 4 2V6z"
-                                        clipRule="evenodd"
-                                      />
-                                    </svg>
-                                    Not today
-                                  </span>
-                                )}
-                                <button
-                                  onClick={() => startEditChore(chore)}
-                                  className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20 rounded-md transition-all"
-                                  title="Edit chore"
-                                  aria-label="Edit chore"
-                                >
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-5 w-5"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                    />
-                                  </svg>
-                                </button>
-                                <button
-                                  onClick={() => deleteChore(chore.id)}
-                                  className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded-md transition-all ml-1"
-                                  title="Delete chore"
-                                  aria-label="Delete chore"
-                                >
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-5 w-5"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                    />
-                                  </svg>
-                                </button>
+                                      {getDayName(day).charAt(0)}
+                                      {isToday && (
+                                        <span className="absolute -bottom-1 w-4 h-0.5 bg-green-400 rounded-full"></span>
+                                      )}
+                                    </span>
+                                  );
+                                })}
                               </div>
                             </div>
-
-                            {/* Display days of week as pills */}
-                            <div className="flex flex-wrap gap-1.5">
-                              {(chore.daysOfWeek || [0, 1, 2, 3, 4, 5, 6]).map(
-                                (day) => (
-                                  <span
-                                    key={day}
-                                    className={`text-xs px-2 py-1 rounded-md ${
-                                      day === getTodayInfo().dayOfWeek
-                                        ? "bg-gradient-to-r from-green-700 to-green-800 text-white"
-                                        : "bg-[#333] text-gray-400 border border-gray-700/30"
-                                    }`}
-                                  >
-                                    {getDayName(day)}
-                                  </span>
-                                )
-                              )}
+                            <div className="flex">
+                              <button
+                                onClick={() => startEditChore(chore)}
+                                className="p-1 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20 rounded-md transition-all"
+                                title="Edit chore"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-4 w-4"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                  />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={() => deleteChore(chore.id)}
+                                className="p-1 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded-md transition-all ml-1"
+                                title="Delete chore"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-4 w-4"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                              </button>
                             </div>
-                          </>
+                          </div>
                         )}
                       </div>
-                    </div>
-                  ))
-                )}
+                    ))
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="p-5 border-t border-gray-700/50 flex justify-between items-center bg-[#222]/70">
-              <div className="text-sm text-gray-400">
-                <span className="text-blue-400 font-medium">
-                  {userChores.length}
-                </span>{" "}
-                {userChores.length === 1 ? "chore" : "chores"} configured
-              </div>
+            <div className="p-4 border-t border-gray-700/50 flex justify-end items-center bg-[#222]/70">
               <div className="flex gap-3">
                 <button
                   onClick={closeChoresModal}
-                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-md text-white transition-all flex items-center shadow-sm"
+                  className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-md text-white"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 mr-1.5"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
                   Cancel
                 </button>
                 <button
                   onClick={saveChores}
                   disabled={isSaving}
-                  className={`px-4 py-2 rounded-md text-white transition-all flex items-center shadow-md ${
+                  className={`px-3 py-1.5 rounded-md text-white ${
                     isSaving
                       ? "bg-blue-700/70 cursor-not-allowed"
-                      : "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 active:from-blue-700 active:to-blue-800"
+                      : "bg-blue-600 hover:bg-blue-700"
                   }`}
                 >
-                  {isSaving ? (
-                    <>
-                      <svg
-                        className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 mr-1.5"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      Save Changes
-                    </>
-                  )}
+                  {isSaving ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </div>
