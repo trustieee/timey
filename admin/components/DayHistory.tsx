@@ -293,7 +293,7 @@ const DayHistory: React.FC<DayHistoryProps> = ({
         <div
           className={`p-4 transition-colors duration-200 ${
             isDayExpanded ? "bg-opacity-80" : "hover:bg-slate-800"
-          }`}
+          } cursor-pointer`}
           onClick={() => toggleDayExpansion(uid, date)}
         >
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 relative">

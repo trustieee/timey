@@ -315,13 +315,13 @@ const ChoresModal: React.FC<ChoresModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-[#111]/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-hidden transition-all duration-200 ease-in-out">
-      <div className="bg-gradient-to-br from-[#2a2a2a] to-[#333] rounded-xl shadow-2xl w-full max-w-5xl h-[75vh] max-h-[95vh] flex flex-col overflow-hidden border border-gray-700/50 animate-fadeIn">
-        <div className="p-4 border-b border-gray-700/50 flex justify-between items-center bg-[#222]/50">
+    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-hidden transition-all duration-200 ease-in-out">
+      <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-lg shadow-xl w-full max-w-5xl h-[75vh] max-h-[95vh] flex flex-col overflow-hidden border border-slate-700 animate-fadeIn">
+        <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
           <h2 className="text-xl font-bold text-white flex items-center">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 mr-2 text-green-400"
+              className="h-5 w-5 mr-2 text-indigo-400"
               viewBox="0 0 20 20"
               fill="currentColor"
             >
@@ -336,7 +336,7 @@ const ChoresModal: React.FC<ChoresModalProps> = ({
           </h2>
           <button
             onClick={closeChoresModal}
-            className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-700/50 transition-all duration-200"
+            className="text-slate-400 hover:text-white p-1 rounded-full hover:bg-slate-700/50 transition-all duration-200 cursor-pointer"
             aria-label="Close modal"
           >
             <svg
@@ -356,15 +356,28 @@ const ChoresModal: React.FC<ChoresModalProps> = ({
           </button>
         </div>
 
-        <div className="p-4 flex-1 overflow-y-auto custom-scrollbar grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="p-4 flex-1 overflow-y-auto scrollbar-thin scrollbar-track-slate-800 scrollbar-thumb-slate-600 grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Left Column - Add New Chore */}
-          <div className="bg-[#333] rounded-lg p-4 shadow-md flex flex-col">
-            <h3 className="text-base font-medium text-gray-300 mb-3">
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-4 shadow-xl border border-slate-700">
+            <h3 className="text-base font-medium text-white mb-3 flex items-center">
+              <svg
+                className="w-4 h-4 mr-2 text-indigo-400"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M12 4V20M4 12H20"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
               Add New Chore
             </h3>
 
             {/* Chore input with integrated day selection */}
-            <div className="mb-4 bg-[#444] rounded-md border border-gray-600 focus-within:ring-2 focus-within:ring-blue-500/40">
+            <div className="mb-4 bg-slate-700/50 rounded-lg border border-slate-600 focus-within:ring-2 focus-within:ring-indigo-500/40">
               <textarea
                 id="choreText"
                 value={newChoreText}
@@ -380,22 +393,22 @@ const ChoresModal: React.FC<ChoresModalProps> = ({
                 rows={2}
               />
 
-              <div className="flex items-center justify-between px-3 py-2 border-t border-gray-600">
+              <div className="flex items-center justify-between px-3 py-2 border-t border-slate-600">
                 <div className="flex items-center space-x-1">
                   {[0, 1, 2, 3, 4, 5, 6].map((day) => (
                     <button
                       key={day}
                       onClick={() => toggleDaySelection(day)}
-                      className={`w-7 h-7 flex items-center justify-center rounded-full text-xs transition-colors relative ${
+                      className={`w-7 h-7 flex items-center justify-center rounded-full text-xs transition-colors relative cursor-pointer ${
                         selectedDaysOfWeek.includes(day)
-                          ? "bg-blue-600 text-white"
-                          : "bg-[#333] text-gray-400 hover:bg-[#555]"
+                          ? "bg-indigo-600 text-white"
+                          : "bg-slate-700 text-slate-400 hover:bg-slate-600"
                       }`}
                       title={`Toggle ${getDayName(day)}`}
                     >
                       {day === 4 ? "Th" : getDayName(day).charAt(0)}
                       {day === getTodayInfo().dayOfWeek && (
-                        <span className="absolute -bottom-1 w-4 h-0.5 bg-green-400 rounded-full"></span>
+                        <span className="absolute -bottom-1 w-4 h-0.5 bg-emerald-400 rounded-full"></span>
                       )}
                     </button>
                   ))}
@@ -404,10 +417,10 @@ const ChoresModal: React.FC<ChoresModalProps> = ({
                   <button
                     onClick={handleAddChore}
                     disabled={!newChoreText.trim()}
-                    className={`px-3 py-1 rounded-md text-white text-sm transition-colors ${
+                    className={`px-3 py-1 rounded-full text-white text-sm transition-colors ${
                       newChoreText.trim()
-                        ? "bg-green-600 hover:bg-green-700"
-                        : "bg-gray-600 cursor-not-allowed"
+                        ? "bg-indigo-600 hover:bg-indigo-700 cursor-pointer"
+                        : "bg-slate-600 cursor-not-allowed"
                     }`}
                   >
                     Add
@@ -418,8 +431,8 @@ const ChoresModal: React.FC<ChoresModalProps> = ({
 
             {/* Quick tips section to fill some space */}
             <div className="mt-auto">
-              <h4 className="text-sm font-medium text-gray-400 mb-2">Tips:</h4>
-              <ul className="text-xs text-gray-500 space-y-1 list-disc pl-4">
+              <h4 className="text-sm font-medium text-slate-300 mb-2">Tips:</h4>
+              <ul className="text-xs text-slate-400 space-y-1 list-disc pl-4">
                 <li>
                   Create chores for regular tasks that need to be completed
                 </li>
@@ -430,31 +443,95 @@ const ChoresModal: React.FC<ChoresModalProps> = ({
           </div>
 
           {/* Right Column - Chores List */}
-          <div className="bg-[#333] rounded-lg p-4 shadow-md flex flex-col">
-            <h3 className="text-base font-medium text-gray-300 mb-3 flex items-center">
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-4 shadow-xl border border-slate-700">
+            <h3 className="text-base font-medium text-white mb-3 flex items-center">
+              <svg
+                className="w-4 h-4 mr-2 text-indigo-400"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M9 6L20 6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M3.5 6H6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M3.5 12H6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M3.5 18H6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <circle
+                  cx="7.5"
+                  cy="6"
+                  r="1.5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                />
+                <circle
+                  cx="7.5"
+                  cy="12"
+                  r="1.5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                />
+                <circle
+                  cx="7.5"
+                  cy="18"
+                  r="1.5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                />
+                <path
+                  d="M9 12L20 12"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M9 18L20 18"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
               Chores List
-              <span className="ml-2 bg-gray-600 text-gray-300 text-xs px-2 py-0.5 rounded-full">
+              <span className="ml-2 bg-slate-700 text-slate-300 text-xs px-2 py-0.5 rounded-full">
                 {userChores.length}
               </span>
             </h3>
 
-            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-2">
+            <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-track-slate-800 scrollbar-thumb-slate-600 space-y-2">
               {userChores.length === 0 ? (
-                <div className="text-center py-5 bg-[#3a3a3a] rounded-lg border border-dashed border-gray-600">
-                  <p className="text-gray-400 italic">No chores added yet</p>
+                <div className="text-center py-5 bg-slate-700/50 rounded-lg border border-dashed border-slate-600">
+                  <p className="text-slate-400 italic">No chores added yet</p>
                 </div>
               ) : (
                 userChores.map((chore) => (
                   <div
                     key={chore.id}
-                    className="bg-[#444] rounded-lg p-3 shadow-sm"
+                    className="bg-slate-700/50 backdrop-blur-sm rounded-lg p-3 shadow-md border border-slate-600"
                   >
                     {editingChoreId === chore.id ? (
                       <div className="space-y-2">
                         <textarea
                           value={editingChoreText}
                           onChange={(e) => setEditingChoreText(e.target.value)}
-                          className="w-full px-3 py-2 bg-[#333] border border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-white resize-none"
+                          className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-white resize-none"
                           onKeyDown={(e) => {
                             if (e.key === "Enter" && !e.shiftKey) {
                               e.preventDefault();
@@ -470,15 +547,15 @@ const ChoresModal: React.FC<ChoresModalProps> = ({
                             <button
                               key={day}
                               onClick={() => toggleEditDaySelection(day)}
-                              className={`w-7 h-7 flex items-center justify-center rounded-full text-xs transition-colors relative ${
+                              className={`w-7 h-7 flex items-center justify-center rounded-full text-xs transition-colors relative cursor-pointer ${
                                 editingDaysOfWeek.includes(day)
-                                  ? "bg-blue-600 text-white"
-                                  : "bg-[#333] text-gray-400 hover:bg-[#555]"
+                                  ? "bg-indigo-600 text-white"
+                                  : "bg-slate-800 text-slate-400 hover:bg-slate-700"
                               }`}
                             >
                               {day === 4 ? "Th" : getDayName(day).charAt(0)}
                               {day === getTodayInfo().dayOfWeek && (
-                                <span className="absolute -bottom-1 w-4 h-0.5 bg-green-400 rounded-full"></span>
+                                <span className="absolute -bottom-1 w-4 h-0.5 bg-emerald-400 rounded-full"></span>
                               )}
                             </button>
                           ))}
@@ -490,13 +567,13 @@ const ChoresModal: React.FC<ChoresModalProps> = ({
                               setEditingChoreId(null);
                               setEditingChoreText("");
                             }}
-                            className="px-2 py-1 bg-gray-600 rounded-md text-white text-sm"
+                            className="px-3 py-1 bg-slate-600 hover:bg-slate-500 rounded-full text-white text-sm cursor-pointer"
                           >
                             Cancel
                           </button>
                           <button
                             onClick={saveChoreEdit}
-                            className="px-2 py-1 bg-blue-600 rounded-md text-white text-sm"
+                            className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 rounded-full text-white text-sm cursor-pointer"
                           >
                             Save
                           </button>
@@ -519,13 +596,13 @@ const ChoresModal: React.FC<ChoresModalProps> = ({
                                   key={day}
                                   className={`w-7 h-7 flex items-center justify-center rounded-full text-xs transition-colors relative ${
                                     isEnabled
-                                      ? "bg-blue-600 text-white"
-                                      : "bg-[#333] text-gray-400"
+                                      ? "bg-indigo-600 text-white"
+                                      : "bg-slate-800 text-slate-400"
                                   }`}
                                 >
                                   {day === 4 ? "Th" : getDayName(day).charAt(0)}
                                   {isToday && (
-                                    <span className="absolute -bottom-1 w-4 h-0.5 bg-green-400 rounded-full"></span>
+                                    <span className="absolute -bottom-1 w-4 h-0.5 bg-emerald-400 rounded-full"></span>
                                   )}
                                 </span>
                               );
@@ -535,7 +612,7 @@ const ChoresModal: React.FC<ChoresModalProps> = ({
                         <div className="flex">
                           <button
                             onClick={() => startEditChore(chore)}
-                            className="p-1 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20 rounded-md transition-all"
+                            className="p-1 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-900/20 rounded-md transition-all cursor-pointer"
                             title="Edit chore"
                           >
                             <svg
@@ -555,7 +632,7 @@ const ChoresModal: React.FC<ChoresModalProps> = ({
                           </button>
                           <button
                             onClick={() => deleteChore(chore.id)}
-                            className="p-1 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded-md transition-all ml-1"
+                            className="p-1 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded-md transition-all ml-1 cursor-pointer"
                             title="Delete chore"
                           >
                             <svg
@@ -583,21 +660,21 @@ const ChoresModal: React.FC<ChoresModalProps> = ({
           </div>
         </div>
 
-        <div className="p-4 border-t border-gray-700/50 flex justify-end items-center bg-[#222]/70">
+        <div className="p-4 border-t border-slate-700 flex justify-end items-center bg-slate-800/50">
           <div className="flex gap-3">
             <button
               onClick={closeChoresModal}
-              className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-md text-white"
+              className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-full text-white cursor-pointer"
             >
               Cancel
             </button>
             <button
               onClick={saveChores}
               disabled={isSaving}
-              className={`px-3 py-1.5 rounded-md text-white ${
+              className={`px-3 py-1.5 rounded-full text-white ${
                 isSaving
-                  ? "bg-blue-700/70 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-700"
+                  ? "bg-indigo-700/70 cursor-not-allowed"
+                  : "bg-indigo-600 hover:bg-indigo-700 cursor-pointer"
               }`}
             >
               {isSaving ? "Saving..." : "Save Changes"}
@@ -607,23 +684,19 @@ const ChoresModal: React.FC<ChoresModalProps> = ({
       </div>
 
       <style jsx>{`
-        .custom-scrollbar::-webkit-scrollbar {
+        .scrollbar-thin::-webkit-scrollbar {
           width: 8px;
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(51, 51, 51, 0.5);
+        .scrollbar-thin::-webkit-scrollbar-track {
+          background: rgba(30, 41, 59, 0.5);
           border-radius: 10px;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(85, 85, 85, 0.7);
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+          background: rgba(51, 65, 85, 0.7);
           border-radius: 10px;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(102, 102, 102, 0.8);
-        }
-        .chores-list {
-          scrollbar-width: thin;
-          scrollbar-color: rgba(85, 85, 85, 0.7) rgba(51, 51, 51, 0.5);
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+          background: rgba(71, 85, 105, 0.8);
         }
         @keyframes fadeIn {
           0% {
