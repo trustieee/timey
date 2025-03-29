@@ -72,9 +72,10 @@ const ProfilesPage: NextPage = () => {
           const profilesData: AdminUserProfile[] = [];
 
           snapshot.forEach((doc) => {
+            const data = doc.data();
             profilesData.push({
-              uid: doc.id,
-              ...doc.data(),
+              ...data,
+              uid: doc.id, // Ensure the document ID is used as the uid (will override any uid in the data)
             } as AdminUserProfile);
           });
 

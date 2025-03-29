@@ -21,10 +21,8 @@ import {
   authenticateWithFirebase,
   onProfileUpdate,
 } from "./services/firebase";
-// Import hardcoded Firebase config
-import { firebaseConfig as hardcodedConfig } from "./config";
 // Import APP_CONFIG directly
-import { APP_CONFIG } from "./config";
+import { firebaseConfig as hardcodedConfig, APP_CONFIG } from "./config";
 
 // Load environment variables from .env file
 dotenv.config();

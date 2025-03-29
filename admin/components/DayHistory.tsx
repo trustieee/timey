@@ -30,30 +30,30 @@ const DayHistory: React.FC<DayHistoryProps> = ({
   // Function to cycle through chore statuses: incomplete -> completed -> na -> incomplete
   const cycleChoreStatus = async (e: React.MouseEvent, choreId: number) => {
     e.stopPropagation(); // Prevent day expansion toggle
-    
+
     // Find the chore
     const chore = dayData.chores.find(c => c.id === choreId);
     if (!chore) return;
-    
+
     // Define status cycle
     const nextStatus: { [key in ChoreStatus]: ChoreStatus } = {
       incomplete: "completed",
       completed: "na",
       na: "incomplete"
     };
-    
+
     const newStatus = nextStatus[chore.status];
-    
+
     try {
       // Get user profile document reference
       const profileRef = doc(db, "playerProfiles", uid);
-      
+
       // Update the completedAt timestamp if completed
-      let updatedChore: any = {
+      const updatedChore: any = {
         ...chore,
         status: newStatus
       };
-      
+
       if (newStatus === "completed") {
         // Add completedAt timestamp when marking as completed
         updatedChore.completedAt = new Date().toISOString();
@@ -61,21 +61,21 @@ const DayHistory: React.FC<DayHistoryProps> = ({
         // Delete the completedAt field when not completed (don't set to undefined)
         delete updatedChore.completedAt;
       }
-      
+
       // Create updated history object with the new chore status
-      const updatedChores = dayData.chores.map(c => 
+      const updatedChores = dayData.chores.map(c =>
         c.id === choreId ? updatedChore : c
       );
-      
+
       // Create a copy of the day data with updated chores
       const updatedDayData = {
         ...dayData,
         chores: updatedChores
       };
-      
+
       // Update XP based on chore status change
       const XP_FOR_CHORE = APP_CONFIG.PROFILE.XP_FOR_CHORE;
-      
+
       if (chore.status === "completed" && newStatus !== "completed") {
         // Remove XP if changing from completed to another status
         updatedDayData.xp = {
@@ -91,18 +91,18 @@ const DayHistory: React.FC<DayHistoryProps> = ({
           final: (dayData.xp?.final || 0) + XP_FOR_CHORE
         };
       }
-      
+
       // Update the history
       const updatedHistory = {
         [date]: updatedDayData
       };
-      
+
       // Update the profile in Firestore
       await setDoc(profileRef, {
         history: updatedHistory,
         lastUpdated: new Date().toISOString()
       }, { merge: true });
-      
+
     } catch (error) {
       console.error("Error updating chore status:", error);
     }
@@ -116,9 +116,8 @@ const DayHistory: React.FC<DayHistoryProps> = ({
       >
         <div className="flex items-center">
           <div
-            className={`text-green-400 mr-2 transform transition-transform ${
-              isDayExpanded ? "rotate-90" : ""
-            }`}
+            className={`text-green-400 mr-2 transform transition-transform ${isDayExpanded ? "rotate-90" : ""
+              }`}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -174,13 +173,12 @@ const DayHistory: React.FC<DayHistoryProps> = ({
                           {chore.text}
                         </span>
                         <div
-                          className={`${
-                            chore.status === "completed"
+                          className={`${chore.status === "completed"
                               ? "bg-[rgba(76,175,80,0.2)] border-green-900"
                               : chore.status === "na"
-                              ? "bg-[rgba(158,158,158,0.2)] border-gray-600"
-                              : "bg-[rgba(244,67,54,0.2)] border-red-900"
-                          } 
+                                ? "bg-[rgba(158,158,158,0.2)] border-gray-600"
+                                : "bg-[rgba(244,67,54,0.2)] border-red-900"
+                            } 
                                       px-2 py-1 rounded border font-bold ${color} cursor-pointer transition-opacity hover:opacity-80`}
                           onClick={(e) => cycleChoreStatus(e, chore.id)}
                           title="Click to change status"
@@ -199,7 +197,7 @@ const DayHistory: React.FC<DayHistoryProps> = ({
             <div>
               <h5 className="font-medium mb-2 text-gray-300">Play Activity:</h5>
               {dayData.playTime?.sessions &&
-              dayData.playTime.sessions.length > 0 ? (
+                dayData.playTime.sessions.length > 0 ? (
                 <div className="space-y-2">
                   <div className="bg-[#333] p-3 rounded border border-gray-700">
                     <div className="grid grid-cols-2 gap-2">

@@ -206,8 +206,6 @@ const ChoresModal: React.FC<ChoresModalProps> = ({
       // Create default profile values if they don't exist
       const defaultXp = {
         final: 0,
-        base: 0,
-        bonus: 0,
         gained: 0,
         penalties: 0,
       };
