@@ -1,10 +1,13 @@
 import React from "react";
-import { PlayerProfile } from "../../src/playerProfile";
+import { PlayerProfile, ChoreStatus } from "../../src/playerProfile";
 import {
   calculatePlayStats,
   calculateDayChoreStats,
   getStatusIcon,
 } from "../utils/profileUtils";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "../utils/firebase";
+import { APP_CONFIG } from "../utils/appConfig";
 
 interface DayHistoryProps {
   date: string;
@@ -23,6 +26,87 @@ const DayHistory: React.FC<DayHistoryProps> = ({
 }) => {
   const playStats = calculatePlayStats(dayData);
   const choreStats = calculateDayChoreStats(dayData);
+
+  // Function to cycle through chore statuses: incomplete -> completed -> na -> incomplete
+  const cycleChoreStatus = async (e: React.MouseEvent, choreId: number) => {
+    e.stopPropagation(); // Prevent day expansion toggle
+    
+    // Find the chore
+    const chore = dayData.chores.find(c => c.id === choreId);
+    if (!chore) return;
+    
+    // Define status cycle
+    const nextStatus: { [key in ChoreStatus]: ChoreStatus } = {
+      incomplete: "completed",
+      completed: "na",
+      na: "incomplete"
+    };
+    
+    const newStatus = nextStatus[chore.status];
+    
+    try {
+      // Get user profile document reference
+      const profileRef = doc(db, "playerProfiles", uid);
+      
+      // Update the completedAt timestamp if completed
+      let updatedChore: any = {
+        ...chore,
+        status: newStatus
+      };
+      
+      if (newStatus === "completed") {
+        // Add completedAt timestamp when marking as completed
+        updatedChore.completedAt = new Date().toISOString();
+      } else {
+        // Delete the completedAt field when not completed (don't set to undefined)
+        delete updatedChore.completedAt;
+      }
+      
+      // Create updated history object with the new chore status
+      const updatedChores = dayData.chores.map(c => 
+        c.id === choreId ? updatedChore : c
+      );
+      
+      // Create a copy of the day data with updated chores
+      const updatedDayData = {
+        ...dayData,
+        chores: updatedChores
+      };
+      
+      // Update XP based on chore status change
+      const XP_FOR_CHORE = APP_CONFIG.PROFILE.XP_FOR_CHORE;
+      
+      if (chore.status === "completed" && newStatus !== "completed") {
+        // Remove XP if changing from completed to another status
+        updatedDayData.xp = {
+          ...dayData.xp,
+          gained: Math.max(0, (dayData.xp?.gained || 0) - XP_FOR_CHORE),
+          final: Math.max(0, (dayData.xp?.final || 0) - XP_FOR_CHORE)
+        };
+      } else if (chore.status !== "completed" && newStatus === "completed") {
+        // Add XP if completing a chore
+        updatedDayData.xp = {
+          ...dayData.xp,
+          gained: (dayData.xp?.gained || 0) + XP_FOR_CHORE,
+          final: (dayData.xp?.final || 0) + XP_FOR_CHORE
+        };
+      }
+      
+      // Update the history
+      const updatedHistory = {
+        [date]: updatedDayData
+      };
+      
+      // Update the profile in Firestore
+      await setDoc(profileRef, {
+        history: updatedHistory,
+        lastUpdated: new Date().toISOString()
+      }, { merge: true });
+      
+    } catch (error) {
+      console.error("Error updating chore status:", error);
+    }
+  };
 
   return (
     <div className="bg-[#3a3a3a] rounded-md border border-gray-700">
@@ -97,7 +181,9 @@ const DayHistory: React.FC<DayHistoryProps> = ({
                               ? "bg-[rgba(158,158,158,0.2)] border-gray-600"
                               : "bg-[rgba(244,67,54,0.2)] border-red-900"
                           } 
-                                      px-2 py-1 rounded border font-bold ${color}`}
+                                      px-2 py-1 rounded border font-bold ${color} cursor-pointer transition-opacity hover:opacity-80`}
+                          onClick={(e) => cycleChoreStatus(e, chore.id)}
+                          title="Click to change status"
                         >
                           {icon}
                         </div>
