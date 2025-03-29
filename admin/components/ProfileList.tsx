@@ -6,6 +6,7 @@ import { db, auth } from "../utils/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import ChoresModal from "./ChoresModal";
+import CreateUserModal from "./CreateUserModal";
 import Auth from "./Auth";
 import Head from "next/head";
 
@@ -24,6 +25,9 @@ const ProfileList: React.FC = () => {
   const [selectedProfileUid, setSelectedProfileUid] = useState<string | null>(
     null
   );
+
+  // Create user modal state
+  const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
 
   // Check auth state on component mount
   useEffect(() => {
@@ -213,37 +217,59 @@ const ProfileList: React.FC = () => {
           </div>
         ) : (
           <div className="bg-slate-900 rounded-lg shadow p-4 border border-slate-800">
-            <div className="flex items-center mb-4 pb-3 border-b border-slate-800">
-              <svg
-                className="w-5 h-5 text-indigo-400 mr-2"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M17 8C17 10.7614 14.7614 13 12 13C9.23858 13 7 10.7614 7 8C7 5.23858 9.23858 3 12 3C14.7614 3 17 5.23858 17 8Z"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M3 21C3 18 7 15 12 15C17 15 21 18 21 21"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">
-                  Player Profiles
-                </h2>
-                <p className="text-slate-400 text-sm">
-                  Managing {profiles.length} profile
-                  {profiles.length !== 1 ? "s" : ""}
-                </p>
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
+              <div className="flex items-center">
+                <svg
+                  className="w-5 h-5 text-indigo-400 mr-2"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M17 8C17 10.7614 14.7614 13 12 13C9.23858 13 7 10.7614 7 8C7 5.23858 9.23858 3 12 3C14.7614 3 17 5.23858 17 8Z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M3 21C3 18 7 15 12 15C17 15 21 18 21 21"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <div>
+                  <h2 className="text-xl font-bold text-white tracking-tight">
+                    Player Profiles
+                  </h2>
+                  <p className="text-slate-400 text-sm">
+                    Managing {profiles.length} profile
+                    {profiles.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
               </div>
+              <button
+                onClick={() => setIsCreateUserModalOpen(true)}
+                className="flex items-center px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-md"
+              >
+                <svg
+                  className="w-4 h-4 mr-1.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M12 4V20M4 12H20"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                Create User
+              </button>
             </div>
 
             <div className="space-y-4">
@@ -262,15 +288,23 @@ const ProfileList: React.FC = () => {
           </div>
         )}
 
-        {/* Chores Management Modal */}
-        <ChoresModal
-          isOpen={isChoresModalOpen}
-          onClose={() => setIsChoresModalOpen(false)}
-          selectedProfile={selectedProfile}
-          profiles={profiles}
-          setProfiles={setProfiles}
-          setError={setError}
+        {/* Create User Modal */}
+        <CreateUserModal
+          isOpen={isCreateUserModalOpen}
+          onClose={() => setIsCreateUserModalOpen(false)}
         />
+
+        {/* Chores Modal */}
+        {isChoresModalOpen && selectedProfile && (
+          <ChoresModal
+            isOpen={isChoresModalOpen}
+            onClose={() => setIsChoresModalOpen(false)}
+            selectedProfile={selectedProfile}
+            profiles={profiles}
+            setProfiles={setProfiles}
+            setError={setError}
+          />
+        )}
       </div>
     </MotionConfig>
   );
