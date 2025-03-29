@@ -125,8 +125,39 @@ const DayHistory: React.FC<DayHistoryProps> = ({
     }
   };
 
+  // Check if the date is the current day
+  const isCurrentDay = () => {
+    // Get today's date and format as YYYY-MM-DD
+    const today = new Date();
+    const todayFormatted = today.toISOString().split('T')[0];
+    
+    // Check if the date string is in ISO format (YYYY-MM-DD) or another format
+    let dateToCompare = date;
+    
+    // If date is not in YYYY-MM-DD format, try to normalize it
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      try {
+        // Parse the date string and convert to YYYY-MM-DD
+        const parsedDate = new Date(date);
+        dateToCompare = parsedDate.toISOString().split('T')[0];
+      } catch (e) {
+        console.error("Error parsing date:", e);
+        return false;
+      }
+    }
+    
+    // Simple string comparison of dates in YYYY-MM-DD format
+    return todayFormatted === dateToCompare;
+  };
+
+  // Log the current status for debugging
+  const currentDay = isCurrentDay();
+  console.log(`Date: ${date}, Is Current Day: ${currentDay}`);
+
   // Status display for chores
   const ChoreStatusIndicator = ({ status }: { status: ChoreStatus }) => {
+    const currentDay = isCurrentDay();
+    
     const statusConfig = {
       completed: {
         icon: "✅",
@@ -136,18 +167,18 @@ const DayHistory: React.FC<DayHistoryProps> = ({
         hoverColor: "hover:bg-emerald-500"
       },
       incomplete: {
-        icon: "⏳",
-        label: "Pending",
-        bgColor: "bg-amber-600",
-        textColor: "text-amber-100",
-        hoverColor: "hover:bg-amber-500"
+        icon: currentDay ? "⏳" : "❌",
+        label: currentDay ? "Pending" : "Incomplete",
+        bgColor: currentDay ? "bg-amber-600" : "bg-red-600",
+        textColor: currentDay ? "text-amber-100" : "text-red-100",
+        hoverColor: currentDay ? "hover:bg-amber-500" : "hover:bg-red-500"
       },
       na: {
-        icon: "⛔",
+        icon: "🔹", // Changed from ⛔ to a more neutral icon
         label: "N/A",
-        bgColor: "bg-gray-600",
-        textColor: "text-gray-100",
-        hoverColor: "hover:bg-gray-500"
+        bgColor: "bg-slate-600",
+        textColor: "text-slate-100",
+        hoverColor: "hover:bg-slate-500"
       }
     };
     
@@ -306,14 +337,18 @@ const DayHistory: React.FC<DayHistoryProps> = ({
                                   </svg>
                                 </div>
                               ) : chore.status === "na" ? (
-                                <div className="w-5 h-5 rounded-full border-2 border-gray-500 bg-gray-500/30 flex items-center justify-center text-gray-300">
-                                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                    <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                  </svg>
+                                <div className="w-5 h-5 rounded-full border-2 border-slate-500 bg-slate-500/30 flex items-center justify-center text-slate-300">
+                                  <span className="text-[10px] font-bold">N/A</span>
                                 </div>
                               ) : (
-                                <div className="w-5 h-5 rounded-full border-2 border-amber-500/70 bg-transparent"></div>
+                                <div className="w-5 h-5 rounded-full border-2 border-amber-500/70 flex items-center justify-center bg-transparent">
+                                  {!isCurrentDay() && (
+                                    <svg className="w-3 h-3 text-red-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                      <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                      <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                    </svg>
+                                  )}
+                                </div>
                               )}
                             </div>
                             <span className={`font-medium break-words ${
