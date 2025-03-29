@@ -1,3 +1,11 @@
+const fs = require('fs');
+const path = require('path');
+
+// Read the root package.json
+const rootPackageJsonPath = path.resolve(__dirname, '../package.json');
+const rootPackageJson = JSON.parse(fs.readFileSync(rootPackageJsonPath, 'utf8'));
+const appVersion = rootPackageJson.version;
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -19,6 +27,10 @@ const nextConfig = {
     // your project has type errors.
     // !! WARN !!
     ignoreBuildErrors: true,
+  },
+  // Add the app version as an environment variable
+  env: {
+    NEXT_PUBLIC_APP_VERSION: appVersion,
   },
 };
 

@@ -11,7 +11,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <header className="bg-[#222] text-white p-4 shadow-md">
         <div className="container mx-auto flex justify-between items-center">
           <h1 className="text-xl font-bold">
-            Timey Admin <span className="text-sm opacity-70">v1.0</span>
+            Timey Admin <span className="text-sm opacity-70">v{process.env.NEXT_PUBLIC_APP_VERSION}</span>
           </h1>
           <nav>
             <ul className="flex space-x-6">
