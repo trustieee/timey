@@ -3,7 +3,7 @@ import { AdminUserProfile } from "../types";
 import ProfileCard from "./ProfileCard";
 import { MotionConfig } from "framer-motion";
 import { db, auth } from "../utils/firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, doc, getDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import ChoresModal from "./ChoresModal";
 import CreateUserModal from "./CreateUserModal";
@@ -15,6 +15,7 @@ const ProfileList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [expandedProfiles, setExpandedProfiles] = useState<
     Record<string, boolean>
   >({});
@@ -29,15 +30,35 @@ const ProfileList: React.FC = () => {
   // Create user modal state
   const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
 
-  // Check auth state on component mount
+  // Check auth state and admin status on component mount
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         // User is signed in
         setIsAuthenticated(true);
+
+        // Check if user is an admin
+        try {
+          const adminDocRef = doc(db, "adminUsers", user.uid);
+          const adminDocSnap = await getDoc(adminDocRef);
+
+          if (adminDocSnap.exists()) {
+            setIsAdmin(true);
+          } else {
+            setIsAdmin(false);
+            setError("Insufficient permissions. You need admin access.");
+            setLoading(false);
+          }
+        } catch (err) {
+          console.error("Error checking admin status:", err);
+          setIsAdmin(false);
+          setError("Failed to verify admin permissions.");
+          setLoading(false);
+        }
       } else {
         // User is signed out
         setIsAuthenticated(false);
+        setIsAdmin(false);
         setLoading(false);
       }
     });
@@ -108,7 +129,7 @@ const ProfileList: React.FC = () => {
   useEffect(() => {
     let unsubscribeProfiles: () => void;
 
-    if (isAuthenticated) {
+    if (isAuthenticated && isAdmin) {
       unsubscribeProfiles = fetchProfilesRealtime();
     }
 
@@ -117,7 +138,7 @@ const ProfileList: React.FC = () => {
         unsubscribeProfiles();
       }
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isAdmin]);
 
   // Open chores modal for a specific profile
   const openChoresModal = (profile: AdminUserProfile) => {
@@ -167,6 +188,31 @@ const ProfileList: React.FC = () => {
 
         {!isAuthenticated ? (
           <Auth setError={setError} loading={loading} setLoading={setLoading} />
+        ) : !isAdmin ? (
+          <div className="flex items-center bg-red-900/20 backdrop-blur-sm rounded-lg p-4 border border-red-900/50 shadow text-red-300">
+            <svg
+              className="w-5 h-5 mr-2 text-red-400"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <circle
+                cx="12"
+                cy="12"
+                r="9"
+                stroke="currentColor"
+                strokeWidth="2"
+              />
+              <path
+                d="M8 12L10.5 15L16 9"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span>You are authenticated but don't have admin privileges.</span>
+          </div>
         ) : loading ? (
           <div className="flex justify-center items-center h-40 bg-slate-800/50 rounded-lg p-4 border border-slate-700 shadow">
             <div className="flex flex-col items-center">
