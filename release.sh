@@ -53,7 +53,7 @@ if [ "$proceed" != "y" ]; then
 fi
 
 # Update version in package.json
-sed -i "s/\"version\": \"$current_version\"/\"version\": \"$new_version\"/" package.json
+sed -i '' "s/\"version\": \"$current_version\"/\"version\": \"$new_version\"/" package.json
 
 echo "Updated package.json version to $new_version"
 
