@@ -1,7 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import admin from "firebase-admin";
 import * as fs from "fs";
-import path from "path";
 
 // Initialize Firebase Admin if it hasn't been initialized yet
 if (!admin.apps.length) {

@@ -51,11 +51,16 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
             </div>
             <div className="flex flex-col">
               <h3 className="font-semibold text-white text-lg tracking-tight">
-                Player {profile.uid}
+                {profile.displayName || "Player"}{" "}
+                <span className="text-sm text-slate-400">
+                  ({profile.email || profile.uid})
+                </span>
               </h3>
               <p className="text-slate-400 text-xs">
                 Last updated:{" "}
-                {new Date(profile.lastUpdated || "").toLocaleDateString()}
+                {profile.lastUpdated
+                  ? new Date(profile.lastUpdated || "").toLocaleDateString()
+                  : "Never"}
               </p>
             </div>
           </div>

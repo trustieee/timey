@@ -48,6 +48,9 @@ export interface DayProgress {
 
 // Define the shape of the player profile
 export interface PlayerProfile {
+  createdAt?: string; // Firebase timestamp format (e.g., "March 29, 2025 at 6:16:57 PM UTC-4")
+  displayName?: string; // User's display name
+  email?: string; // User's email address
   history: {
     [date: string]: DayProgress; // Key is YYYY-MM-DD
   };
@@ -282,6 +285,7 @@ export async function loadPlayerProfile(): Promise<
     const defaultProfile = {
       history: {},
       rewards: { available: 0, permanent: {} },
+      // createdAt, displayName and email will be added by Firebase/the calling code
     };
     const initializedProfile = initializeDay(defaultProfile);
     const stats = calculatePlayerStats(initializedProfile);
@@ -305,6 +309,7 @@ export async function loadPlayerProfile(): Promise<
     const defaultProfile = {
       history: {},
       rewards: { available: 0, permanent: {} },
+      // createdAt, displayName and email will be added by Firebase/the calling code
     };
     const initializedProfile = initializeDay(defaultProfile);
     const stats = calculatePlayerStats(initializedProfile);
