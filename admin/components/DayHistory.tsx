@@ -369,32 +369,6 @@ const DayHistory: React.FC<DayHistoryProps> = ({
                 <span>XP: {dayData.xp?.final || 0}</span>
               </div>
 
-              {playStats.totalSessions > 0 && (
-                <div className="flex items-center bg-emerald-900/30 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-inner text-emerald-300 font-medium hover:bg-emerald-900/40 transition-colors">
-                  <svg
-                    className="w-4 h-4 mr-1 opacity-80"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M12 8V12L15 15"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                    />
-                    <circle
-                      cx="12"
-                      cy="12"
-                      r="9"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    />
-                  </svg>
-                  <span>{playStats.formattedPlayTime}</span>
-                </div>
-              )}
-
               <div className="flex items-center bg-violet-900/30 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-inner text-violet-300 font-medium hover:bg-violet-900/40 transition-colors">
                 <svg
                   className="w-4 h-4 mr-1 opacity-80"
@@ -659,7 +633,7 @@ const DayHistory: React.FC<DayHistoryProps> = ({
                             <span
                               className={`font-medium break-words ${
                                 chore.status === "completed"
-                                  ? "text-slate-300 line-through"
+                                  ? "text-slate-300"
                                   : chore.status === "na"
                                   ? "text-slate-500"
                                   : "text-white"

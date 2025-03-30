@@ -73,19 +73,11 @@ const ProfileSummary: React.FC<ProfileSummaryProps> = ({ profile }) => {
             <p className="text-xs text-amber-300 mb-1">Total Play Time</p>
             <div className="flex items-baseline">
               <span className="text-2xl font-bold text-white">
-                {aggregateStats.formattedPlayTime
-                  .replace(/hrs?/i, "")
-                  .replace(/mins?/i, "")}
+                {aggregateStats.totalPlayMinutes}
               </span>
-              <span className="text-amber-400 text-xs ml-1">
-                {aggregateStats.formattedPlayTime.includes("hr")
-                  ? "hours"
-                  : "minutes"}
-              </span>
+              <span className="text-amber-400 text-xs ml-1">minutes</span>
             </div>
-            <p className="text-xs text-slate-400 mt-1">
-              {aggregateStats.totalPlayMinutes} total minutes
-            </p>
+            <p className="text-xs text-slate-400 mt-1">all time</p>
           </div>
 
           <div className="bg-violet-900/20 backdrop-blur-sm rounded-lg p-3 border border-violet-900/50">

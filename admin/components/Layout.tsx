@@ -4,7 +4,6 @@ import { useRouter } from "next/router";
 import { auth, db } from "../utils/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
-import Auth from "./Auth";
 
 interface LayoutProps {
   children: ReactNode;

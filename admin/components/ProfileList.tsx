@@ -67,7 +67,7 @@ const ProfileList: React.FC = () => {
             setProfiles(profilesData);
             setLoading(false);
           },
-          (error) => {
+          () => {
             setError("Failed to sync user profiles in real-time");
             setLoading(false);
           }
@@ -118,7 +118,9 @@ const ProfileList: React.FC = () => {
         return unsubscribe;
       } catch (error) {
         console.error("Error setting up admin users listener:", error);
-        return () => {};
+        return () => {
+          // do nothing
+        };
       }
     };
 

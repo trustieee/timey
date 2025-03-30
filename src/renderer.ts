@@ -87,7 +87,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         ...baseProfile,
         level: calculateLevel(baseProfile),
         xp: calculateXp(baseProfile),
-        xpToNextLevel: calculateXpToNextLevel(baseProfile),
+        xpToNextLevel: calculateXpToNextLevel(),
         completedChores: getCompletedChores(baseProfile),
       };
       updateXpDisplay();
@@ -100,7 +100,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       playerProfile = {
         level: 1,
         xp: 0,
-        xpToNextLevel: APP_CONFIG.PROFILE.XP_PER_LEVEL[0],
+        xpToNextLevel: APP_CONFIG.PROFILE.XP_PER_LEVEL,
         history: {},
         completedChores: [],
         rewards: {
@@ -124,17 +124,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
 
-    // Calculate level based on XP
-    while (
-      totalXp >=
-      APP_CONFIG.PROFILE.XP_PER_LEVEL[
-        Math.min(level - 1, APP_CONFIG.PROFILE.XP_PER_LEVEL.length - 1)
-      ]
-    ) {
-      totalXp -=
-        APP_CONFIG.PROFILE.XP_PER_LEVEL[
-          Math.min(level - 1, APP_CONFIG.PROFILE.XP_PER_LEVEL.length - 1)
-        ];
+    // Calculate level based on XP using the flat 700 XP per level value
+    while (totalXp >= APP_CONFIG.PROFILE.XP_PER_LEVEL) {
+      totalXp -= APP_CONFIG.PROFILE.XP_PER_LEVEL;
       level++;
     }
     return level;
@@ -151,30 +143,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
 
-    // Subtract XP used for previous levels
-    while (
-      totalXp >=
-      APP_CONFIG.PROFILE.XP_PER_LEVEL[
-        Math.min(level - 1, APP_CONFIG.PROFILE.XP_PER_LEVEL.length - 1)
-      ]
-    ) {
-      totalXp -=
-        APP_CONFIG.PROFILE.XP_PER_LEVEL[
-          Math.min(level - 1, APP_CONFIG.PROFILE.XP_PER_LEVEL.length - 1)
-        ];
+    // Subtract XP used for previous levels using the flat 700 XP per level
+    while (totalXp >= APP_CONFIG.PROFILE.XP_PER_LEVEL) {
+      totalXp -= APP_CONFIG.PROFILE.XP_PER_LEVEL;
       level++;
     }
 
     return totalXp;
   }
 
-  function calculateXpToNextLevel(profile: BasePlayerProfile): number {
-    const level = calculateLevel(profile);
-    // Use the correct index from XP_PER_LEVEL array, or default if beyond array size
-    if (level <= APP_CONFIG.PROFILE.XP_PER_LEVEL.length) {
-      return APP_CONFIG.PROFILE.XP_PER_LEVEL[level - 1];
-    }
-    return APP_CONFIG.PROFILE.DEFAULT_XP_PER_LEVEL;
+  function calculateXpToNextLevel(): number {
+    // Simply return the constant XP value
+    return APP_CONFIG.PROFILE.XP_PER_LEVEL;
   }
 
   function getCompletedChores(
@@ -237,7 +217,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           ...updatedProfile,
           level: calculateLevel(updatedProfile),
           xp: calculateXp(updatedProfile),
-          xpToNextLevel: calculateXpToNextLevel(updatedProfile),
+          xpToNextLevel: calculateXpToNextLevel(),
           completedChores: getCompletedChores(updatedProfile),
         };
 
@@ -1117,7 +1097,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         ...baseProfile,
         level: calculateLevel(baseProfile),
         xp: calculateXp(baseProfile),
-        xpToNextLevel: calculateXpToNextLevel(baseProfile),
+        xpToNextLevel: calculateXpToNextLevel(),
         completedChores: getCompletedChores(baseProfile),
       };
 
@@ -1602,7 +1582,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         .chore-item.completed span {
-            text-decoration: line-through;
             opacity: 0.7;
         }
 
@@ -1669,7 +1648,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         ...baseProfile,
         level: calculateLevel(baseProfile),
         xp: calculateXp(baseProfile),
-        xpToNextLevel: calculateXpToNextLevel(baseProfile),
+        xpToNextLevel: calculateXpToNextLevel(),
         completedChores: getCompletedChores(baseProfile),
       };
       updateXpDisplay();

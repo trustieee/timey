@@ -12,65 +12,20 @@ export const calculatePlayerStats = (profile: PlayerProfile) => {
     }
   });
 
-  // Get XP thresholds from app config
+  // Get XP per level from app config - now a single value
   const xpPerLevel = APP_CONFIG.PROFILE.XP_PER_LEVEL;
-  const defaultXpPerLevel = APP_CONFIG.PROFILE.DEFAULT_XP_PER_LEVEL;
 
-  // Calculate cumulative XP thresholds
-  const cumulativeThresholds: number[] = [];
-  let cumulativeXp = 0;
-
-  // Build cumulative thresholds (how much total XP is needed for each level)
-  for (let i = 0; i < xpPerLevel.length; i++) {
-    cumulativeXp += xpPerLevel[i];
-    cumulativeThresholds.push(cumulativeXp);
-  }
-
-  // Find current level based on total XP
-  let level = 1;
-  for (let i = 0; i < cumulativeThresholds.length; i++) {
-    if (totalXp < cumulativeThresholds[i]) {
-      level = i + 1; // Level is 1-indexed
-      break;
-    }
-
-    // If we've passed all thresholds, calculate higher level
-    if (
-      i === cumulativeThresholds.length - 1 &&
-      totalXp >= cumulativeThresholds[i]
-    ) {
-      const extraXp = totalXp - cumulativeThresholds[i];
-      const additionalLevels = Math.floor(extraXp / defaultXpPerLevel);
-      level = xpPerLevel.length + 1 + additionalLevels;
-    }
-  }
+  // Calculate level - now a simple division since XP per level is constant
+  const level = Math.floor(totalXp / xpPerLevel) + 1;
 
   // Calculate XP progress toward next level
-  let currentLevelThreshold = 0;
-  let nextLevelThreshold = cumulativeThresholds[0];
-
-  if (level > 1) {
-    if (level <= cumulativeThresholds.length) {
-      // For levels within the predefined thresholds
-      currentLevelThreshold = cumulativeThresholds[level - 2] || 0;
-      nextLevelThreshold = cumulativeThresholds[level - 1];
-    } else {
-      // For levels beyond the predefined thresholds
-      const baseXp = cumulativeThresholds[cumulativeThresholds.length - 1];
-      const levelsAboveMax = level - (cumulativeThresholds.length + 1);
-      currentLevelThreshold = baseXp + levelsAboveMax * defaultXpPerLevel;
-      nextLevelThreshold = currentLevelThreshold + defaultXpPerLevel;
-    }
-  }
-
-  const xpInCurrentLevel = totalXp - currentLevelThreshold;
-  const xpRequiredForNextLevel = nextLevelThreshold - currentLevelThreshold;
+  const xpInCurrentLevel = totalXp % xpPerLevel;
 
   return {
     level,
     xp: xpInCurrentLevel,
     totalXp,
-    xpToNextLevel: xpRequiredForNextLevel,
+    xpToNextLevel: xpPerLevel,
   };
 };
 

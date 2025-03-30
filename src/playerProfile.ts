@@ -86,15 +86,15 @@ export function calculatePlayerStats(profile: PlayerProfile): {
   });
 
   // Calculate level based on XP
-  while (xp >= getXpRequiredForLevel(level)) {
-    xp -= getXpRequiredForLevel(level);
+  while (xp >= getXpRequiredForLevel()) {
+    xp -= getXpRequiredForLevel();
     level += 1;
   }
 
   return {
     level,
     xp,
-    xpToNextLevel: getXpRequiredForLevel(level),
+    xpToNextLevel: getXpRequiredForLevel(),
   };
 }
 
@@ -229,11 +229,8 @@ export function finalizeDayProgress(
 }
 
 // XP requirements for each level
-export function getXpRequiredForLevel(level: number): number {
-  if (level <= APP_CONFIG.PROFILE.XP_PER_LEVEL.length) {
-    return APP_CONFIG.PROFILE.XP_PER_LEVEL[level - 1];
-  }
-  return APP_CONFIG.PROFILE.DEFAULT_XP_PER_LEVEL;
+export function getXpRequiredForLevel(): number {
+  return APP_CONFIG.PROFILE.XP_PER_LEVEL;
 }
 
 // Firestore is now the only storage method

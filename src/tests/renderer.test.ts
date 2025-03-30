@@ -30,17 +30,9 @@ function calculateLevel(profile: BasePlayerProfile): number {
     }
   });
 
-  // Calculate level based on XP
-  while (
-    totalXp >=
-    APP_CONFIG.PROFILE.XP_PER_LEVEL[
-      Math.min(level - 1, APP_CONFIG.PROFILE.XP_PER_LEVEL.length - 1)
-    ]
-  ) {
-    totalXp -=
-      APP_CONFIG.PROFILE.XP_PER_LEVEL[
-        Math.min(level - 1, APP_CONFIG.PROFILE.XP_PER_LEVEL.length - 1)
-      ];
+  // Calculate level based on XP using flat 700 XP per level
+  while (totalXp >= APP_CONFIG.PROFILE.XP_PER_LEVEL) {
+    totalXp -= APP_CONFIG.PROFILE.XP_PER_LEVEL;
     level++;
   }
   return level;
@@ -57,38 +49,27 @@ function calculateXp(profile: BasePlayerProfile): number {
     }
   });
 
-  // Subtract XP used for previous levels
-  while (
-    totalXp >=
-    APP_CONFIG.PROFILE.XP_PER_LEVEL[
-      Math.min(level - 1, APP_CONFIG.PROFILE.XP_PER_LEVEL.length - 1)
-    ]
-  ) {
-    totalXp -=
-      APP_CONFIG.PROFILE.XP_PER_LEVEL[
-        Math.min(level - 1, APP_CONFIG.PROFILE.XP_PER_LEVEL.length - 1)
-      ];
+  // Subtract XP used for previous levels using flat 700 XP per level
+  while (totalXp >= APP_CONFIG.PROFILE.XP_PER_LEVEL) {
+    totalXp -= APP_CONFIG.PROFILE.XP_PER_LEVEL;
     level++;
   }
 
   return totalXp;
 }
 
-function calculateXpToNextLevel(profile: BasePlayerProfile): number {
-  const level = calculateLevel(profile);
-  // Use the correct index from XP_PER_LEVEL array, or default if beyond array size
-  if (level <= APP_CONFIG.PROFILE.XP_PER_LEVEL.length) {
-    return APP_CONFIG.PROFILE.XP_PER_LEVEL[level - 1];
-  }
-  return APP_CONFIG.PROFILE.DEFAULT_XP_PER_LEVEL;
+function calculateXpToNextLevel(): number {
+  // Simply return the constant XP value
+  return APP_CONFIG.PROFILE.XP_PER_LEVEL;
 }
 
 // Mock the APP_CONFIG
 jest.mock("../config", () => ({
   APP_CONFIG: {
     PROFILE: {
-      XP_PER_LEVEL: [840, 960, 1080, 1200], // XP needed for levels 1-5
-      DEFAULT_XP_PER_LEVEL: 1200, // XP needed for levels 5+
+      XP_PER_LEVEL: 700, // Flat 700 XP for all levels
+      XP_FOR_CHORE: 10,
+      XP_PENALTY_FOR_CHORE: 10,
     },
   },
 }));
@@ -112,7 +93,7 @@ describe("XP Calculation Functions", () => {
     it("should return level 2 when XP meets level 1 requirement", () => {
       const profile: BasePlayerProfile = {
         history: {
-          "2023-01-01": { xp: { gained: 840, penalties: 0, final: 840 } },
+          "2023-01-01": { xp: { gained: 700, penalties: 0, final: 700 } },
         },
       };
       expect(calculateLevel(profile)).toBe(2);
@@ -124,18 +105,18 @@ describe("XP Calculation Functions", () => {
           "2023-01-01": { xp: { gained: 1000, penalties: 0, final: 1000 } },
         },
       };
-      // 1000 XP = 840 for level 1 + 160 toward level 2
+      // 1000 XP = 700 for level 1 + 300 toward level 2
       expect(calculateLevel(profile)).toBe(2);
     });
 
     it("should return level 3 when XP meets level 1 and level 2 requirements", () => {
       const profile: BasePlayerProfile = {
         history: {
-          "2023-01-01": { xp: { gained: 900, penalties: 0, final: 900 } },
-          "2023-01-02": { xp: { gained: 900, penalties: 0, final: 900 } },
+          "2023-01-01": { xp: { gained: 700, penalties: 0, final: 700 } },
+          "2023-01-02": { xp: { gained: 700, penalties: 0, final: 700 } },
         },
       };
-      // 1800 XP = 840 for level 1 + 960 for level 2
+      // 1400 XP = 700 for level 1 + 700 for level 2
       expect(calculateLevel(profile)).toBe(3);
     });
 
@@ -147,21 +128,21 @@ describe("XP Calculation Functions", () => {
           "2023-01-03": { xp: { gained: 300, penalties: 0, final: 300 } },
         },
       };
-      // 900 XP = 840 for level 1 + 60 toward level 2
+      // 900 XP = 700 for level 1 + 200 toward level 2
       expect(calculateLevel(profile)).toBe(2);
     });
 
     it("should correctly calculate level 5 and beyond", () => {
       const profile: BasePlayerProfile = {
         history: {
-          "2023-01-01": { xp: { gained: 1200, penalties: 0, final: 1200 } },
-          "2023-01-02": { xp: { gained: 1200, penalties: 0, final: 1200 } },
-          "2023-01-03": { xp: { gained: 1200, penalties: 0, final: 1200 } },
-          "2023-01-04": { xp: { gained: 1200, penalties: 0, final: 1200 } },
+          "2023-01-01": { xp: { gained: 1000, penalties: 0, final: 1000 } },
+          "2023-01-02": { xp: { gained: 1000, penalties: 0, final: 1000 } },
+          "2023-01-03": { xp: { gained: 1000, penalties: 0, final: 1000 } },
+          "2023-01-04": { xp: { gained: 1000, penalties: 0, final: 1000 } },
         },
       };
-      // 4800 XP = 840 + 960 + 1080 + 1200 + 720 toward level 6
-      expect(calculateLevel(profile)).toBe(5);
+      // 4000 XP = 700 * 5 levels + 500 toward level 6
+      expect(calculateLevel(profile)).toBe(6);
     });
 
     it("should ignore negative or zero XP values", () => {
@@ -198,8 +179,8 @@ describe("XP Calculation Functions", () => {
           "2023-01-01": { xp: { gained: 1000, penalties: 0, final: 1000 } },
         },
       };
-      // 1000 XP - 840 XP used for level 1 = 160 XP remaining
-      expect(calculateXp(profile)).toBe(160);
+      // 1000 XP - 700 XP used for level 1 = 300 XP remaining
+      expect(calculateXp(profile)).toBe(300);
     });
 
     it("should handle level 3 XP calculation correctly", () => {
@@ -210,10 +191,10 @@ describe("XP Calculation Functions", () => {
         },
       };
       // 1900 total XP
-      // Level 1: 840 XP
-      // Level 2: 960 XP
-      // Remaining: 1900 - 840 - 960 = 100 XP toward level 3
-      expect(calculateXp(profile)).toBe(100);
+      // Level 1: 700 XP
+      // Level 2: 700 XP
+      // Remaining: 1900 - 700 - 700 = 500 XP toward level 3
+      expect(calculateXp(profile)).toBe(500);
     });
 
     it("should correctly calculate XP for level 5 and beyond", () => {
@@ -225,12 +206,9 @@ describe("XP Calculation Functions", () => {
         },
       };
       // 4500 total XP
-      // Level 1: 840 XP
-      // Level 2: 960 XP
-      // Level 3: 1080 XP
-      // Level 4: 1200 XP
-      // Remaining: 4500 - 840 - 960 - 1080 - 1200 = 420 XP toward level 5
-      expect(calculateXp(profile)).toBe(420);
+      // Level 1-6: 6 * 700 = 4200 XP
+      // Remaining: 4500 - 4200 = 300 XP toward level 7
+      expect(calculateXp(profile)).toBe(300);
     });
 
     it("should ignore negative or zero XP values", () => {
@@ -242,76 +220,45 @@ describe("XP Calculation Functions", () => {
         },
       };
       // Only count the 900 XP from the first day
-      // 900 - 840 = 60 XP toward level 2
-      expect(calculateXp(profile)).toBe(60);
+      // 900 - 700 = 200 XP toward level 2
+      expect(calculateXp(profile)).toBe(200);
     });
   });
 
   describe("calculateXpToNextLevel", () => {
-    it("should return the first level XP requirement for a new profile", () => {
-      const profile: BasePlayerProfile = { history: {} };
-      expect(calculateXpToNextLevel(profile)).toBe(840);
-    });
-
-    it("should return the second level XP requirement for a level 2 player", () => {
-      const profile: BasePlayerProfile = {
-        history: {
-          "2023-01-01": { xp: { gained: 840, penalties: 0, final: 840 } },
-        },
-      };
-      expect(calculateXpToNextLevel(profile)).toBe(960);
-    });
-
-    it("should return the third level XP requirement for a level 3 player", () => {
-      const profile: BasePlayerProfile = {
-        history: {
-          "2023-01-01": { xp: { gained: 1800, penalties: 0, final: 1800 } },
-        },
-      };
-      // 1800 XP = 840 for level 1 + 960 for level 2
-      expect(calculateXpToNextLevel(profile)).toBe(1080);
-    });
-
-    it("should return the default XP requirement for levels beyond the predefined array", () => {
-      const profile: BasePlayerProfile = {
-        history: {
-          "2023-01-01": { xp: { gained: 2000, penalties: 0, final: 2000 } },
-          "2023-01-02": { xp: { gained: 2000, penalties: 0, final: 2000 } },
-        },
-      };
-      // 4000 XP - enough to reach level 5
-      expect(calculateXpToNextLevel(profile)).toBe(1200);
+    it("should always return the flat XP requirement", () => {
+      expect(calculateXpToNextLevel()).toBe(700);
     });
   });
 
   // Test the real-world bug case where XP was showing 1620/960 at Level 2
   describe("Fixed Bug: XP Display Issue", () => {
     it("should correctly show XP toward next level, not cumulative XP", () => {
-      // Create a profile with 1620 total XP as in the bug report
+      // Create a profile with 1000 total XP
       const profile: BasePlayerProfile = {
         history: {
-          "2023-01-01": { xp: { gained: 900, penalties: 0, final: 900 } },
-          "2023-01-02": { xp: { gained: 720, penalties: 0, final: 720 } },
+          "2023-01-01": { xp: { gained: 600, penalties: 0, final: 600 } },
+          "2023-01-02": { xp: { gained: 400, penalties: 0, final: 400 } },
         },
       };
 
-      // Total XP is 1620
-      // 1620 total XP = 840 XP for level 1 + 780 XP toward level 2
+      // Total XP is 1000
+      // 1000 total XP = 700 XP for level 1 + 300 XP toward level 2
 
       const level = calculateLevel(profile);
       const xp = calculateXp(profile);
-      const xpToNextLevel = calculateXpToNextLevel(profile);
+      const xpToNextLevel = calculateXpToNextLevel();
 
       // Verify level is calculated correctly
       expect(level).toBe(2);
 
       // Verify remaining XP toward next level is calculated correctly (not showing total XP)
-      expect(xp).toBe(780);
+      expect(xp).toBe(300);
 
       // Verify XP needed for next level
-      expect(xpToNextLevel).toBe(960);
+      expect(xpToNextLevel).toBe(700);
 
-      // This would display as "780/960 XP" at "Level 2" instead of the buggy "1620/960 XP"
+      // This would display as "300/700 XP" at "Level 2"
     });
   });
 });
