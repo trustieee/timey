@@ -99,11 +99,23 @@ async function refreshPlayerProfileData() {
         return null;
       }
 
-      // Log profile contents for debugging
-      console.log(
-        "Profile loaded, has chores:",
-        baseProfile.chores && baseProfile.chores.length > 0
-      );
+      try {
+        // Update appInfo on every load
+        baseProfile.appInfo = playerProfile.createDefaultAppInfo();
+
+        // Save updated appInfo back to Firebase
+        await playerProfile.savePlayerProfile(baseProfile);
+
+        // Log profile contents for debugging
+        console.log(
+          "Profile loaded, has chores:",
+          baseProfile.chores && baseProfile.chores.length > 0
+        );
+      } catch (saveError) {
+        // If saving fails, log but continue with the loaded profile
+        console.error("Error updating appInfo:", saveError);
+        // Don't return null here, continue with the profile we have
+      }
 
       // Calculate derived properties
       playerProfileData = {
@@ -138,14 +150,20 @@ async function tryAutoLogin(): Promise<boolean> {
       "password" in credentials
     ) {
       const email = credentials.email as string;
-      const password = credentials.password as string;
 
       console.log(`Attempting auto-login for user: ${email}`);
 
       // Actually authenticate with Firebase instead of just setting flags
       try {
-        // Perform full Firebase authentication with the stored credentials
-        const userCredential = await authenticateWithFirebase(email, password);
+        // Authenticate with Firebase
+        const userCredential = await authenticateWithFirebase(
+          email,
+          credentials.password
+        );
+        if (!userCredential || !userCredential.user) {
+          console.log("Auto-login failed - invalid user credentials");
+          return false;
+        }
 
         isAuthenticated = true;
         authenticatedEmail = email;
@@ -153,14 +171,18 @@ async function tryAutoLogin(): Promise<boolean> {
         console.log(`Auto-login successful for: ${authenticatedEmail}`);
 
         // Ensure profile data is fully loaded after authentication
-        await refreshPlayerProfileData();
+        const profile = await refreshPlayerProfileData();
+
+        // If profile is null, something went wrong with loading
+        if (!profile) {
+          console.error("Auto-login failed - could not load profile data");
+          isAuthenticated = false;
+          authenticatedEmail = null;
+          return false;
+        }
 
         // Verify the profile has chores before considering login fully successful
-        if (
-          playerProfileData &&
-          playerProfileData.chores &&
-          playerProfileData.chores.length > 0
-        ) {
+        if (profile && profile.chores && profile.chores.length > 0) {
           console.log("Profile chores loaded successfully");
           return true;
         } else {

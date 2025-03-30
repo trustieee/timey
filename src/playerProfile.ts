@@ -10,6 +10,7 @@ import {
   loadPlayerProfileFromFirestore,
   savePlayerProfileToFirestore,
 } from "./services/firebase";
+import { app } from "electron";
 
 // Determine if we are in a test environment
 const isTestEnvironment =
@@ -65,6 +66,10 @@ export interface PlayerProfile {
     text: string;
     daysOfWeek?: number[]; // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
   }[];
+  appInfo?: {
+    version: string;
+    lastUpdated: string;
+  };
   // Level and XP will be calculated from history
 }
 
@@ -231,6 +236,14 @@ export function getXpRequiredForLevel(): number {
   return APP_CONFIG.PROFILE.XP_PER_LEVEL;
 }
 
+// Utility function to create default appInfo object
+export function createDefaultAppInfo(): NonNullable<PlayerProfile["appInfo"]> {
+  return {
+    version: app.getVersion() || "0.0.0",
+    lastUpdated: getLocalISOString(),
+  };
+}
+
 // Firestore is now the only storage method
 
 // Load the player profile from Firestore
@@ -280,6 +293,7 @@ export async function loadPlayerProfile(): Promise<
     const defaultProfile = {
       history: {},
       rewards: { available: 0, permanent: {} },
+      appInfo: createDefaultAppInfo(),
       // createdAt, displayName and email will be added by Firebase/the calling code
     };
     const initializedProfile = initializeDay(defaultProfile);
@@ -304,6 +318,7 @@ export async function loadPlayerProfile(): Promise<
     const defaultProfile = {
       history: {},
       rewards: { available: 0, permanent: {} },
+      appInfo: createDefaultAppInfo(),
       // createdAt, displayName and email will be added by Firebase/the calling code
     };
     const initializedProfile = initializeDay(defaultProfile);
@@ -333,6 +348,7 @@ export async function savePlayerProfile(profile: PlayerProfile): Promise<void> {
   const storageProfile = {
     history: profile.history,
     rewards: profile.rewards,
+    appInfo: profile.appInfo || createDefaultAppInfo(),
   };
 
   try {
