@@ -52,10 +52,23 @@ if [ "$proceed" != "y" ]; then
   exit 0
 fi
 
-# Update version in package.json
-sed -i '' "s/\"version\": \"$current_version\"/\"version\": \"$new_version\"/" package.json
+# Detect OS and use appropriate sed command
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  # macOS
+  sed -i '' "s/\"version\": \"$current_version\"/\"version\": \"$new_version\"/" package.json
+else
+  # Linux/Windows
+  sed -i "s/\"version\": \"$current_version\"/\"version\": \"$new_version\"/" package.json
+fi
 
 echo "Updated package.json version to $new_version"
+
+# Check if tag already exists and delete it if needed
+if git tag | grep -q "v$new_version"; then
+  echo "Tag v$new_version already exists. Deleting it..."
+  git tag -d "v$new_version"
+  git push origin --delete "v$new_version" 2>/dev/null || true
+fi
 
 # Ask for commit message
 echo "Enter commit message [Release v$new_version]:"
