@@ -1,4 +1,4 @@
-import { initializeApp, FirebaseApp } from "firebase/app";
+import { initializeApp, FirebaseApp, FirebaseError } from "firebase/app";
 import {
   getAuth,
   signInWithEmailAndPassword,
@@ -28,13 +28,24 @@ const isTestEnvironment =
   (process.env?.NODE_ENV === "test" ||
     process.env?.JEST_WORKER_ID !== undefined);
 
+// Firebase configuration interface
+interface FirebaseConfig {
+  apiKey: string;
+  authDomain: string;
+  projectId: string;
+  storageBucket: string;
+  messagingSenderId: string;
+  appId: string;
+  measurementId?: string;
+}
+
 // Firebase configuration - will be populated in different ways depending on the context
-let firebaseConfig: any;
+let firebaseConfig: FirebaseConfig;
 
 // Initialize with a placeholder config
 if (isRenderer) {
   // In renderer process, we'll load the config later from the main process
-  firebaseConfig = {};
+  firebaseConfig = {} as Partial<FirebaseConfig> as FirebaseConfig;
 } else {
   // In main process, try environment variables first, then fall back to hardcoded config
   firebaseConfig = {
@@ -213,7 +224,7 @@ const notifyProfileUpdate = (profile: PlayerProfile): void => {
 /**
  * Set the Firebase configuration (for renderer process)
  */
-export const setFirebaseConfig = (config: any): void => {
+export const setFirebaseConfig = (config: FirebaseConfig): void => {
   if (isRenderer && !configLoaded) {
     firebaseConfig = config;
 
@@ -286,8 +297,8 @@ export const initializeFirebase = async (
         await getDoc(docRef);
         console.log("Firestore access confirmed - remote storage is available");
         firestoreAvailable = true;
-      } catch (err: any) {
-        if (err.code === "permission-denied") {
+      } catch (err: unknown) {
+        if ((err as FirebaseError).code === "permission-denied") {
           console.warn(
             "Firestore permissions are insufficient - using local storage only"
           );
@@ -308,8 +319,12 @@ export const initializeFirebase = async (
 
     authInitialized = true;
     return firestoreAvailable;
-  } catch (error: any) {
-    console.error("Firebase authentication failed:", error.code, error.message);
+  } catch (error: unknown) {
+    console.error(
+      "Firebase authentication failed:",
+      (error as FirebaseError).code,
+      (error as FirebaseError).message
+    );
     console.warn("Falling back to local storage only");
     firestoreAvailable = false;
     authInitialized = true;
@@ -365,8 +380,8 @@ export const authenticateWithFirebase = async (
         "Firestore access confirmed after authentication - remote storage is available"
       );
       firestoreAvailable = true;
-    } catch (err: any) {
-      if (err.code === "permission-denied") {
+    } catch (err: unknown) {
+      if ((err as FirebaseError).code === "permission-denied") {
         console.warn(
           "Firestore permissions are insufficient - using local storage only"
         );

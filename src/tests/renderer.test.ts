@@ -19,8 +19,6 @@ interface BasePlayerProfile {
 // Since these are defined within the DOMContentLoaded scope in renderer.ts,
 // we'll recreate them here for testing
 function calculateLevel(profile: BasePlayerProfile): number {
-  // Start at level 1 with 0 XP
-  let level = 1;
   let totalXp = 0;
 
   // Sum up the final XP from all days in history
@@ -30,17 +28,12 @@ function calculateLevel(profile: BasePlayerProfile): number {
     }
   });
 
-  // Calculate level based on XP using flat 700 XP per level
-  while (totalXp >= APP_CONFIG.PROFILE.XP_PER_LEVEL) {
-    totalXp -= APP_CONFIG.PROFILE.XP_PER_LEVEL;
-    level++;
-  }
-  return level;
+  // Calculate level based on XP using simple division
+  return Math.floor(totalXp / APP_CONFIG.PROFILE.XP_PER_LEVEL) + 1;
 }
 
 function calculateXp(profile: BasePlayerProfile): number {
   let totalXp = 0;
-  let level = 1;
 
   // Sum up the final XP from all days in history
   Object.values(profile.history || {}).forEach((day) => {
@@ -49,13 +42,8 @@ function calculateXp(profile: BasePlayerProfile): number {
     }
   });
 
-  // Subtract XP used for previous levels using flat 700 XP per level
-  while (totalXp >= APP_CONFIG.PROFILE.XP_PER_LEVEL) {
-    totalXp -= APP_CONFIG.PROFILE.XP_PER_LEVEL;
-    level++;
-  }
-
-  return totalXp;
+  // Calculate remaining XP using modulo
+  return totalXp % APP_CONFIG.PROFILE.XP_PER_LEVEL;
 }
 
 function calculateXpToNextLevel(): number {

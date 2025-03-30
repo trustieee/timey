@@ -853,5 +853,72 @@
     </style>
 
     <script type="module" src="/src/renderer.ts"></script>
+    <script>
+      // Check for saved credentials on load
+      document.addEventListener("DOMContentLoaded", async () => {
+        try {
+          // Get needed elements
+          const emailInput = document.getElementById("email");
+          const passwordInput = document.getElementById("password");
+
+          // Check for saved credentials if the function exists
+          if (window.electronAPI && window.electronAPI.checkSavedCredentials) {
+            const savedCredentials =
+              await window.electronAPI.checkSavedCredentials();
+
+            if (
+              savedCredentials &&
+              savedCredentials.hasSavedCredentials &&
+              savedCredentials.email
+            ) {
+              // Pre-fill the email field
+              emailInput.value = savedCredentials.email;
+              // Focus on password field for convenience
+              passwordInput.focus();
+            }
+          }
+        } catch (error) {
+          console.error("Error checking for saved credentials:", error);
+        }
+      });
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const signInButton = document.getElementById("sign-in-button");
+        const emailInput = document.getElementById("email");
+        const passwordInput = document.getElementById("password");
+
+        // Store original click handler
+        const originalClickHandler = signInButton.onclick;
+
+        // Replace with new handler if authenticateWithFirebase exists
+        if (
+          window.electronAPI &&
+          typeof window.electronAPI.authenticateWithFirebase === "function"
+        ) {
+          signInButton.addEventListener("click", async (event) => {
+            // If there was an original handler, don't interfere
+            if (originalClickHandler) {
+              return;
+            }
+
+            event.preventDefault();
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
+            try {
+              const result = await window.electronAPI.authenticateWithFirebase(
+                email,
+                password
+              );
+              console.log(
+                "Authentication result:",
+                result.success ? "Success" : "Failed"
+              );
+            } catch (error) {
+              console.error("Authentication error:", error);
+            }
+          });
+        }
+      });
+    </script>
   </body>
 </html>

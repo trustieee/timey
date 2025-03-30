@@ -74,7 +74,6 @@ export function calculatePlayerStats(profile: PlayerProfile): {
   xp: number;
   xpToNextLevel: number;
 } {
-  // Start at level 1 with 0 XP
   let level = 1;
   let xp = 0;
 
@@ -85,11 +84,10 @@ export function calculatePlayerStats(profile: PlayerProfile): {
     }
   });
 
-  // Calculate level based on XP
-  while (xp >= getXpRequiredForLevel()) {
-    xp -= getXpRequiredForLevel();
-    level += 1;
-  }
+  // Calculate level based on XP using division
+  const totalXp = xp;
+  level = Math.floor(totalXp / getXpRequiredForLevel()) + 1;
+  xp = totalXp % getXpRequiredForLevel();
 
   return {
     level,

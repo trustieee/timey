@@ -16,6 +16,7 @@ import {
   formatClockTime,
 } from "./utils";
 import { REWARDS, Reward, RewardType } from "./rewards";
+import { ElectronAPI } from "./preload";
 
 // Define app states
 enum AppState {
@@ -43,6 +44,10 @@ interface RendererPlayerProfile extends BasePlayerProfile {
   }>;
   lastUpdated?: string; // Add this field to track changes
 }
+
+// Use TypeScript type assertion instead of global interface augmentation
+// This provides proper typing for the electronAPI object
+type ElectronAPIType = ElectronAPI;
 
 document.addEventListener("DOMContentLoaded", async () => {
   // Get the top bar for dragging - now the entire top section is draggable
@@ -80,29 +85,29 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Variables to track time when app is minimized
   let lastTimestamp = Date.now();
-  let isWindowActive = true;
 
   // Add window focus/blur event listeners to accurately track time when minimized
   window.addEventListener("blur", () => {
-    isWindowActive = false;
     // Don't pause the timer, let it continue running
   });
 
   window.addEventListener("focus", () => {
-    isWindowActive = true;
+    // Reset timestamp when window regains focus to prevent counting inactive time
+    lastTimestamp = Date.now();
   });
 
   // Load player profile
   async function loadPlayerProfile() {
     try {
-      const baseProfile = await window.electronAPI.loadPlayerProfile();
+      const api = window.electronAPI as ElectronAPIType;
+      const loadedProfile = await api.loadPlayerProfile();
       // Convert base profile to renderer profile
       playerProfile = {
-        ...baseProfile,
-        level: calculateLevel(baseProfile),
-        xp: calculateXp(baseProfile),
+        ...loadedProfile,
+        level: calculateLevel(loadedProfile),
+        xp: calculateXp(loadedProfile),
         xpToNextLevel: calculateXpToNextLevel(),
-        completedChores: getCompletedChores(baseProfile),
+        completedChores: getCompletedChores(loadedProfile),
       };
       updateXpDisplay();
 
@@ -127,8 +132,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Helper functions to calculate profile properties
   function calculateLevel(profile: BasePlayerProfile): number {
-    // Start at level 1 with 0 XP
-    let level = 1;
     let totalXp = 0;
 
     // Sum up the final XP from all days in history
@@ -138,17 +141,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
 
-    // Calculate level based on XP using the flat 700 XP per level value
-    while (totalXp >= APP_CONFIG.PROFILE.XP_PER_LEVEL) {
-      totalXp -= APP_CONFIG.PROFILE.XP_PER_LEVEL;
-      level++;
-    }
+    // Calculate level based on XP using a simple division
+    const level = Math.floor(totalXp / APP_CONFIG.PROFILE.XP_PER_LEVEL) + 1;
     return level;
   }
 
   function calculateXp(profile: BasePlayerProfile): number {
     let totalXp = 0;
-    let level = 1;
 
     // Sum up the final XP from all days in history
     Object.values(profile.history || {}).forEach((day) => {
@@ -157,13 +156,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
 
-    // Subtract XP used for previous levels using the flat 700 XP per level
-    while (totalXp >= APP_CONFIG.PROFILE.XP_PER_LEVEL) {
-      totalXp -= APP_CONFIG.PROFILE.XP_PER_LEVEL;
-      level++;
-    }
-
-    return totalXp;
+    // Calculate remaining XP for current level using modulo
+    return totalXp % APP_CONFIG.PROFILE.XP_PER_LEVEL;
   }
 
   function calculateXpToNextLevel(): number {
@@ -222,8 +216,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     // Set up a new listener
-    profileUpdateUnsubscribe = window.electronAPI.onProfileUpdate(
-      (updatedProfile) => {
+    const api = window.electronAPI as ElectronAPIType;
+    profileUpdateUnsubscribe = api.onProfileUpdate(
+      (updatedProfile: BasePlayerProfile) => {
         console.log("Real-time profile update received");
 
         // Update the renderer profile with the new data
@@ -276,7 +271,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         const deltaX = e.clientX - startMouseX;
         const deltaY = e.clientY - startMouseY;
 
-        window.electronAPI.windowMove(deltaX, deltaY);
+        const api = window.electronAPI as ElectronAPIType;
+        api.windowMove(deltaX, deltaY);
 
         startMouseX = e.clientX;
         startMouseY = e.clientY;
@@ -294,7 +290,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Display app version
   if (appVersionElement) {
     try {
-      const version = await window.electronAPI.getAppVersion();
+      const api = window.electronAPI as ElectronAPIType;
+      const version = await api.getAppVersion();
       appVersionElement.textContent = `v${version}`;
     } catch (error) {
       console.error("Error getting app version:", error);
@@ -825,7 +822,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // Start app initialization
-  initializeApp();
+  async function initApp() {
+    await initializeApp();
+    await checkAuthStatus();
+  }
+
+  // Initialize the app
+  initApp().catch(console.error);
 
   // History panel functionality
   const historyBtn = document.getElementById(
@@ -1205,27 +1208,78 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Track authentication status
   let isAuthenticated = false;
 
-  // Check authentication status on startup
+  // Check for saved credentials function - simplified
+  async function checkForSavedEmail() {
+    try {
+      const api = window.electronAPI as ElectronAPIType;
+      if (api.checkSavedCredentials) {
+        const savedCredentials = await api.checkSavedCredentials();
+
+        if (
+          savedCredentials &&
+          savedCredentials.hasSavedCredentials &&
+          savedCredentials.email
+        ) {
+          // Pre-fill the email field
+          emailInput.value = savedCredentials.email;
+          // Focus on password field for convenience
+          passwordInput.focus();
+        }
+      }
+    } catch (error) {
+      console.error("Error checking saved credentials:", error);
+    }
+  }
+
+  // Authentication status check - maintain original pattern
   async function checkAuthStatus() {
     try {
-      const status = await window.electronAPI.getAuthStatus();
+      const api = window.electronAPI as ElectronAPIType;
+      const status = await api.getAuthStatus();
 
       // First check if they're authenticated at all
       if (!status.isAuthenticated) {
         isAuthenticated = false;
+        updateLoginButtonState(); // Update button state
+
+        // Check for saved credentials to prefill login form
+        await checkForSavedEmail();
+
         loginPanel.classList.add("visible");
         return false;
       }
 
-      // Then load the profile to check for chores
-      await reloadProfile();
+      // Then load the profile with retry logic
+      let hasChores = false;
+      let retryCount = 0;
+      const maxRetries = 3;
 
-      // Check if the user has any chores set up
-      const hasChores = playerProfile.chores && playerProfile.chores.length > 0;
+      while (!hasChores && retryCount < maxRetries) {
+        // Reload the profile from server
+        await reloadProfile();
+
+        // Check if the user has any chores set up
+        hasChores = playerProfile.chores && playerProfile.chores.length > 0;
+
+        if (!hasChores) {
+          console.log(
+            `Profile loaded but no chores found, retry ${
+              retryCount + 1
+            }/${maxRetries}`
+          );
+          retryCount++;
+
+          if (retryCount < maxRetries) {
+            // Wait a bit before retrying
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
+        }
+      }
 
       if (!hasChores) {
-        // No chores found - user is not fully authenticated
+        // No chores found after retries - user is not fully authenticated
         isAuthenticated = false;
+        updateLoginButtonState(); // Update button state
 
         // Display login panel with error message
         loginPanel.classList.add("visible");
@@ -1240,6 +1294,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // If we get here, user is authenticated and has chores
       isAuthenticated = true;
+      updateLoginButtonState(); // Update button state
       return true;
     } catch (error) {
       console.error("Failed to check auth status:", error);
@@ -1249,9 +1304,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  // Check auth status when page loads
-  checkAuthStatus();
-
   function toggleLoginPanel(e: MouseEvent): void {
     e.stopPropagation(); // Prevent event from bubbling up
 
@@ -1260,6 +1312,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       loginErrorMsg.style.display = "none";
       loginErrorMsg.textContent = "";
     }
+
+    // Update button text based on authentication status
+    updateLoginButtonState();
+
+    // Always ensure button is enabled when panel is opened
+    signInButton.disabled = false;
 
     // If authenticated, toggle panel normally
     if (isAuthenticated) {
@@ -1277,6 +1335,22 @@ document.addEventListener("DOMContentLoaded", async () => {
       // If not authenticated, force panel to stay open
       loginPanel.classList.add("visible");
     }
+  }
+
+  // Function to update login button state based on authentication
+  function updateLoginButtonState() {
+    if (isAuthenticated) {
+      signInButton.textContent = "Logout";
+      emailInput.disabled = true;
+      passwordInput.disabled = true;
+    } else {
+      signInButton.textContent = "Sign In";
+      emailInput.disabled = false;
+      passwordInput.disabled = false;
+    }
+
+    // Always make sure button is enabled
+    signInButton.disabled = false;
   }
 
   // Add event listener for login button
@@ -1342,7 +1416,43 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
+  // Authentication handler
   signInButton.addEventListener("click", async () => {
+    // If already authenticated, handle logout
+    if (isAuthenticated) {
+      try {
+        // Show loading state
+        signInButton.textContent = "Logging out...";
+        signInButton.disabled = true;
+
+        // Instead of calling problematic backend methods, just handle logout locally
+        // Update authentication state
+        isAuthenticated = false;
+
+        // Update button state
+        updateLoginButtonState();
+
+        // Reset form fields
+        passwordInput.value = "";
+
+        // Keep login panel open for re-login
+        loginPanel.classList.add("visible");
+
+        // Focus on email field
+        emailInput.focus();
+
+        // Enable button
+        signInButton.disabled = false;
+
+        console.log("User logged out locally");
+      } catch (error) {
+        console.error("Logout failed:", error);
+        signInButton.textContent = "Logout";
+        signInButton.disabled = false;
+      }
+      return;
+    }
+
     // Clear any previous error messages
     loginErrorMsg.style.display = "none";
     loginErrorMsg.textContent = "";
@@ -1364,11 +1474,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       signInButton.textContent = "Signing in...";
       signInButton.disabled = true;
 
-      // Use IPC to authenticate with Firebase
-      const result = await window.electronAPI.authenticateWithFirebase(
-        email,
-        password
-      );
+      // Use IPC to authenticate with Firebase with type assertion
+      const api = window.electronAPI as ElectronAPIType;
+      const result = await api.authenticateWithFirebase(email, password);
+
       if (result.error) {
         throw new Error(result.error || "Authentication failed");
       }
@@ -1442,6 +1551,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       loginErrorMsg.textContent = errorMsg;
       loginErrorMsg.style.display = "block";
+
+      // Set authentication status to false
+      isAuthenticated = false;
+      updateLoginButtonState();
 
       // Re-enable inputs
       signInButton.textContent = "Sign In";
@@ -1674,11 +1787,56 @@ document.addEventListener("DOMContentLoaded", async () => {
       // Store the previous profile to compare dates
       const previousProfile = playerProfile ? { ...playerProfile } : null;
       const previousDate = previousProfile
-        ? Object.keys(previousProfile.history).sort().pop()
+        ? Object.keys(previousProfile.history || {})
+            .sort()
+            .pop()
         : null;
 
-      // Reload the profile data
-      const baseProfile = await window.electronAPI.loadPlayerProfile();
+      // Add retry logic for loading the profile
+      let baseProfile: BasePlayerProfile | null = null;
+      let retryCount = 0;
+      const maxRetries = 3;
+
+      while (!baseProfile && retryCount < maxRetries) {
+        try {
+          // Reload the profile data with a timeout
+          const profilePromise = window.electronAPI.loadPlayerProfile();
+          const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Profile load timeout")), 5000)
+          );
+
+          baseProfile = (await Promise.race([
+            profilePromise,
+            timeoutPromise,
+          ])) as BasePlayerProfile;
+
+          if (!baseProfile) {
+            throw new Error("No profile data returned");
+          }
+
+          // Log whether profile has chores for debugging
+          console.log(
+            "Profile loaded, has chores:",
+            baseProfile.chores && baseProfile.chores.length > 0
+          );
+        } catch (loadError) {
+          console.error(
+            `Error loading profile (attempt ${retryCount + 1}/${maxRetries}):`,
+            loadError
+          );
+          retryCount++;
+
+          if (retryCount < maxRetries) {
+            // Exponential backoff
+            await new Promise((resolve) =>
+              setTimeout(resolve, 1000 * retryCount)
+            );
+          } else {
+            throw loadError; // Rethrow the error after max retries
+          }
+        }
+      }
+
       // Convert base profile to renderer profile
       playerProfile = {
         ...baseProfile,
@@ -1716,14 +1874,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       // Load today's chores with the refreshed profile
-      loadTodayChores().then(() => {
-        renderChores();
-      });
-
+      await loadTodayChores();
+      renderChores();
       renderRewards();
+
+      return baseProfile;
     } catch (error) {
       console.error("Error reloading profile:", error);
-      alert("Error reloading profile. Please try again.");
+      // Don't show alert to user as this might happen during auto-login
+      // and would be confusing
+      return null;
     }
   }
 

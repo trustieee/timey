@@ -22,6 +22,7 @@ const ProfilesPage: NextPage = () => {
 
   return (
     <Layout>
+      {error && <div className="error-message">{error}</div>}
       {!isAuthenticated ? (
         <Auth setError={setError} loading={loading} setLoading={setLoading} />
       ) : (

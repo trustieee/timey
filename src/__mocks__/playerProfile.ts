@@ -122,14 +122,12 @@ export function calculatePlayerStats(profile: PlayerProfile): {
 
   // Calculate level based on XP
   xp = totalXp;
-  while (xp >= APP_CONFIG.PROFILE.XP_PER_LEVEL) {
-    xp -= APP_CONFIG.PROFILE.XP_PER_LEVEL;
-    level += 1;
-  }
+  level = Math.floor(xp / APP_CONFIG.PROFILE.XP_PER_LEVEL) + 1;
+  const remainingXp = xp % APP_CONFIG.PROFILE.XP_PER_LEVEL;
 
   return {
     level,
-    xp,
+    xp: remainingXp,
     xpToNextLevel: APP_CONFIG.PROFILE.XP_PER_LEVEL,
   };
 }

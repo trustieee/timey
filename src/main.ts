@@ -23,9 +23,25 @@ import {
 } from "./services/firebase";
 // Import APP_CONFIG directly
 import { firebaseConfig as hardcodedConfig, APP_CONFIG } from "./config";
+// Import electron-store for saving credentials
+import Store from "electron-store";
 
 // Load environment variables from .env file
 dotenv.config();
+
+// Define store schema interface
+interface StoreSchema {
+  credentials?: {
+    email: string;
+    password: string;
+  };
+}
+
+// Create a store with typed methods
+const secureStore = new Store<StoreSchema>() as Store<StoreSchema> & {
+  get(key: "credentials"): StoreSchema["credentials"] | undefined;
+  set(key: "credentials", value: StoreSchema["credentials"] | undefined): void;
+};
 
 // Firebase configuration from environment variables with fallback to hardcoded config
 const firebaseConfig = {
@@ -66,7 +82,107 @@ let profileUpdateUnsubscribe: (() => void) | null = null;
 
 // Function to refresh player profile data
 async function refreshPlayerProfileData() {
-  playerProfileData = await playerProfile.loadPlayerProfile();
+  try {
+    // Only attempt to load profile if user is authenticated
+    if (isAuthenticated && authenticatedEmail) {
+      console.log(
+        "Loading profile data for authenticated user:",
+        authenticatedEmail
+      );
+
+      // Load profile from Firebase
+      const baseProfile = await playerProfile.loadPlayerProfile();
+
+      // Verify we got a valid profile
+      if (!baseProfile) {
+        console.error("Failed to load profile data - no profile returned");
+        return null;
+      }
+
+      // Log profile contents for debugging
+      console.log(
+        "Profile loaded, has chores:",
+        baseProfile.chores && baseProfile.chores.length > 0
+      );
+
+      // Calculate derived properties
+      playerProfileData = {
+        ...baseProfile,
+        level: calculateLevel(baseProfile),
+        xp: calculateXp(baseProfile),
+        xpToNextLevel: calculateXpToNextLevel(),
+      };
+
+      return playerProfileData;
+    } else {
+      console.log("Not loading profile - user not authenticated");
+      playerProfileData = null;
+      return null;
+    }
+  } catch (error) {
+    console.error("Error refreshing player profile data:", error);
+    return null;
+  }
+}
+
+// Function to check for saved credentials and log in
+async function tryAutoLogin(): Promise<boolean> {
+  try {
+    // Use any to bypass TypeScript checking
+    const credentials = secureStore.get("credentials");
+
+    if (
+      credentials &&
+      typeof credentials === "object" &&
+      "email" in credentials &&
+      "password" in credentials
+    ) {
+      const email = credentials.email as string;
+      const password = credentials.password as string;
+
+      console.log(`Attempting auto-login for user: ${email}`);
+
+      // Actually authenticate with Firebase instead of just setting flags
+      try {
+        // Perform full Firebase authentication with the stored credentials
+        const userCredential = await authenticateWithFirebase(email, password);
+
+        isAuthenticated = true;
+        authenticatedEmail = email;
+
+        console.log(`Auto-login successful for: ${authenticatedEmail}`);
+
+        // Ensure profile data is fully loaded after authentication
+        await refreshPlayerProfileData();
+
+        // Verify the profile has chores before considering login fully successful
+        if (
+          playerProfileData &&
+          playerProfileData.chores &&
+          playerProfileData.chores.length > 0
+        ) {
+          console.log("Profile chores loaded successfully");
+          return true;
+        } else {
+          console.log("Auto-login succeeded but profile has no chores");
+          // Authentication succeeded but no chores found - still return true
+          // The renderer will handle showing the appropriate message
+          return true;
+        }
+      } catch (authError) {
+        console.error("Auto-login authentication failed:", authError);
+        // Clear saved credentials if they don't work
+        secureStore.set("credentials", undefined);
+        return false;
+      }
+    }
+  } catch (error) {
+    console.error("Auto-login failed:", error);
+    // Clear saved credentials if they're invalid
+    secureStore.set("credentials", undefined);
+  }
+
+  return false;
 }
 
 // Set up listener for real-time profile updates
@@ -86,7 +202,7 @@ function setupProfileChangeListener(mainWindow: BrowserWindow) {
       ...updatedProfile,
       level: calculateLevel(updatedProfile),
       xp: calculateXp(updatedProfile),
-      xpToNextLevel: calculateXpToNextLevel(updatedProfile),
+      xpToNextLevel: calculateXpToNextLevel(),
     };
 
     // Only forward the update if the window still exists and isn't destroyed
@@ -111,16 +227,9 @@ function calculateLevel(profile: BasePlayerProfile): number {
     }
   }
 
-  let level = 1;
+  // Calculate level based on XP (each level needs same amount of XP now)
   const xpPerLevel = APP_CONFIG.PROFILE.XP_PER_LEVEL;
-
-  for (let i = 0; i < xpPerLevel.length; i++) {
-    if (totalXp < xpPerLevel[i]) {
-      break;
-    }
-    totalXp -= xpPerLevel[i];
-    level++;
-  }
+  const level = Math.floor(totalXp / xpPerLevel) + 1;
 
   return level;
 }
@@ -136,57 +245,21 @@ function calculateXp(profile: BasePlayerProfile): number {
     }
   }
 
+  // Calculate remaining XP for current level
   const xpPerLevel = APP_CONFIG.PROFILE.XP_PER_LEVEL;
-
-  for (let i = 0; i < xpPerLevel.length; i++) {
-    if (totalXp < xpPerLevel[i]) {
-      return totalXp;
-    }
-    totalXp -= xpPerLevel[i];
-  }
-
-  return totalXp;
+  return totalXp % xpPerLevel;
 }
 
-function calculateXpToNextLevel(profile: BasePlayerProfile): number {
-  const level = calculateLevel(profile);
-  const xpPerLevel = APP_CONFIG.PROFILE.XP_PER_LEVEL;
-
-  if (level <= xpPerLevel.length) {
-    return xpPerLevel[level - 1];
-  } else {
-    return APP_CONFIG.PROFILE.DEFAULT_XP_PER_LEVEL;
-  }
+function calculateXpToNextLevel(): number {
+  // XP to next level is simply the configured value now
+  return APP_CONFIG.PROFILE.XP_PER_LEVEL;
 }
 
 const createWindow = async () => {
   // Force dark mode at startup
   nativeTheme.themeSource = "dark";
 
-  // Initialize Firebase first to establish connection but don't authenticate
-  try {
-    // Initialize Firebase without credentials (no auto-login)
-    const firestoreAvailable = await initializeFirebase();
-    console.log(
-      `Firebase initialized. Firestore available: ${firestoreAvailable}`
-    );
-
-    // Check if there's already a user authenticated (from a previous session)
-    if (auth.currentUser) {
-      isAuthenticated = true;
-      authenticatedEmail = auth.currentUser.email;
-      console.log(`User is authenticated: ${authenticatedEmail}`);
-    } else {
-      console.log("No authenticated user found - user needs to sign in");
-    }
-  } catch (error) {
-    console.error("Error initializing Firebase:", error);
-  }
-
-  // Now load player profile data after Firebase initialization
-  await refreshPlayerProfileData();
-
-  // Create the browser window.
+  // Create the browser window first so we can set up listeners
   const mainWindow = new BrowserWindow({
     width: 650,
     height: 950,
@@ -208,6 +281,41 @@ const createWindow = async () => {
     show: false, // Don't show the window until it's ready
   });
 
+  // Initialize Firebase first to establish connection but don't authenticate
+  try {
+    // Initialize Firebase without credentials (no auto-login)
+    const firestoreAvailable = await initializeFirebase();
+    console.log(
+      `Firebase initialized. Firestore available: ${firestoreAvailable}`
+    );
+
+    // Check if there's already a user authenticated (from a previous session)
+    if (auth.currentUser) {
+      isAuthenticated = true;
+      authenticatedEmail = auth.currentUser.email;
+      console.log(`User is authenticated: ${authenticatedEmail}`);
+
+      // Set up profile listener for real-time updates since user is authenticated
+      setupProfileChangeListener(mainWindow);
+    } else {
+      // Try auto-login if no current user
+      const autoLoginSuccessful = await tryAutoLogin();
+
+      if (autoLoginSuccessful) {
+        console.log("Auto-login successful, setting up profile listener");
+        // Set up profile listener for real-time updates
+        setupProfileChangeListener(mainWindow);
+      } else {
+        console.log("Auto-login failed or not attempted");
+      }
+    }
+  } catch (error) {
+    console.error("Error initializing Firebase:", error);
+  }
+
+  // Now load player profile data after Firebase initialization
+  await refreshPlayerProfileData();
+
   // Set Content Security Policy
   mainWindow.webContents.session.webRequest.onHeadersReceived(
     (details, callback) => {
@@ -222,6 +330,7 @@ const createWindow = async () => {
     }
   );
 
+  // For development, uncomment to enable DevTools by default
   // mainWindow.webContents.openDevTools();
 
   // Create application menu without update option
@@ -384,11 +493,6 @@ const createWindow = async () => {
     return firebaseConfig;
   });
 
-  // Set up real-time profile update listener after user authentication is confirmed
-  if (isAuthenticated) {
-    setupProfileChangeListener(mainWindow);
-  }
-
   // Add Firebase authentication handler
   ipcMain.handle(
     "authenticate-with-firebase",
@@ -397,6 +501,8 @@ const createWindow = async () => {
         const userCredential = await authenticateWithFirebase(email, password);
         isAuthenticated = true;
         authenticatedEmail = email;
+
+        secureStore.set("credentials", { email, password });
 
         // Set up real-time profile update listener after successful authentication
         setupProfileChangeListener(mainWindow);
@@ -415,6 +521,33 @@ const createWindow = async () => {
       }
     }
   );
+
+  // Add new handler to check if credentials are saved
+  ipcMain.handle("check-saved-credentials", () => {
+    const credentials = secureStore.get("credentials");
+
+    if (
+      credentials &&
+      typeof credentials === "object" &&
+      "email" in credentials
+    ) {
+      return {
+        hasSavedCredentials: true,
+        email: credentials.email as string,
+      };
+    }
+
+    return {
+      hasSavedCredentials: false,
+      email: null,
+    };
+  });
+
+  // Add handler to clear saved credentials
+  ipcMain.handle("clear-saved-credentials", () => {
+    secureStore.set("credentials", undefined);
+    return { success: true };
+  });
 
   // Register global shortcut for DevTools
   globalShortcut.register("CommandOrControl+Shift+I", () => {

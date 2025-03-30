@@ -1,5 +1,5 @@
 import * as admin from "firebase-admin";
-import { PlayerProfile, ChoreStatus } from "../src/playerProfile";
+import { PlayerProfile, ChoreStatus, DayProgress } from "../src/playerProfile";
 import fs from "fs";
 import path from "path";
 
@@ -9,6 +9,45 @@ interface Chore {
   text: string;
   status?: ChoreStatus;
   completedAt?: string;
+}
+
+// Define interface for the updated profile structure
+interface UpdatedProfile {
+  lastUpdated: string;
+  uid: string;
+  xp: {
+    penalties: number;
+    gained: number;
+    final: number;
+  };
+  playTime: {
+    sessions: Array<{
+      startTime?: string;
+      endTime?: string;
+      duration?: number;
+    }>;
+  };
+  rewards: {
+    available: number;
+    permanent: Record<string, unknown>;
+  };
+  history: Record<
+    string,
+    DayProgress & {
+      xp?: {
+        gained: number;
+        penalties: number;
+        final: number;
+        bonus?: number;
+        base?: number;
+      };
+    }
+  >;
+  chores?: Array<{
+    id: number;
+    text: string;
+    daysOfWeek: number[];
+  }>;
 }
 
 // Parse command line arguments
@@ -68,15 +107,13 @@ async function migrateProfile() {
     }
 
     // Create a modified profile with new schema structure
-    const updatedProfile: any = {
+    const updatedProfile: UpdatedProfile = {
       lastUpdated: new Date().toISOString(),
       uid: FIRESTORE_USER_ID,
       xp: {
         penalties: 0,
         gained: 0,
-        bonus: 0,
         final: 0,
-        base: 0,
       },
       playTime: {
         sessions: [],
@@ -135,7 +172,9 @@ async function migrateProfile() {
     let totalGained = 0;
     let totalPenalties = 0;
 
-    Object.values(updatedProfile.history).forEach((day: any) => {
+    Object.values(
+      updatedProfile.history as Record<string, DayProgress>
+    ).forEach((day: DayProgress) => {
       if (day.xp && typeof day.xp.gained === "number") {
         totalGained += day.xp.gained;
       }
@@ -147,8 +186,6 @@ async function migrateProfile() {
     updatedProfile.xp = {
       penalties: totalPenalties,
       gained: totalGained,
-      bonus: 0,
-      base: totalGained,
       final: totalGained - totalPenalties,
     };
 

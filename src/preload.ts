@@ -1,9 +1,9 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
 import { RewardType } from "./rewards";
 import { PlayerProfile as BasePlayerProfile } from "./playerProfile";
 
 // Define the electronAPI type to ensure consistency
-type ElectronAPI = {
+export type ElectronAPI = {
   windowMove: (mouseX: number, mouseY: number) => void;
   getAppVersion: () => Promise<string>;
   loadPlayerProfile: () => Promise<BasePlayerProfile>;
@@ -30,14 +30,25 @@ type ElectronAPI = {
     isAuthenticated: boolean;
     email: string | null;
   }>;
-  getFirebaseConfig: () => Promise<any>;
-  authenticateWithFirebase: (email: string, password: string) => Promise<any>;
+  getFirebaseConfig: () => Promise<FirebaseConfig>;
+  authenticateWithFirebase: (
+    email: string,
+    password: string
+  ) => Promise<AuthResult>;
+  signOut: () => Promise<void>;
   onProfileUpdate: (
     callback: (profile: BasePlayerProfile) => void
   ) => () => void;
+  checkSavedCredentials: () => Promise<{
+    hasSavedCredentials: boolean;
+    email: string | null;
+  }>;
+  clearSavedCredentials: () => Promise<{ success: boolean }>;
 };
 
 // Define global Window interface extension for TypeScript
+export {};
+
 declare global {
   interface Window {
     electronAPI: ElectronAPI;
@@ -83,12 +94,22 @@ const api: ElectronAPI = {
 
   // Authenticate with Firebase
   authenticateWithFirebase: (email: string, password: string) =>
-    ipcRenderer.invoke("authenticate-with-firebase", { email, password }),
+    ipcRenderer.invoke("authenticate-with-firebase", {
+      email,
+      password,
+    }),
+
+  // Sign out from Firebase
+  signOut: () => ipcRenderer.invoke("sign-out"),
+
+  // Saved credentials operations
+  checkSavedCredentials: () => ipcRenderer.invoke("check-saved-credentials"),
+  clearSavedCredentials: () => ipcRenderer.invoke("clear-saved-credentials"),
 
   // Real-time profile updates
   onProfileUpdate: (callback: (profile: BasePlayerProfile) => void) => {
     const channel = "profile-update";
-    const listener = (_event: any, profile: BasePlayerProfile) =>
+    const listener = (_event: IpcRendererEvent, profile: BasePlayerProfile) =>
       callback(profile);
     ipcRenderer.on(channel, listener);
     return () => {
@@ -99,3 +120,23 @@ const api: ElectronAPI = {
 
 // Expose the API to the renderer process
 contextBridge.exposeInMainWorld("electronAPI", api);
+
+// Firebase configuration interface
+interface FirebaseConfig {
+  apiKey: string;
+  authDomain: string;
+  projectId: string;
+  storageBucket: string;
+  messagingSenderId: string;
+  appId: string;
+  measurementId?: string;
+}
+
+// Authentication result interface
+interface AuthResult {
+  user: {
+    email: string | null;
+    uid: string;
+  };
+  error?: string;
+}
