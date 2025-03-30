@@ -554,8 +554,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         timerInterval = window.setInterval(() => {
           if (!isPaused) {
-            // Always count down even when window is not active
-            timeLeft--;
+            const now = Date.now();
+            const elapsed = Math.floor((now - lastTimestamp) / 1000);
+            lastTimestamp = now;
+
+            // Ensure we decrement by at least 1 second, but also account for longer gaps
+            const decrementAmount = Math.max(1, elapsed);
+            timeLeft = Math.max(0, timeLeft - decrementAmount);
             updateTimerDisplay();
 
             if (timeLeft <= 0) {
@@ -586,8 +591,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     timerInterval = window.setInterval(() => {
       if (!isPaused) {
-        // Always count down even when window is not active
-        timeLeft--;
+        const now = Date.now();
+        const elapsed = Math.floor((now - lastTimestamp) / 1000);
+        lastTimestamp = now;
+
+        // Ensure we decrement by at least 1 second, but also account for longer gaps
+        const decrementAmount = Math.max(1, elapsed);
+        timeLeft = Math.max(0, timeLeft - decrementAmount);
         updateTimerDisplay();
         updateResetButtonState(); // Update button state every tick
 
@@ -621,6 +631,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Pause or resume the timer
   function pauseResumeTimer(): void {
     isPaused = !isPaused;
+
+    // When resuming, reset the timestamp to prevent counting pause time as elapsed
+    if (!isPaused) {
+      lastTimestamp = Date.now();
+    }
+
     updatePauseButtonText();
     currentStateElement.textContent = getStateDisplayName(currentState);
   }

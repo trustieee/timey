@@ -777,14 +777,39 @@ const DayHistory: React.FC<DayHistoryProps> = ({
                         </h4>
                         <ul className="space-y-2 max-h-40 overflow-auto pr-1 scrollbar-thin scrollbar-track-slate-800 scrollbar-thumb-slate-600">
                           {dayData.playTime.sessions.map((session, index) => {
-                            if (session.start && session.end) {
+                            // Always display a session if it has a start time
+                            if (session.start) {
                               const startTime = new Date(session.start);
-                              const endTime = new Date(session.end);
-                              const durationMs =
-                                endTime.getTime() - startTime.getTime();
-                              const durationMinutes = Math.round(
-                                durationMs / (1000 * 60)
-                              );
+                              let durationMinutes = 0;
+                              let sessionStatus:
+                                | "completed"
+                                | "in-progress"
+                                | "abandoned" = "in-progress";
+
+                              // If session has an end time, it's completed
+                              if (session.end) {
+                                const endTime = new Date(session.end);
+                                const durationMs =
+                                  endTime.getTime() - startTime.getTime();
+                                durationMinutes = Math.round(
+                                  durationMs / (1000 * 60)
+                                );
+                                sessionStatus = "completed";
+                              }
+                              // If there's no end but there's a subsequent session, it's abandoned
+                              else if (
+                                index <
+                                dayData.playTime.sessions.length - 1
+                              ) {
+                                sessionStatus = "abandoned";
+                              }
+
+                              // Define the color scheme based on session status
+                              const durationStyles = {
+                                completed: "bg-emerald-900/30 text-emerald-300",
+                                "in-progress": "bg-amber-900/30 text-amber-300",
+                                abandoned: "bg-red-900/30 text-red-300",
+                              };
 
                               return (
                                 <li
@@ -814,7 +839,8 @@ const DayHistory: React.FC<DayHistoryProps> = ({
                                     </div>
                                     <div>
                                       <p className="text-sm text-white font-medium">
-                                        Session {index + 1}
+                                        Session {index + 1}{" "}
+                                        {!session.end && " (Active)"}
                                       </p>
                                       <p className="text-xs text-slate-400">
                                         {startTime.toLocaleTimeString([], {
@@ -822,16 +848,28 @@ const DayHistory: React.FC<DayHistoryProps> = ({
                                           minute: "2-digit",
                                         })}
                                         <span className="mx-1">→</span>
-                                        {endTime.toLocaleTimeString([], {
-                                          hour: "2-digit",
-                                          minute: "2-digit",
-                                        })}
+                                        {session.end
+                                          ? new Date(
+                                              session.end
+                                            ).toLocaleTimeString([], {
+                                              hour: "2-digit",
+                                              minute: "2-digit",
+                                            })
+                                          : sessionStatus === "in-progress"
+                                          ? "In progress"
+                                          : "Abandoned"}
                                       </p>
                                     </div>
                                   </div>
 
-                                  <div className="ml-auto mt-2 sm:mt-0 bg-emerald-900/30 text-emerald-300 text-xs font-medium px-2 py-1 rounded-full">
-                                    {durationMinutes} min
+                                  <div
+                                    className={`ml-auto mt-2 sm:mt-0 ${durationStyles[sessionStatus]} text-xs font-medium px-2 py-1 rounded-full`}
+                                  >
+                                    {session.end
+                                      ? `${durationMinutes} min`
+                                      : sessionStatus === "in-progress"
+                                      ? "Active"
+                                      : "Abandoned"}
                                   </div>
                                 </li>
                               );
