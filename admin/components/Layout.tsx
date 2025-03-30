@@ -1,7 +1,10 @@
 import React, { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
-import { auth } from "../utils/firebase";
+import { useRouter } from "next/router";
+import { auth, db } from "../utils/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import Auth from "./Auth";
 
 interface LayoutProps {
   children: ReactNode;
@@ -9,11 +12,48 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-  // Check auth state on component mount
+  // Check auth state and admin status on component mount
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setIsAuthenticated(!!user);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // User is signed in
+        setIsAuthenticated(true);
+
+        // Check if user is an admin
+        try {
+          const adminDocRef = doc(db, "adminUsers", user.uid);
+          const adminDocSnap = await getDoc(adminDocRef);
+
+          if (adminDocSnap.exists()) {
+            setIsAdmin(true);
+            setLoading(false);
+          } else {
+            setIsAdmin(false);
+            // Log them out if they're not an admin
+            await signOut(auth);
+            setIsAuthenticated(false);
+            setLoading(false);
+          }
+        } catch (err) {
+          setIsAdmin(false);
+          setError("Permission verification failed. Please try again.");
+
+          // Log them out if there's an error checking admin status
+          await signOut(auth);
+          setIsAuthenticated(false);
+          setLoading(false);
+        }
+      } else {
+        // User is signed out
+        setIsAuthenticated(false);
+        setIsAdmin(false);
+        setLoading(false);
+      }
     });
 
     // Cleanup subscription on unmount
@@ -24,10 +64,75 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const handleLogout = async () => {
     try {
       await signOut(auth);
+      router.push("/");
     } catch (error) {
       console.error("Error signing out:", error);
     }
   };
+
+  // If still loading, show a loading indicator
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950">
+        <div className="flex flex-col items-center">
+          <svg
+            className="w-8 h-8 text-indigo-400 animate-spin mb-2"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+              strokeDasharray="32"
+              strokeDashoffset="12"
+              strokeLinecap="round"
+            />
+          </svg>
+          <p className="text-white">Verifying admin access...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login form for non-authenticated users
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex flex-col bg-slate-950">
+        <div className="container mx-auto p-3 md:p-4">
+          <div className="max-w-md mx-auto">
+            <h1 className="text-xl font-bold text-white mb-8 text-center">
+              Timey Admin Dashboard
+            </h1>
+            {error && (
+              <div className="mb-4 p-3 border border-red-700 bg-red-900/30 text-red-300 rounded-md text-sm">
+                <div className="flex items-center space-x-2">
+                  <svg
+                    className="h-4 w-4 text-red-400"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                  </svg>
+                  <span>{error}</span>
+                </div>
+              </div>
+            )}
+            {children}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-950">
@@ -59,6 +164,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <span className="text-sm text-slate-400">
                 v{process.env.NEXT_PUBLIC_APP_VERSION}
               </span>
+              {isAdmin && (
+                <span className="ml-2 px-1.5 py-0.5 text-xs bg-indigo-500 text-white rounded-md">
+                  Admin
+                </span>
+              )}
             </h1>
           </div>
           <nav className="flex items-center">

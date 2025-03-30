@@ -35,7 +35,15 @@ const DayHistory: React.FC<DayHistoryProps> = ({
       month: "short",
       day: "numeric",
     };
-    return new Date(dateString).toLocaleDateString(undefined, options);
+
+    // Fix timezone issue by parsing the date and setting it to noon in local time
+    // This ensures the day doesn't shift due to timezone differences
+    const [year, month, day] = dateString
+      .split(/[/-]/)
+      .map((num) => parseInt(num, 10));
+    const date = new Date(year, month - 1, day, 12, 0, 0);
+
+    return date.toLocaleDateString(undefined, options);
   };
 
   // Function to cycle through chore statuses: incomplete -> completed -> na -> incomplete
@@ -130,32 +138,30 @@ const DayHistory: React.FC<DayHistoryProps> = ({
 
   // Check if the date is the current day
   const isCurrentDay = () => {
-    // Get today's date and format as YYYY-MM-DD
+    // Get today's date
     const today = new Date();
-    const todayFormatted = today.toISOString().split("T")[0];
+    const todayYear = today.getFullYear();
+    const todayMonth = today.getMonth() + 1;
+    const todayDay = today.getDate();
 
-    // Check if the date string is in ISO format (YYYY-MM-DD) or another format
-    let dateToCompare = date;
-
-    // If date is not in YYYY-MM-DD format, try to normalize it
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      try {
-        // Parse the date string and convert to YYYY-MM-DD
-        const parsedDate = new Date(date);
-        dateToCompare = parsedDate.toISOString().split("T")[0];
-      } catch (e) {
-        console.error("Error parsing date:", e);
-        return false;
-      }
+    // Parse the date string
+    let dateYear, dateMonth, dateDay;
+    try {
+      // Handle different date formats (YYYY-MM-DD or YYYY/MM/DD)
+      const dateParts = date.split(/[/-]/).map((num) => parseInt(num, 10));
+      dateYear = dateParts[0];
+      dateMonth = dateParts[1];
+      dateDay = dateParts[2];
+    } catch (e) {
+      console.error("Error parsing date:", e);
+      return false;
     }
 
-    // Simple string comparison of dates in YYYY-MM-DD format
-    return todayFormatted === dateToCompare;
+    // Compare year, month, and day directly without timezone concerns
+    return (
+      todayYear === dateYear && todayMonth === dateMonth && todayDay === dateDay
+    );
   };
-
-  // Log the current status for debugging
-  const currentDay = isCurrentDay();
-  console.log(`Date: ${date}, Is Current Day: ${currentDay}`);
 
   // Status display for chores
   const ChoreStatusIndicator = ({ status }: { status: ChoreStatus }) => {
@@ -749,14 +755,10 @@ const DayHistory: React.FC<DayHistoryProps> = ({
                           </p>
                           <div className="flex items-baseline">
                             <span className="text-2xl font-bold text-white">
-                              {playStats.formattedPlayTime
-                                .replace(/hrs?/i, "")
-                                .replace(/mins?/i, "")}
+                              {playStats.totalPlayTime}
                             </span>
                             <span className="text-emerald-400 text-xs ml-1">
-                              {playStats.formattedPlayTime.includes("hr")
-                                ? "hours"
-                                : "minutes"}
+                              minutes
                             </span>
                           </div>
                         </div>

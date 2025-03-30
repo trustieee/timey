@@ -56,10 +56,19 @@ const ProfileHistory: React.FC<ProfileHistoryProps> = ({
       {profile.history && Object.keys(profile.history).length > 0 ? (
         <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-track-slate-800 scrollbar-thumb-slate-600">
           {Object.entries(profile.history)
-            .sort(
-              ([dateA], [dateB]) =>
-                new Date(dateB).getTime() - new Date(dateA).getTime()
-            )
+            .sort(([dateA], [dateB]) => {
+              const [yearA, monthA, dayA] = dateA
+                .split(/[/-]/)
+                .map((num) => parseInt(num, 10));
+              const [yearB, monthB, dayB] = dateB
+                .split(/[/-]/)
+                .map((num) => parseInt(num, 10));
+
+              const dateObjA = new Date(yearA, monthA - 1, dayA, 12, 0, 0);
+              const dateObjB = new Date(yearB, monthB - 1, dayB, 12, 0, 0);
+
+              return dateObjB.getTime() - dateObjA.getTime();
+            })
             .map(([date, dayData]) => {
               const dayKey = `${profile.uid}-${date}`;
               const isDayExpanded = expandedDays[dayKey] || false;

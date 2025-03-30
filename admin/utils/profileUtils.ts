@@ -83,7 +83,11 @@ export const calculatePlayStats = (
     !dayData.playTime.sessions ||
     dayData.playTime.sessions.length === 0
   ) {
-    return { totalPlayTime: 0, totalSessions: 0, formattedPlayTime: "0:00" };
+    return {
+      totalPlayTime: 0,
+      totalSessions: 0,
+      formattedPlayTime: "0:00",
+    };
   }
 
   let totalPlayTimeMs = 0;
