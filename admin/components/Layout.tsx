@@ -105,7 +105,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="container mx-auto p-3 md:p-4">
           <div className="max-w-md mx-auto">
             <h1 className="text-xl font-bold text-white mb-8 text-center">
-              Timey Admin Dashboard
+              Timey Admin Dashboard{" "}
+              <span className="text-sm text-slate-400">
+                v{process.env.NEXT_PUBLIC_APP_VERSION}
+              </span>
             </h1>
             {error && (
               <div className="mb-4 p-3 border border-red-700 bg-red-900/30 text-red-300 rounded-md text-sm">

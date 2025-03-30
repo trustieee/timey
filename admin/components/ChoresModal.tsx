@@ -401,8 +401,8 @@ const ChoresModal: React.FC<ChoresModalProps> = ({
                       onClick={() => toggleDaySelection(day)}
                       className={`w-7 h-7 flex items-center justify-center rounded-full text-xs transition-colors relative cursor-pointer ${
                         selectedDaysOfWeek.includes(day)
-                          ? "bg-indigo-600 text-white"
-                          : "bg-slate-700 text-slate-400 hover:bg-slate-600"
+                          ? "bg-indigo-950 text-white"
+                          : "bg-slate-600 text-slate-400 hover:bg-slate-600"
                       }`}
                       title={`Toggle ${getDayName(day)}`}
                     >
@@ -549,8 +549,8 @@ const ChoresModal: React.FC<ChoresModalProps> = ({
                               onClick={() => toggleEditDaySelection(day)}
                               className={`w-7 h-7 flex items-center justify-center rounded-full text-xs transition-colors relative cursor-pointer ${
                                 editingDaysOfWeek.includes(day)
-                                  ? "bg-indigo-600 text-white"
-                                  : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                                  ? "bg-indigo-950 text-white"
+                                  : "bg-slate-600 text-slate-400 hover:bg-slate-600"
                               }`}
                             >
                               {day === 4 ? "Th" : getDayName(day).charAt(0)}
@@ -596,8 +596,8 @@ const ChoresModal: React.FC<ChoresModalProps> = ({
                                   key={day}
                                   className={`w-7 h-7 flex items-center justify-center rounded-full text-xs transition-colors relative ${
                                     isEnabled
-                                      ? "bg-indigo-600 text-white"
-                                      : "bg-slate-800 text-slate-400"
+                                      ? "bg-indigo-950 text-white"
+                                      : "bg-slate-600 text-slate-400"
                                   }`}
                                 >
                                   {day === 4 ? "Th" : getDayName(day).charAt(0)}
