@@ -775,7 +775,7 @@ const DayHistory: React.FC<DayHistoryProps> = ({
                           </svg>
                           Session Timeline
                         </h4>
-                        <ul className="space-y-2 max-h-40 overflow-auto pr-1 scrollbar-thin scrollbar-track-slate-800 scrollbar-thumb-slate-600">
+                        <ul className="space-y-2 overflow-auto pr-1 scrollbar-thin scrollbar-track-slate-800 scrollbar-thumb-slate-600">
                           {dayData.playTime.sessions.map((session, index) => {
                             // Always display a session if it has a start time
                             if (session.start) {
