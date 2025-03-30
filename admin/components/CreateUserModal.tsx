@@ -10,6 +10,7 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({
   onClose,
 }) => {
   const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -18,6 +19,7 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({
 
   const resetForm = () => {
     setEmail("");
+    setDisplayName("");
     setPassword("");
     setConfirmPassword("");
     setError(null);
@@ -49,12 +51,26 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({
     setIsLoading(true);
 
     try {
+      // Process display name - use email username if empty
+      let finalDisplayName = displayName.trim();
+      if (!finalDisplayName && email) {
+        // Extract part before @ in the email
+        const emailParts = email.split("@");
+        if (emailParts.length > 0) {
+          finalDisplayName = emailParts[0];
+        }
+      }
+
       const response = await fetch("/api/users", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          email,
+          password,
+          displayName: finalDisplayName,
+        }),
       });
 
       const data = await response.json();
@@ -64,9 +80,7 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({
       }
 
       setSuccess(`User created successfully: ${data.user.email}`);
-      setTimeout(() => {
-        handleClose();
-      }, 2000);
+      handleClose();
     } catch (error) {
       console.error("Error creating user:", error);
       setError(
@@ -133,6 +147,26 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({
               className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white"
               required
               disabled={isLoading}
+              autoFocus
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="displayName"
+              className="block text-sm font-medium text-slate-300 mb-1"
+            >
+              Display Name{" "}
+              <span className="text-slate-400 text-xs">(optional)</span>
+            </label>
+            <input
+              type="text"
+              id="displayName"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white"
+              disabled={isLoading}
+              placeholder="Leave empty to use email username"
             />
           </div>
 

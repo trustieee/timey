@@ -16,6 +16,7 @@ const ProfileList: React.FC = () => {
     Record<string, boolean>
   >({});
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
+  const [adminUsers, setAdminUsers] = useState<string[]>([]);
 
   // Chores modal state
   const [isChoresModalOpen, setIsChoresModalOpen] = useState(false);
@@ -89,6 +90,43 @@ const ProfileList: React.FC = () => {
     return () => {
       if (unsubscribeProfiles) {
         unsubscribeProfiles();
+      }
+    };
+  }, []);
+
+  // Fetch admin users
+  useEffect(() => {
+    const fetchAdminUsers = () => {
+      try {
+        const adminCollection = collection(db, "adminUsers");
+
+        // Set up real-time listener for admin users
+        const unsubscribe = onSnapshot(
+          adminCollection,
+          (snapshot) => {
+            const adminIds: string[] = [];
+            snapshot.forEach((doc) => {
+              adminIds.push(doc.id);
+            });
+            setAdminUsers(adminIds);
+          },
+          (error) => {
+            console.error("Error syncing admin users:", error);
+          }
+        );
+
+        return unsubscribe;
+      } catch (error) {
+        console.error("Error setting up admin users listener:", error);
+        return () => {};
+      }
+    };
+
+    const unsubscribeAdmins = fetchAdminUsers();
+
+    return () => {
+      if (unsubscribeAdmins) {
+        unsubscribeAdmins();
       }
     };
   }, []);
@@ -254,6 +292,7 @@ const ProfileList: React.FC = () => {
                   toggleProfileExpansion={toggleProfileExpansion}
                   toggleDayExpansion={toggleDayExpansion}
                   openChoresModal={openChoresModal}
+                  isAdmin={adminUsers.includes(profile.uid)}
                 />
               ))}
             </div>

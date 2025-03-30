@@ -11,6 +11,7 @@ interface ProfileCardProps {
   toggleProfileExpansion: (uid: string) => void;
   toggleDayExpansion: (uid: string, date: string) => void;
   openChoresModal: (profile: AdminUserProfile) => void;
+  isAdmin?: boolean;
 }
 
 const ProfileCard: React.FC<ProfileCardProps> = ({
@@ -20,6 +21,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
   toggleProfileExpansion,
   toggleDayExpansion,
   openChoresModal,
+  isAdmin = false,
 }) => {
   const playerStats = calculatePlayerStats(profile);
 
@@ -50,7 +52,12 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
               </svg>
             </div>
             <div className="flex flex-col">
-              <h3 className="font-semibold text-white text-lg tracking-tight">
+              <h3 className="font-semibold text-white text-lg tracking-tight flex items-center gap-2">
+                {isAdmin && (
+                  <span className="bg-red-500/80 text-white text-xs px-1 mt-1 rounded-full font-medium">
+                    Admin
+                  </span>
+                )}
                 {profile.displayName || "Player"}{" "}
                 <span className="text-sm text-slate-400">
                   ({profile.email || profile.uid})
