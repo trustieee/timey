@@ -78,6 +78,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Store the unsubscribe function for profile updates
   let profileUpdateUnsubscribe: (() => void) | null = null;
 
+  // Variables to track time when app is minimized
+  let lastTimestamp = Date.now();
+  let isWindowActive = true;
+
+  // Add window focus/blur event listeners to accurately track time when minimized
+  window.addEventListener("blur", () => {
+    isWindowActive = false;
+    // Don't pause the timer, let it continue running
+  });
+
+  window.addEventListener("focus", () => {
+    isWindowActive = true;
+  });
+
   // Load player profile
   async function loadPlayerProfile() {
     try {
@@ -536,8 +550,11 @@ document.addEventListener("DOMContentLoaded", async () => {
           clearInterval(timerInterval);
         }
 
+        lastTimestamp = Date.now(); // Reset timestamp when starting timer
+
         timerInterval = window.setInterval(() => {
           if (!isPaused) {
+            // Always count down even when window is not active
             timeLeft--;
             updateTimerDisplay();
 
@@ -565,8 +582,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       clearInterval(timerInterval);
     }
 
+    lastTimestamp = Date.now(); // Reset timestamp when starting cooldown timer
+
     timerInterval = window.setInterval(() => {
       if (!isPaused) {
+        // Always count down even when window is not active
         timeLeft--;
         updateTimerDisplay();
         updateResetButtonState(); // Update button state every tick
