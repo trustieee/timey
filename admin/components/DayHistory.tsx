@@ -840,7 +840,8 @@ const DayHistory: React.FC<DayHistoryProps> = ({
                                     <div>
                                       <p className="text-sm text-white font-medium">
                                         Session {index + 1}{" "}
-                                        {!session.end && " (Active)"}
+                                        {sessionStatus === "in-progress" &&
+                                          " (Active)"}
                                       </p>
                                       <p className="text-xs text-slate-400">
                                         {startTime.toLocaleTimeString([], {
