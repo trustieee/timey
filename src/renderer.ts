@@ -86,6 +86,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Variables to track time when app is minimized
   let lastTimestamp = Date.now();
 
+  // Track authentication status
+  let isAuthenticated = false;
+
   // Add window focus/blur event listeners to accurately track time when minimized
   window.addEventListener("blur", () => {
     // Don't pause the timer, let it continue running
@@ -95,6 +98,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Reset timestamp when window regains focus to prevent counting inactive time
     lastTimestamp = Date.now();
   });
+
+  // Create an overlay element to indicate the UI is disabled when not logged in
+  const authOverlay = document.createElement("div");
+  authOverlay.id = "auth-overlay";
+  authOverlay.className = "auth-overlay hidden";
+
+  // Add a message to the overlay
+  const overlayMessage = document.createElement("div");
+  overlayMessage.className = "overlay-message";
+  overlayMessage.textContent = "Please log in to use the application";
+  authOverlay.appendChild(overlayMessage);
+
+  document.body.appendChild(authOverlay);
 
   // Load player profile
   async function loadPlayerProfile() {
@@ -354,6 +370,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   const completionMessage = document.getElementById(
     "completion-message"
   ) as HTMLElement;
+  const historyBtn = document.getElementById(
+    "show-history"
+  ) as HTMLButtonElement;
 
   // Timer variables - use config values
   let timerInterval: number | null = null;
@@ -777,8 +796,77 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
+  // Function to update UI element states based on authentication status
+  function updateUIBasedOnAuthStatus(): void {
+    // Get all interactive elements
+    const interactiveElements = [
+      startTimerBtn,
+      pauseTimerBtn,
+      resetAfterChoresBtn,
+      rewardsBtn,
+      historyBtn,
+    ];
+
+    if (isAuthenticated) {
+      // Enable all interactive elements
+      interactiveElements.forEach((element) => {
+        if (element) {
+          element.disabled = false;
+        }
+      });
+
+      // Show profile info
+      if (xpBarElement) xpBarElement.style.opacity = "1";
+      if (xpTextElement) xpTextElement.style.opacity = "1";
+      if (levelIndicatorElement) levelIndicatorElement.style.opacity = "1";
+
+      // Update timer buttons based on current state
+      updateAppState(currentState);
+
+      // Hide the overlay
+      authOverlay.classList.add("hidden");
+    } else {
+      // Disable all interactive elements
+      interactiveElements.forEach((element) => {
+        if (element) {
+          element.disabled = true;
+        }
+      });
+
+      // Hide profile info
+      if (xpBarElement) xpBarElement.style.opacity = "0.5";
+      if (xpTextElement) xpTextElement.style.opacity = "0.5";
+      if (levelIndicatorElement) levelIndicatorElement.style.opacity = "0.5";
+
+      // Hide chores section
+      if (choresSection) choresSection.classList.add("hidden");
+
+      // Hide history and rewards panels
+      if (historyPanel) historyPanel.classList.remove("visible");
+      if (rewardsPanel) rewardsPanel.classList.remove("visible");
+
+      // Force login panel to be visible
+      if (loginPanel) {
+        loginPanel.classList.add("visible");
+        loginPanel.style.zIndex = "1000"; // Ensure it's on top of other elements
+
+        // Clear any previous error messages
+        if (loginErrorMsg) {
+          loginErrorMsg.style.display = "none";
+          loginErrorMsg.textContent = "";
+        }
+      }
+
+      // Show the overlay
+      authOverlay.classList.remove("hidden");
+    }
+  }
+
   // Initialize the app
   async function initializeApp(): Promise<void> {
+    // Check auth status first
+    await checkAuthStatus();
+
     await reloadProfile();
 
     // Apply permanent play time bonus to the timer
@@ -831,16 +919,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Start app initialization
   async function initApp() {
     await initializeApp();
-    await checkAuthStatus();
   }
 
   // Initialize the app
   initApp().catch(console.error);
 
   // History panel functionality
-  const historyBtn = document.getElementById(
-    "show-history"
-  ) as HTMLButtonElement;
   const historyPanel = document.getElementById("history-panel") as HTMLElement;
   const historyContent = historyPanel.querySelector(
     ".history-content"
@@ -1212,9 +1296,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const loginBtn = document.getElementById("show-login") as HTMLButtonElement;
   const loginPanel = document.getElementById("login-panel") as HTMLElement;
 
-  // Track authentication status
-  let isAuthenticated = false;
-
   // Check for saved credentials function - simplified
   async function checkForSavedEmail() {
     try {
@@ -1248,6 +1329,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (!status.isAuthenticated) {
         isAuthenticated = false;
         updateLoginButtonState(); // Update button state
+        updateUIBasedOnAuthStatus(); // Disable UI elements
 
         // Check for saved credentials to prefill login form
         await checkForSavedEmail();
@@ -1287,6 +1369,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         // No chores found after retries - user is not fully authenticated
         isAuthenticated = false;
         updateLoginButtonState(); // Update button state
+        updateUIBasedOnAuthStatus(); // Disable UI elements
 
         // Display login panel with error message
         loginPanel.classList.add("visible");
@@ -1302,10 +1385,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       // If we get here, user is authenticated and has chores
       isAuthenticated = true;
       updateLoginButtonState(); // Update button state
+      updateUIBasedOnAuthStatus(); // Enable UI elements
       return true;
     } catch (error) {
       console.error("Failed to check auth status:", error);
       isAuthenticated = false;
+      updateUIBasedOnAuthStatus(); // Disable UI elements
       loginPanel.classList.add("visible");
       return false;
     }
@@ -1339,8 +1424,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         rewardsPanel.classList.remove("visible");
       }
     } else {
-      // If not authenticated, force panel to stay open
+      // If not authenticated, force panel to stay open and bring to front
       loginPanel.classList.add("visible");
+      loginPanel.style.zIndex = "1000"; // Ensure it's on top of other elements
+
+      // Focus on email input if empty, otherwise password
+      if (!emailInput.value.trim()) {
+        emailInput.focus();
+      } else {
+        passwordInput.focus();
+      }
     }
   }
 
@@ -1438,6 +1531,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // Update button state
         updateLoginButtonState();
+        updateUIBasedOnAuthStatus(); // Disable UI elements
 
         // Reset form fields
         passwordInput.value = "";
@@ -1533,11 +1627,15 @@ document.addEventListener("DOMContentLoaded", async () => {
           renderChores();
         });
         renderRewards();
+
+        // Update UI state based on authentication
+        updateUIBasedOnAuthStatus();
       } catch (err) {
         console.error("Error refreshing profile after login:", err);
 
         // If there was an error loading the profile, mark as not authenticated
         isAuthenticated = false;
+        updateUIBasedOnAuthStatus(); // Disable UI elements
 
         // Show an error message
         loginErrorMsg.textContent =
@@ -1562,6 +1660,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       // Set authentication status to false
       isAuthenticated = false;
       updateLoginButtonState();
+      updateUIBasedOnAuthStatus(); // Disable UI elements
 
       // Re-enable inputs
       signInButton.textContent = "Sign In";
@@ -1632,6 +1731,24 @@ document.addEventListener("DOMContentLoaded", async () => {
             display: flex;
             flex-direction: column;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .auth-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 900;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(3px);
+        }
+
+        .auth-overlay.hidden {
+            display: none;
         }
 
         .chores-section h2 {
@@ -1784,6 +1901,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         .completion-message button {
             margin: 0;
+        }
+
+        .overlay-message {
+            padding: 16px 24px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
     `;
   document.head.appendChild(style);
