@@ -784,10 +784,11 @@ const DayHistory: React.FC<DayHistoryProps> = ({
                               let sessionStatus:
                                 | "completed"
                                 | "in-progress"
+                                | "paused"
                                 | "abandoned" = "in-progress";
 
-                              // If session has an end time, it's completed
-                              if (session.end) {
+                              // If session has an end time and wasn't abandoned, it's completed
+                              if (session.end && !session.abandoned) {
                                 const endTime = new Date(session.end);
                                 const durationMs =
                                   endTime.getTime() - startTime.getTime();
@@ -795,6 +796,22 @@ const DayHistory: React.FC<DayHistoryProps> = ({
                                   durationMs / (1000 * 60)
                                 );
                                 sessionStatus = "completed";
+                              }
+                              // If session was marked as abandoned
+                              else if (session.abandoned) {
+                                sessionStatus = "abandoned";
+                                if (session.end) {
+                                  const endTime = new Date(session.end);
+                                  const durationMs =
+                                    endTime.getTime() - startTime.getTime();
+                                  durationMinutes = Math.round(
+                                    durationMs / (1000 * 60)
+                                  );
+                                }
+                              }
+                              // If there's no end but the session is paused
+                              else if (session.isPaused) {
+                                sessionStatus = "paused";
                               }
                               // If there's no end but there's a subsequent session, it's abandoned
                               else if (
@@ -808,6 +825,7 @@ const DayHistory: React.FC<DayHistoryProps> = ({
                               const durationStyles = {
                                 completed: "bg-emerald-900/30 text-emerald-300",
                                 "in-progress": "bg-amber-900/30 text-amber-300",
+                                paused: "bg-blue-900/30 text-blue-300",
                                 abandoned: "bg-red-900/30 text-red-300",
                               };
 
@@ -842,6 +860,10 @@ const DayHistory: React.FC<DayHistoryProps> = ({
                                         Session {index + 1}{" "}
                                         {sessionStatus === "in-progress" &&
                                           " (Active)"}
+                                        {sessionStatus === "paused" &&
+                                          " (Paused)"}
+                                        {sessionStatus === "abandoned" &&
+                                          " (Abandoned)"}
                                       </p>
                                       <p className="text-xs text-slate-400">
                                         {startTime.toLocaleTimeString([], {
@@ -858,6 +880,8 @@ const DayHistory: React.FC<DayHistoryProps> = ({
                                             })
                                           : sessionStatus === "in-progress"
                                           ? "In progress"
+                                          : sessionStatus === "paused"
+                                          ? "Paused"
                                           : "Abandoned"}
                                       </p>
                                     </div>
@@ -870,6 +894,8 @@ const DayHistory: React.FC<DayHistoryProps> = ({
                                       ? `${durationMinutes} min`
                                       : sessionStatus === "in-progress"
                                       ? "Active"
+                                      : sessionStatus === "paused"
+                                      ? "Paused"
                                       : "Abandoned"}
                                   </div>
                                 </li>

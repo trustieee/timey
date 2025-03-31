@@ -32,6 +32,8 @@ export interface DayProgress {
     sessions: {
       start: string;
       end: string;
+      isPaused?: boolean; // Track if session is currently paused
+      abandoned?: boolean; // Track if session was abandoned
     }[];
   };
   xp: {
@@ -580,10 +582,31 @@ export async function startPlaySession(
 
   const dayProgress = updatedProfile.history[today];
 
+  // Check for any existing sessions that haven't ended yet (either in progress or paused)
+  // and mark them as ended before starting a new one
+  const sessions = dayProgress.playTime.sessions;
+  if (sessions.length > 0) {
+    for (let i = 0; i < sessions.length; i++) {
+      const session = sessions[i];
+      if (session && !session.end) {
+        // This session was left open (either paused or in progress)
+        // Mark it as ended with current timestamp
+        session.end = getLocalISOString();
+        // Mark the session as abandoned since it wasn't properly closed
+        session.abandoned = true;
+        // Clear the paused flag as it's now completed
+        if (session.isPaused) {
+          session.isPaused = false;
+        }
+      }
+    }
+  }
+
   // Create a new session with start time
   const newSession = {
     start: getLocalISOString(),
     end: "", // Will be filled in when session ends
+    isPaused: false, // Initialize as not paused
   };
 
   // Add to sessions array
@@ -639,12 +662,72 @@ export async function endPlaySession(
       // Set the end time
       lastSession.end = getLocalISOString();
 
+      // Make sure this session is not marked as abandoned since it's being properly closed
+      lastSession.abandoned = false;
+
+      // Clear the paused flag as the session is now completed
+      if (lastSession.isPaused) {
+        lastSession.isPaused = false;
+      }
+
       // Calculate minutes played in this session
       const startTime = new Date(lastSession.start).getTime();
       const endTime = new Date(lastSession.end).getTime();
       // minutesPlayed is used for future features
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const minutesPlayed = Math.floor((endTime - startTime) / (1000 * 60));
+    }
+  }
+
+  // Save the updated profile to Firestore
+  await savePlayerProfile(updatedProfile);
+
+  const stats = calculatePlayerStats(updatedProfile);
+  return {
+    ...updatedProfile,
+    level: stats.level,
+    xp: stats.xp,
+    xpToNextLevel: stats.xpToNextLevel,
+  };
+}
+
+// Toggle pause status for the current play session
+export async function toggleSessionPauseStatus(
+  profile: PlayerProfile & { level: number; xp: number; xpToNextLevel: number }
+): Promise<
+  PlayerProfile & { level: number; xp: number; xpToNextLevel: number }
+> {
+  // Create a deep copy of the profile to avoid mutation issues
+  const updatedProfile = JSON.parse(JSON.stringify(profile)) as typeof profile;
+
+  const today = getLocalDateString();
+
+  // Ensure today's progress exists
+  if (!updatedProfile.history[today]) {
+    updatedProfile.history[today] = createDayProgress(today);
+    // No session to toggle pause if we just created today's progress
+    await savePlayerProfile(updatedProfile);
+
+    const stats = calculatePlayerStats(updatedProfile);
+    return {
+      ...updatedProfile,
+      level: stats.level,
+      xp: stats.xp,
+      xpToNextLevel: stats.xpToNextLevel,
+    };
+  }
+
+  const dayProgress = updatedProfile.history[today];
+
+  // Find the most recent session that hasn't ended yet
+  const sessions = dayProgress.playTime.sessions;
+  if (sessions.length > 0) {
+    const lastSession = sessions[sessions.length - 1];
+
+    // If the session hasn't been ended yet (end is empty string)
+    if (lastSession && !lastSession.end) {
+      // Toggle isPaused property (initialize if it doesn't exist)
+      lastSession.isPaused = !lastSession.isPaused;
     }
   }
 

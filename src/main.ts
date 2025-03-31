@@ -502,6 +502,14 @@ const createWindow = async () => {
     return updatedProfile;
   });
 
+  ipcMain.handle("toggle-session-pause", async () => {
+    const updatedProfile = await playerProfile.toggleSessionPauseStatus(
+      playerProfileData
+    );
+    playerProfileData = updatedProfile;
+    return updatedProfile;
+  });
+
   // Add IPC handler to get Firebase authentication status
   ipcMain.handle("get-auth-status", () => {
     return {

@@ -634,6 +634,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       lastTimestamp = Date.now();
     }
 
+    // Update the backend with pause status
+    if (currentState === AppState.PLAYING) {
+      window.electronAPI.toggleSessionPause().catch((error) => {
+        console.error("Error updating pause status:", error);
+      });
+    }
+
     updatePauseButtonText();
     currentStateElement.textContent = getStateDisplayName(currentState);
   }

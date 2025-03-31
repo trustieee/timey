@@ -21,6 +21,7 @@ export type ElectronAPI = {
   ) => Promise<BasePlayerProfile>;
   startPlaySession: () => Promise<BasePlayerProfile>;
   endPlaySession: () => Promise<BasePlayerProfile>;
+  toggleSessionPause: () => Promise<BasePlayerProfile>;
   getAvailableRewards: () => Promise<number>;
   useReward: (
     rewardType: RewardType,
@@ -80,6 +81,7 @@ const api: ElectronAPI = {
   // Play session tracking
   startPlaySession: () => ipcRenderer.invoke("start-play-session"),
   endPlaySession: () => ipcRenderer.invoke("end-play-session"),
+  toggleSessionPause: () => ipcRenderer.invoke("toggle-session-pause"),
 
   // Rewards APIs
   getAvailableRewards: () => ipcRenderer.invoke("get-available-rewards"),
