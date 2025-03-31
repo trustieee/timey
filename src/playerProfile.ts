@@ -54,6 +54,13 @@ export interface PlayerProfile {
   createdAt?: string; // Firebase timestamp format (e.g., "March 29, 2025 at 6:16:57 PM UTC-4")
   displayName?: string; // User's display name
   email?: string; // User's email address
+  profileInfo?: {
+    lastUpdated?: string; // ISO string or Firebase Timestamp
+    email?: string;
+    displayName?: string | null;
+    uid?: string;
+    createdAt?: string; // ISO string or Firebase Timestamp
+  };
   history: {
     [date: string]: DayProgress; // Key is YYYY-MM-DD
   };
@@ -272,6 +279,11 @@ export async function loadPlayerProfile(): Promise<
         firestoreProfile.rewards.permanent = {};
       }
 
+      // Make sure profileInfo is defined
+      if (!firestoreProfile.profileInfo) {
+        firestoreProfile.profileInfo = {}; // Initialize if missing
+      }
+
       // First check and finalize any previous incomplete days
       const updatedProfile = checkAndFinalizePreviousDays(firestoreProfile);
 
@@ -346,8 +358,16 @@ export async function loadPlayerProfile(): Promise<
 
 // Save the player profile to Firestore only
 export async function savePlayerProfile(profile: PlayerProfile): Promise<void> {
+  // Ensure profileInfo exists before updating it
+  if (!profile.profileInfo) {
+    profile.profileInfo = {}; // Initialize if it doesn't exist
+  }
+  // Update the lastUpdated timestamp in profileInfo
+  profile.profileInfo.lastUpdated = getLocalISOString();
+
   // We only need to save the history, not the calculated stats
   const storageProfile = {
+    profileInfo: profile.profileInfo, // Include profileInfo
     history: profile.history,
     rewards: profile.rewards,
     appInfo: profile.appInfo || createDefaultAppInfo(),

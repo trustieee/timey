@@ -25,6 +25,8 @@ import {
 import { firebaseConfig as hardcodedConfig, APP_CONFIG } from "./config";
 // Import electron-store for saving credentials
 import Store from "electron-store";
+// Import utility for local ISO string
+import { getLocalISOString } from "./utils";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -99,24 +101,6 @@ async function refreshPlayerProfileData() {
         return null;
       }
 
-      try {
-        // Update appInfo on every load
-        baseProfile.appInfo = playerProfile.createDefaultAppInfo();
-
-        // Save updated appInfo back to Firebase
-        await playerProfile.savePlayerProfile(baseProfile);
-
-        // Log profile contents for debugging
-        console.log(
-          "Profile loaded, has chores:",
-          baseProfile.chores && baseProfile.chores.length > 0
-        );
-      } catch (saveError) {
-        // If saving fails, log but continue with the loaded profile
-        console.error("Error updating appInfo:", saveError);
-        // Don't return null here, continue with the profile we have
-      }
-
       // Calculate derived properties
       playerProfileData = {
         ...baseProfile,
@@ -179,6 +163,24 @@ async function tryAutoLogin(): Promise<boolean> {
           isAuthenticated = false;
           authenticatedEmail = null;
           return false;
+        }
+
+        // Update appInfo lastUpdated timestamp on successful auto-login
+        try {
+          if (!profile.appInfo) {
+            profile.appInfo = playerProfile.createDefaultAppInfo();
+          } else {
+            profile.appInfo.lastUpdated = getLocalISOString();
+            profile.appInfo.version = app.getVersion() || "0.0.0"; // Ensure version is also updated
+          }
+          // Save the profile immediately after updating appInfo
+          await playerProfile.savePlayerProfile(profile);
+          // Update the locally cached profileData
+          playerProfileData = profile;
+          console.log("Updated appInfo.lastUpdated on auto-login.");
+        } catch (saveError) {
+          console.error("Error updating appInfo on auto-login:", saveError);
+          // Continue even if saving appInfo fails
         }
 
         // Verify the profile has chores before considering login fully successful
@@ -531,6 +533,30 @@ const createWindow = async () => {
         const userCredential = await authenticateWithFirebase(email, password);
         isAuthenticated = true;
         authenticatedEmail = email;
+
+        // Manually update the appInfo lastUpdated timestamp here
+        try {
+          // Refresh profile data to get the latest version
+          const currentProfile = await refreshPlayerProfileData();
+          if (currentProfile) {
+            if (!currentProfile.appInfo) {
+              currentProfile.appInfo = playerProfile.createDefaultAppInfo();
+            } else {
+              currentProfile.appInfo.lastUpdated = getLocalISOString();
+              currentProfile.appInfo.version = app.getVersion() || "0.0.0"; // Ensure version is also updated
+            }
+            // Save the profile immediately after updating appInfo
+            await playerProfile.savePlayerProfile(currentProfile);
+            // Update the locally cached profileData
+            playerProfileData = currentProfile;
+            console.log("Updated appInfo.lastUpdated on manual login.");
+          } else {
+            console.error("Could not load profile to update appInfo on login.");
+          }
+        } catch (error) {
+          console.error("Error updating appInfo on manual login:", error);
+          // Continue even if updating appInfo fails
+        }
 
         secureStore.set("credentials", { email, password });
 

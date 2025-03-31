@@ -76,6 +76,13 @@ export default async function handler(
         email: email,
         displayName: email.split("@")[0], // Default display name from email
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        profileInfo: {
+          email: email,
+          displayName: email.split("@")[0], // Default display name from email
+          uid: userRecord.uid,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          lastUpdated: admin.firestore.FieldValue.serverTimestamp(), // Set initial lastUpdated
+        },
       });
 
     return res.status(201).json({
