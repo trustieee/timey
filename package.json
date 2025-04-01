@@ -1,7 +1,7 @@
 {
   "name": "timey",
   "productName": "timey",
-  "version": "3.2.10",
+  "version": "3.2.11",
   "description": "My Electron application description",
   "main": ".vite/build/main.js",
   "scripts": {
