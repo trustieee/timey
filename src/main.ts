@@ -8,6 +8,8 @@ import {
 } from "electron";
 import path from "path";
 import started from "electron-squirrel-startup";
+// Import the updater
+import { updateElectronApp } from "update-electron-app";
 // Import player profile functions
 import * as playerProfile from "./playerProfile";
 import { PlayerProfile as BasePlayerProfile } from "./playerProfile";
@@ -44,6 +46,9 @@ const secureStore = new Store<StoreSchema>() as Store<StoreSchema> & {
   get(key: "credentials"): StoreSchema["credentials"] | undefined;
   set(key: "credentials", value: StoreSchema["credentials"] | undefined): void;
 };
+
+// Initialize the updater
+updateElectronApp();
 
 // Firebase configuration from environment variables with fallback to hardcoded config
 const firebaseConfig = {
