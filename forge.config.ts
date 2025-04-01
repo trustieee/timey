@@ -30,7 +30,7 @@ const config: ForgeConfig = {
       setupIcon: "./assets/icon.ico",
       iconUrl:
         "https://raw.githubusercontent.com/trustieee/timey/main/assets/icon.ico",
-      certificateFile: "c:/users/mario/desktop/timey.pfx",
+      certificateFile: process.env.WINDOWS_CERT_PATH,
       certificatePassword: process.env.WINDOWS_CERT_PASSWORD,
     }),
     new MakerZIP({}, ["darwin"]),

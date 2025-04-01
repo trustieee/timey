@@ -3,10 +3,9 @@ name: Build and Publish
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
 
-# Add explicit permissions to allow creating releases
 permissions:
   contents: write
   packages: write
@@ -14,43 +13,64 @@ permissions:
 jobs:
   release:
     runs-on: ${{ matrix.os }}
-    
+
     strategy:
       matrix:
         os: [windows-latest]
-    
+
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v3
-      
+
       - name: Install Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
-          cache: 'npm'
-      
+          cache: "npm"
+
       - name: Install dependencies
         run: npm ci
-        
+
+      # --- NEW STEP: Decode PFX Certificate ---
+      - name: Decode PFX Certificate
+        if: matrix.os == 'windows-latest'
+        id: write_pfx # Give this step an ID to access its output
+        # Use PowerShell on the Windows runner to decode the Base64 secret
+        # and write it to a temporary file in the runner's workspace.
+        run: |
+          $pfx_path = Join-Path $env:RUNNER_TEMP "timey_temp.pfx" 
+          $pfx_base64 = "${{ secrets.WINDOWS_PFX_BASE64 }}"
+          $pfx_bytes = [System.Convert]::FromBase64String($pfx_base64)
+          [System.IO.File]::WriteAllBytes($pfx_path, $pfx_bytes)
+          # Output the path of the created file so subsequent steps can use it
+          echo "pfx_file_path=$pfx_path" >> $env:GITHUB_OUTPUT
+        shell: powershell
+
       - name: Set environment variables for Windows
         if: matrix.os == 'windows-latest'
-        run: echo "NODE_OPTIONS=--openssl-legacy-provider --experimental-global-webcrypto" >> $GITHUB_ENV
+        # Include the path to the decoded PFX file as an environment variable
+        run: |
+          echo "NODE_OPTIONS=--openssl-legacy-provider --experimental-global-webcrypto" >> $GITHUB_ENV
+          echo "WINDOWS_CERT_PATH=${{ steps.write_pfx.outputs.pfx_file_path }}" >> $GITHUB_ENV
+          echo "WINDOWS_CERT_PASSWORD=${{ secrets.WINDOWS_CERT_PASSWORD }}" >> $GITHUB_ENV
         shell: bash
 
-      # Add global environment variables for non-Windows platforms        
+      # Setup crypto polyfill for non-Windows (remains the same)
       - name: Setup crypto polyfill for non-Windows
         if: matrix.os != 'windows-latest'
         run: echo "NODE_OPTIONS=--experimental-global-webcrypto" >> $GITHUB_ENV
         shell: bash
-      
+
       - name: Build/Publish Electron App
+        # Environment variables WINDOWS_CERT_PATH and WINDOWS_CERT_PASSWORD
+        # should now be available to the npm script
         run: npm run publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Remove the --no-experimental-fetch flag which might be causing issues
-          # NODE_OPTIONS: --no-experimental-fetch 
+          # We set WINDOWS_CERT_PASSWORD via GITHUB_ENV now
+          # WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
 
-      # Add a debugging step to see what was created
+      # (Debugging step remains the same)
       - name: List distributables (for debugging)
         if: always()
         run: |
@@ -58,3 +78,9 @@ jobs:
           ls -la out/make || true
           find out -type f -name "*.exe" || true
         shell: bash
+
+      # --- NEW STEP: Clean up temporary certificate ---
+      - name: Clean up temporary PFX file
+        if: always() && matrix.os == 'windows-latest' # Always run if the decode step ran
+        run: Remove-Item -Path "${{ steps.write_pfx.outputs.pfx_file_path }}" -Force -ErrorAction SilentlyContinue
+        shell: powershell
